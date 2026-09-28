@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GUIDE TITLE | Notes | Ravindran Mani</title>
+<meta name="description" content="ONE-LINE SUMMARY OF THE GUIDE">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<!--
+  GUIDE TEMPLATE
+  Copy to <topic>/guides/<guide-name>.html (for example azure/guides/tagging.html)
+  and replace everything in CAPITALS. Paths assume the file is two folders deep.
+  Code blocks: <pre><code class="language-powershell"> ... </code></pre>
+  Escape < > & inside code as &lt; &gt; &amp;
+-->
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide N of N</p>
+    <ol>
+      <!-- One line per H2 in the guide; the href must match the H2's id -->
+      <li><a href="#first-section">First section</a></li>
+      <li><a href="#second-section">Second section</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">TOPIC NAME</a> / Guide N</p>
+    <h1>GUIDE TITLE</h1>
+    <p class="lead">ONE-LINE SUMMARY OF THE GUIDE</p>
+
+    <p>Short introduction.</p>
+
+    <h2 id="first-section">First section</h2>
+    <p>Explain the tip in plain words: what to do and why it matters.</p>
+    <pre><code class="language-powershell">Get-AzVM | Select-Object Name, ResourceGroupName, Location</code></pre>
+
+    <h2 id="second-section">Second section</h2>
+    <p>Tables work too:</p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Setting</th><th>Why</th></tr></thead>
+      <tbody><tr><td><code>Example</code></td><td>Reason</td></tr></tbody>
+    </table>
+    </div>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="PREVIOUS-GUIDE.html"><span>Previous guide</span>Previous guide title</a>
+      <a class="next" href="NEXT-GUIDE.html"><span>Next guide</span>Next guide title</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

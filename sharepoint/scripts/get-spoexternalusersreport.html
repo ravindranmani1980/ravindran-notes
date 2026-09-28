@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get-SPOExternalUsersReport | Notes | Ravindran Mani</title>
+<meta name="description" content="Lists guest (external) users on every SharePoint Online site that allows sharing.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html" aria-current="page">SharePoint</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap">
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">SharePoint</a> / <a href="../../scripts/index.html">Scripts</a> / SharePoint Online</p>
+    <h1 class="script-title">Get-SPOExternalUsersReport</h1>
+    <p class="lead">Lists guest (external) users on every SharePoint Online site that allows sharing.</p>
+    <dl class="facts">
+      <div><dt>Runs in</dt><dd>SharePoint Online Management Shell</dd></div>
+      <div><dt>Safety</dt><dd><span class="flag flag-read">Read-only</span></dd></div>
+    </dl>
+    <p class="actions"><a class="btn btn-primary" href="Get-SPOExternalUsersReport.ps1" download>Download Get-SPOExternalUsersReport.ps1</a></p>
+
+    <h2 id="what-it-does">What it does</h2>
+    <p>For each site where sharing is not disabled, reads the site&#x27;s users with Get-SPOUser and keeps guest accounts (#ext# and email-share guest logins). Useful for quarterly access reviews and before archiving a site. Read-only.</p>
+<p>Get-SPOUser can return &quot;Access denied&quot; on sites where you are not a site collection admin. Those sites are listed in a separate &quot;skipped&quot; CSV so nothing is silently missed.</p>
+
+    <h2 id="parameters">Parameters</h2>
+    <div class="table-wrap">
+      <table class="params">
+          <tr><th scope="row"><code>-AdminUrl</code><span class="ptype">string</span><span class="req">Required</span></th><td>SharePoint admin center URL, e.g. https://sharepointonline-admin.ravindran.in (on a standard tenant: https://&lt;tenant&gt;-admin.sharepoint.com).</td></tr>
+          <tr><th scope="row"><code>-OutputFile</code><span class="ptype">string</span></th><td>CSV output path. A second file with the suffix _Skipped lists sites that could not be read.<span class="pdefault">Default: <code>Timestamped file in the current folder</code></span></td></tr>
+      </table>
+    </div>
+
+    <h2 id="examples">Examples</h2>
+    <pre><code class="language-powershell">.\Get-SPOExternalUsersReport.ps1 -AdminUrl https://sharepointonline-admin.ravindran.in</code></pre>
+
+
+    <h2 id="source">Full script</h2>
+    <!-- Keep this in sync with Get-SPOExternalUsersReport.ps1 in this folder. -->
+    <pre><code class="language-powershell">&lt;#
+.SYNOPSIS
+    Lists guest (external) users on every SharePoint Online site that allows sharing.
+
+.DESCRIPTION
+    For each site where sharing is not disabled, reads the site&#x27;s users with Get-SPOUser
+    and keeps guest accounts (#ext# and email-share guest logins). Useful for quarterly
+    access reviews and before archiving a site. Read-only.
+
+    Get-SPOUser can return &quot;Access denied&quot; on sites where you are not a site collection
+    admin. Those sites are listed in a separate &quot;skipped&quot; CSV so nothing is silently missed.
+
+.PARAMETER AdminUrl
+    SharePoint admin center URL, e.g. https://sharepointonline-admin.ravindran.in
+    (on a standard tenant: https://&lt;tenant&gt;-admin.sharepoint.com).
+
+.PARAMETER OutputFile
+    CSV output path. A second file with the suffix _Skipped lists sites that could not be read.
+
+.EXAMPLE
+    .\Get-SPOExternalUsersReport.ps1 -AdminUrl https://sharepointonline-admin.ravindran.in
+#&gt;
+[CmdletBinding()]
+param(
+    [Parameter(Mandatory)][string]$AdminUrl,
+    [string]$OutputFile = (Join-Path -Path (Get-Location) -ChildPath (&#x27;SPOExternalUsers_{0:yyyyMMdd_HHmm}.csv&#x27; -f (Get-Date)))
+)
+
+Import-Module Microsoft.Online.SharePoint.PowerShell -DisableNameChecking -ErrorAction Stop
+Connect-SPOService -Url $AdminUrl
+
+$sites   = @(Get-SPOSite -Limit All | Where-Object { $_.SharingCapability -ne &#x27;Disabled&#x27; })
+$results = New-Object System.Collections.Generic.List[object]
+$skipped = New-Object System.Collections.Generic.List[object]
+$i = 0
+
+foreach ($site in $sites) {
+    $i++
+    Write-Progress -Activity &#x27;Checking sites for guests&#x27; -Status $site.Url -PercentComplete (($i / [math]::Max($sites.Count, 1)) * 100)
+    try {
+        $guests = Get-SPOUser -Site $site.Url -Limit All -ErrorAction Stop |
+            Where-Object { $_.LoginName -like &#x27;*#ext#*&#x27; -or $_.LoginName -like &#x27;*urn%3aspo%3aguest*&#x27; }
+    }
+    catch {
+        $skipped.Add([pscustomobject]@{ SiteUrl = $site.Url; Reason = $_.Exception.Message })
+        continue
+    }
+    foreach ($g in $guests) {
+        $results.Add([pscustomobject]@{
+            SiteUrl           = $site.Url
+            SiteTitle         = $site.Title
+            SharingCapability = $site.SharingCapability
+            DisplayName       = $g.DisplayName
+            LoginName         = $g.LoginName
+            IsSiteAdmin       = $g.IsSiteAdmin
+            Groups            = ($g.Groups -join &#x27;; &#x27;)
+        })
+    }
+}
+Write-Progress -Activity &#x27;Checking sites for guests&#x27; -Completed
+
+$results | Export-Csv -Path $OutputFile -NoTypeInformation -Encoding UTF8
+if ($skipped.Count -gt 0) {
+    $skippedFile = [IO.Path]::ChangeExtension($OutputFile, $null).TrimEnd(&#x27;.&#x27;) + &#x27;_Skipped.csv&#x27;
+    $skipped | Export-Csv -Path $skippedFile -NoTypeInformation -Encoding UTF8
+    Write-Warning &quot;$($skipped.Count) site(s) could not be read. See $skippedFile&quot;
+}
+
+Write-Host &quot;Sites checked: $($sites.Count)  Guest entries: $($results.Count)  Unique guests: $(@($results | Select-Object -Unique LoginName).Count)&quot;
+Write-Host &quot;Report: $OutputFile&quot; -ForegroundColor Green
+</code></pre>
+
+    <nav class="pager" aria-label="More scripts">
+      <a class="prev" href="test-spupgradereadiness.html"><span>Previous script</span>Test-SPUpgradeReadiness</a>
+      <a class="next" href="get-spolistsnearthreshold.html"><span>Next script</span>Get-SPOListsNearThreshold</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

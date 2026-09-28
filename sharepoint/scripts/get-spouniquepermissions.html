@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get-SPOUniquePermissions | Notes | Ravindran Mani</title>
+<meta name="description" content="Reports where permission inheritance is broken in a SharePoint Online site.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html" aria-current="page">SharePoint</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap">
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">SharePoint</a> / <a href="../../scripts/index.html">Scripts</a> / SharePoint Online</p>
+    <h1 class="script-title">Get-SPOUniquePermissions</h1>
+    <p class="lead">Reports where permission inheritance is broken in a SharePoint Online site.</p>
+    <dl class="facts">
+      <div><dt>Runs in</dt><dd>PnP.PowerShell</dd></div>
+      <div><dt>Safety</dt><dd><span class="flag flag-read">Read-only</span></dd></div>
+    </dl>
+    <p class="actions"><a class="btn btn-primary" href="Get-SPOUniquePermissions.ps1" download>Download Get-SPOUniquePermissions.ps1</a></p>
+
+    <h2 id="what-it-does">What it does</h2>
+    <p>Exports the site&#x27;s own permissions plus every list/library with unique permissions, and optionally every item/file/folder with unique permissions. Each row shows who has which permission level. &quot;Limited Access&quot; is filtered out because it is noise.</p>
+<p>Item-level scanning (-IncludeItems) calls the server once per item and can take a long time on big libraries. Run it on specific sites, not the whole tenant.</p>
+<p>Requires PnP.PowerShell and your own Entra ID app (see https://notes.ravindran.in/sharepoint/guides/getting-started.html). You need to be a site collection admin on the site.</p>
+
+    <h2 id="parameters">Parameters</h2>
+    <div class="table-wrap">
+      <table class="params">
+          <tr><th scope="row"><code>-SiteUrl</code><span class="ptype">string</span><span class="req">Required</span></th><td>The site to scan.</td></tr>
+          <tr><th scope="row"><code>-ClientId</code><span class="ptype">string</span></th><td>Entra ID app (client) ID for PnP. Defaults to $env:PNP_CLIENT_ID.</td></tr>
+          <tr><th scope="row"><code>-IncludeItems</code><span class="ptype">switch</span></th><td>Also check individual items, files and folders for unique permissions.</td></tr>
+          <tr><th scope="row"><code>-OutputFile</code><span class="ptype">string</span></th><td>CSV output path.<span class="pdefault">Default: <code>Timestamped file in the current folder</code></span></td></tr>
+      </table>
+    </div>
+
+    <h2 id="examples">Examples</h2>
+    <pre><code class="language-powershell">.\Get-SPOUniquePermissions.ps1 -SiteUrl https://sharepointonline.ravindran.in/sites/HR</code></pre>
+    <pre><code class="language-powershell">.\Get-SPOUniquePermissions.ps1 -SiteUrl https://sharepointonline.ravindran.in/sites/HR -IncludeItems</code></pre>
+
+
+    <h2 id="source">Full script</h2>
+    <!-- Keep this in sync with Get-SPOUniquePermissions.ps1 in this folder. -->
+    <pre><code class="language-powershell">&lt;#
+.SYNOPSIS
+    Reports where permission inheritance is broken in a SharePoint Online site.
+
+.DESCRIPTION
+    Exports the site&#x27;s own permissions plus every list/library with unique permissions,
+    and optionally every item/file/folder with unique permissions. Each row shows who has
+    which permission level. &quot;Limited Access&quot; is filtered out because it is noise.
+
+    Item-level scanning (-IncludeItems) calls the server once per item and can take a
+    long time on big libraries. Run it on specific sites, not the whole tenant.
+
+    Requires PnP.PowerShell and your own Entra ID app (see https://notes.ravindran.in/sharepoint/guides/getting-started.html).
+    You need to be a site collection admin on the site.
+
+.PARAMETER SiteUrl
+    The site to scan.
+
+.PARAMETER ClientId
+    Entra ID app (client) ID for PnP. Defaults to $env:PNP_CLIENT_ID.
+
+.PARAMETER IncludeItems
+    Also check individual items, files and folders for unique permissions.
+
+.PARAMETER OutputFile
+    CSV output path.
+
+.EXAMPLE
+    .\Get-SPOUniquePermissions.ps1 -SiteUrl https://sharepointonline.ravindran.in/sites/HR
+
+.EXAMPLE
+    .\Get-SPOUniquePermissions.ps1 -SiteUrl https://sharepointonline.ravindran.in/sites/HR -IncludeItems
+#&gt;
+[CmdletBinding()]
+param(
+    [Parameter(Mandatory)][string]$SiteUrl,
+    [string]$ClientId = $env:PNP_CLIENT_ID,
+    [switch]$IncludeItems,
+    [string]$OutputFile = (Join-Path -Path (Get-Location) -ChildPath (&#x27;SPOUniquePermissions_{0:yyyyMMdd_HHmm}.csv&#x27; -f (Get-Date)))
+)
+
+if (-not $ClientId) { throw &#x27;Provide -ClientId or set $env:PNP_CLIENT_ID. See https://notes.ravindran.in/sharepoint/guides/getting-started.html&#x27; }
+Connect-PnPOnline -Url $SiteUrl -ClientId $ClientId -Interactive
+
+$results = New-Object System.Collections.Generic.List[object]
+
+function Add-PermissionRows {
+    param(
+        [Parameter(Mandatory)]$SecurableObject,
+        [Parameter(Mandatory)][string]$ObjectType,
+        [Parameter(Mandatory)][string]$Url
+    )
+    $assignments = Get-PnPProperty -ClientObject $SecurableObject -Property RoleAssignments
+    foreach ($ra in $assignments) {
+        Get-PnPProperty -ClientObject $ra -Property Member, RoleDefinitionBindings | Out-Null
+        $levels = @($ra.RoleDefinitionBindings | Where-Object { $_.Name -ne &#x27;Limited Access&#x27; } | ForEach-Object { $_.Name })
+        if ($levels.Count -eq 0) { continue }
+        $results.Add([pscustomobject]@{
+            ObjectType    = $ObjectType
+            Url           = $Url
+            Principal     = $ra.Member.Title
+            PrincipalType = $ra.Member.PrincipalType
+            LoginName     = $ra.Member.LoginName
+            Permissions   = $levels -join &#x27;; &#x27;
+        })
+    }
+}
+
+# 1. The site (web) itself
+$web = Get-PnPWeb
+Write-Host &quot;Site: $($web.Url)&quot; -ForegroundColor Cyan
+Add-PermissionRows -SecurableObject $web -ObjectType &#x27;Site&#x27; -Url $web.Url
+
+# 2. Lists and libraries with unique permissions
+$tenantRoot = ([uri]$web.Url).GetLeftPart([UriPartial]::Authority)
+$lists = Get-PnPList -Includes HasUniqueRoleAssignments, RootFolder | Where-Object { -not $_.Hidden }
+
+foreach ($list in $lists) {
+    $listUrl = $tenantRoot + $list.RootFolder.ServerRelativeUrl
+    if ($list.HasUniqueRoleAssignments) {
+        Write-Host &quot;  Unique: $($list.Title)&quot; -ForegroundColor Yellow
+        Add-PermissionRows -SecurableObject $list -ObjectType &#x27;List&#x27; -Url $listUrl
+    }
+
+    # 3. Optional: items, files and folders
+    if ($IncludeItems -and $list.ItemCount -gt 0) {
+        Write-Host &quot;  Scanning $($list.ItemCount) items in $($list.Title)...&quot;
+        $items = Get-PnPListItem -List $list -PageSize 500 -Fields FileRef, FileLeafRef, Title
+        foreach ($item in $items) {
+            $hasUnique = Get-PnPProperty -ClientObject $item -Property HasUniqueRoleAssignments
+            if (-not $hasUnique) { continue }
+            $itemUrl = if ($item.FieldValues[&#x27;FileRef&#x27;]) { $tenantRoot + $item.FieldValues[&#x27;FileRef&#x27;] } else { &quot;$listUrl (ID $($item.Id))&quot; }
+            $type = switch ($item.FileSystemObjectType) { &#x27;File&#x27; { &#x27;File&#x27; } &#x27;Folder&#x27; { &#x27;Folder&#x27; } default { &#x27;Item&#x27; } }
+            Add-PermissionRows -SecurableObject $item -ObjectType $type -Url $itemUrl
+        }
+    }
+}
+
+$results | Export-Csv -Path $OutputFile -NoTypeInformation -Encoding UTF8
+$results | Group-Object ObjectType | Select-Object Name, @{n=&#x27;PermissionRows&#x27;;e={$_.Count}} | Format-Table -AutoSize | Out-Host
+Write-Host &quot;Report: $OutputFile&quot; -ForegroundColor Green
+</code></pre>
+
+    <nav class="pager" aria-label="More scripts">
+      <a class="prev" href="get-spositeinventory.html"><span>Previous script</span>Get-SPOSiteInventory</a>
+      <a class="next" href="remove-spooldfileversions.html"><span>Next script</span>Remove-SPOOldFileVersions</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

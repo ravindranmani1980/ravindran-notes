@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Find-MigrationBlockers | Notes | Ravindran Mani</title>
+<meta name="description" content="Scans a file share (or any folder) for problems that block or complicate a move to SharePoint Online / OneDrive.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html" aria-current="page">SharePoint</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap">
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">SharePoint</a> / <a href="../../scripts/index.html">Scripts</a> / Migration</p>
+    <h1 class="script-title">Find-MigrationBlockers</h1>
+    <p class="lead">Scans a file share (or any folder) for problems that block or complicate a move to SharePoint Online / OneDrive.</p>
+    <dl class="facts">
+      <div><dt>Runs in</dt><dd>Windows PowerShell 5.1 or PowerShell 7</dd></div>
+      <div><dt>Safety</dt><dd><span class="flag flag-read">Read-only</span></dd></div>
+    </dl>
+    <p class="actions"><a class="btn btn-primary" href="Find-MigrationBlockers.ps1" download>Download Find-MigrationBlockers.ps1</a></p>
+
+    <h2 id="what-it-does">What it does</h2>
+    <p>Checks every file and folder for:</p>
+<ul><li>Blocker: invalid characters  &quot; * : &lt; &gt; ? / \ |</li><li>Blocker: reserved names (CON, PRN, AUX, NUL, COM0-9, LPT0-9), .lock, desktop.ini, names starting with ~$, names containing _vti_</li><li>Blocker: leading or trailing spaces</li><li>Blocker: a folder named &#x27;forms&#x27; at the library root</li><li>Blocker: decoded path in SharePoint longer than -MaxPathLength (400)</li><li>Blocker: files larger than -MaxFileSizeBytes (250 GB)</li><li>Warning: folders that could not be read (access denied)</li><li>Info: common junk files (Thumbs.db, .DS_Store, ~*.tmp) worth cleaning up</li></ul>
+<p>The path length check adds your target library path (e.g. sites/Finance/Shared Documents) in front of each relative path, because that&#x27;s what counts toward the limit once the content is in SharePoint. Read-only; nothing is renamed or changed.</p>
+<p>Works in Windows PowerShell 5.1 and PowerShell 7.</p>
+
+    <h2 id="parameters">Parameters</h2>
+    <div class="table-wrap">
+      <table class="params">
+          <tr><th scope="row"><code>-Path</code><span class="ptype">string</span><span class="req">Required</span></th><td>The folder or share to scan, e.g. \\fileserver\Departments\Finance.</td></tr>
+          <tr><th scope="row"><code>-TargetLibraryUrl</code><span class="ptype">string</span></th><td>Full URL of the destination library, used for the path length calculation.<span class="pdefault">Default: <code>&#x27;https://sharepointonline.ravindran.in/sites/Migration/Shared Documents&#x27;</code></span></td></tr>
+          <tr><th scope="row"><code>-MaxPathLength</code><span class="ptype">int</span></th><td>Maximum decoded path length. Default 400 (the SharePoint Online limit).</td></tr>
+          <tr><th scope="row"><code>-MaxFileSizeBytes</code><span class="ptype">long</span></th><td>Maximum file size. Default 250GB.</td></tr>
+          <tr><th scope="row"><code>-OutputFile</code><span class="ptype">string</span></th><td>CSV output path.<span class="pdefault">Default: <code>Timestamped file in the current folder</code></span></td></tr>
+      </table>
+    </div>
+
+    <h2 id="examples">Examples</h2>
+    <pre><code class="language-powershell">.\Find-MigrationBlockers.ps1 -Path \\fs01\Finance -TargetLibraryUrl &quot;https://sharepointonline.ravindran.in/sites/Finance/Shared Documents&quot;</code></pre>
+
+
+    <h2 id="source">Full script</h2>
+    <!-- Keep this in sync with Find-MigrationBlockers.ps1 in this folder. -->
+    <pre><code class="language-powershell">&lt;#
+.SYNOPSIS
+    Scans a file share (or any folder) for problems that block or complicate a move to
+    SharePoint Online / OneDrive.
+
+.DESCRIPTION
+    Checks every file and folder for:
+    - Blocker: invalid characters  &quot; * : &lt; &gt; ? / \ |
+    - Blocker: reserved names (CON, PRN, AUX, NUL, COM0-9, LPT0-9), .lock, desktop.ini, names starting with ~$, names containing _vti_
+    - Blocker: leading or trailing spaces
+    - Blocker: a folder named &#x27;forms&#x27; at the library root
+    - Blocker: decoded path in SharePoint longer than -MaxPathLength (400)
+    - Blocker: files larger than -MaxFileSizeBytes (250 GB)
+    - Warning: folders that could not be read (access denied)
+    - Info: common junk files (Thumbs.db, .DS_Store, ~*.tmp) worth cleaning up
+
+    The path length check adds your target library path (e.g. sites/Finance/Shared Documents)
+    in front of each relative path, because that&#x27;s what counts toward the limit once the
+    content is in SharePoint. Read-only; nothing is renamed or changed.
+
+    Works in Windows PowerShell 5.1 and PowerShell 7.
+
+.PARAMETER Path
+    The folder or share to scan, e.g. \\fileserver\Departments\Finance.
+
+.PARAMETER TargetLibraryUrl
+    Full URL of the destination library, used for the path length calculation.
+
+.PARAMETER MaxPathLength
+    Maximum decoded path length. Default 400 (the SharePoint Online limit).
+
+.PARAMETER MaxFileSizeBytes
+    Maximum file size. Default 250GB.
+
+.PARAMETER OutputFile
+    CSV output path.
+
+.EXAMPLE
+    .\Find-MigrationBlockers.ps1 -Path \\fs01\Finance -TargetLibraryUrl &quot;https://sharepointonline.ravindran.in/sites/Finance/Shared Documents&quot;
+#&gt;
+[CmdletBinding()]
+param(
+    [Parameter(Mandatory)]
+    [ValidateScript({ Test-Path -LiteralPath $_ -PathType Container })]
+    [string]$Path,
+
+    [string]$TargetLibraryUrl = &#x27;https://sharepointonline.ravindran.in/sites/Migration/Shared Documents&#x27;,
+    [int]$MaxPathLength = 400,
+    [long]$MaxFileSizeBytes = 250GB,
+    [string]$OutputFile = (Join-Path -Path (Get-Location) -ChildPath (&#x27;MigrationBlockers_{0:yyyyMMdd_HHmm}.csv&#x27; -f (Get-Date)))
+)
+
+$root = (Resolve-Path -LiteralPath $Path).ProviderPath.TrimEnd(&#x27;\&#x27;, &#x27;/&#x27;)
+# Decoded server-relative path of the target library, without the leading slash
+$targetPrefix = [uri]::UnescapeDataString(([uri]$TargetLibraryUrl).AbsolutePath).Trim(&#x27;/&#x27;)
+
+$invalidCharPattern = &#x27;[&quot;*:&lt;&gt;?/\\|]&#x27;
+$reservedPattern    = &#x27;^(CON|PRN|AUX|NUL|COM[0-9]|LPT[0-9])(\.[^.]*)?$&#x27;
+$blockedNames       = @(&#x27;.lock&#x27;, &#x27;desktop.ini&#x27;)
+$junkPatterns       = @(&#x27;Thumbs.db&#x27;, &#x27;.DS_Store&#x27;, &#x27;~*.tmp&#x27;, &#x27;ehthumbs.db&#x27;)
+
+$issues = New-Object System.Collections.Generic.List[object]
+function Add-Issue {
+    param($Severity, $Issue, $Item, $Detail)
+    $issues.Add([pscustomobject]@{
+        Severity = $Severity
+        Issue    = $Issue
+        Type     = if ($Item.PSIsContainer) { &#x27;Folder&#x27; } else { &#x27;File&#x27; }
+        Path     = $Item.FullName
+        Detail   = $Detail
+    })
+}
+
+Write-Host &quot;Scanning $root ...&quot; -ForegroundColor Cyan
+$scanErrors = $null
+$count = 0
+
+Get-ChildItem -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue -ErrorVariable scanErrors |
+ForEach-Object {
+    $item = $_
+    $name = $item.Name
+    $count++
+    if ($count % 5000 -eq 0) { Write-Progress -Activity &#x27;Scanning&#x27; -Status &quot;$count items checked&quot; }
+
+    $relative   = ($item.FullName.Substring($root.Length).TrimStart(&#x27;\&#x27;, &#x27;/&#x27;)) -replace &#x27;\\&#x27;, &#x27;/&#x27;
+    $targetPath = &quot;$targetPrefix/$relative&quot;
+
+    if ($name -match $invalidCharPattern) {
+        Add-Issue &#x27;Blocker&#x27; &#x27;Invalid character&#x27; $item &quot;Name contains one of: `&quot; * : &lt; &gt; ? / \ |&quot;
+    }
+    if ($name -match $reservedPattern) {
+        Add-Issue &#x27;Blocker&#x27; &#x27;Reserved name&#x27; $item $name
+    }
+    if ($blockedNames -contains $name) {
+        Add-Issue &#x27;Blocker&#x27; &#x27;Blocked name&#x27; $item $name
+    }
+    if ($name.StartsWith(&#x27;~$&#x27;)) {
+        Add-Issue &#x27;Blocker&#x27; &#x27;Starts with ~$&#x27; $item &#x27;Usually an Office owner/lock file; safe to delete if the document is closed&#x27;
+    }
+    if ($name -like &#x27;*_vti_*&#x27;) {
+        Add-Issue &#x27;Blocker&#x27; &#x27;Contains _vti_&#x27; $item $name
+    }
+    if ($name -ne $name.Trim()) {
+        Add-Issue &#x27;Blocker&#x27; &#x27;Leading/trailing space&#x27; $item &quot;&#x27;$name&#x27;&quot;
+    }
+    if ($item.PSIsContainer -and $name -eq &#x27;forms&#x27; -and $relative -notmatch &#x27;/&#x27;) {
+        Add-Issue &#x27;Blocker&#x27; &quot;Root folder named &#x27;forms&#x27;&quot; $item &#x27;Rename before migrating&#x27;
+    }
+    if ($targetPath.Length -gt $MaxPathLength) {
+        Add-Issue &#x27;Blocker&#x27; &#x27;Path too long&#x27; $item &quot;$($targetPath.Length) characters in SharePoint (limit $MaxPathLength)&quot;
+    }
+    if (-not $item.PSIsContainer) {
+        if ($item.Length -gt $MaxFileSizeBytes) {
+            Add-Issue &#x27;Blocker&#x27; &#x27;File too large&#x27; $item (&#x27;{0:N1} GB&#x27; -f ($item.Length / 1GB))
+        }
+        foreach ($pattern in $junkPatterns) {
+            if ($name -like $pattern) { Add-Issue &#x27;Info&#x27; &#x27;Junk file&#x27; $item &#x27;Candidate for cleanup&#x27;; break }
+        }
+    }
+}
+Write-Progress -Activity &#x27;Scanning&#x27; -Completed
+
+foreach ($err in $scanErrors) {
+    $issues.Add([pscustomobject]@{
+        Severity = &#x27;Warning&#x27;
+        Issue    = &#x27;Could not read&#x27;
+        Type     = &#x27;Folder&#x27;
+        Path     = $err.TargetObject
+        Detail   = $err.Exception.Message
+    })
+}
+
+$issues | Sort-Object Severity, Issue, Path | Export-Csv -Path $OutputFile -NoTypeInformation -Encoding UTF8
+
+Write-Host &quot;Items scanned: $count   Issues found: $($issues.Count)&quot;
+if ($issues.Count -gt 0) {
+    $issues | Group-Object Severity, Issue | Sort-Object Count -Descending |
+        Select-Object Count, @{n=&#x27;Severity / Issue&#x27;;e={$_.Name}} | Format-Table -AutoSize | Out-Host
+}
+Write-Host &quot;Report: $OutputFile&quot; -ForegroundColor Green
+</code></pre>
+
+    <nav class="pager" aria-label="More scripts">
+      <a class="prev" href="restore-sporecyclebinbyuser.html"><span>Previous script</span>Restore-SPORecycleBinByUser</a>
+      <span></span>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

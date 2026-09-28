@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notes | Ravindran Mani</title>
+<meta name="description" content="Field notes and PowerShell scripts on SharePoint, Azure, AWS and FinOps by Ravindran Mani.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="index.html" aria-current="page">Home</a></li>
+        <li><a href="sharepoint/index.html">SharePoint</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="azure/index.html">Azure</a></li>
+        <li><a href="aws/index.html">AWS</a></li>
+        <li><a href="finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="scripts/index.html">Scripts</a></li>
+        <li><a href="about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div class="hero-text">
+      <p class="location">Miami, Florida</p>
+      <h1>Field notes on cloud and IT operations</h1>
+      <p class="lead">Practical guides and PowerShell scripts from more than two decades of running infrastructure: SharePoint, Azure, AWS and cloud cost management.</p>
+      <p class="actions"><a class="btn btn-primary" href="sharepoint/index.html">Read the SharePoint notes</a><a class="btn btn-quiet" href="scripts/index.html">Browse all scripts</a></p>
+    </div>
+    <aside class="status-card" aria-label="Topics and status">
+      <p class="status-title">Notes by topic</p>
+      <ul>
+        <li><a href="sharepoint/index.html">SharePoint</a><span class="st st-live">5 guides, 12 scripts</span></li>
+        <li><span>Azure</span><span class="st">In progress</span></li>
+        <li><span>AWS</span><span class="st">In progress</span></li>
+        <li><span>FinOps</span><span class="st">In progress</span></li>
+      </ul>
+    </aside>
+  </div>
+</section>
+
+<section class="block" aria-labelledby="topics-h">
+  <div class="wrap two-col">
+    <div class="col-head">
+      <h2 id="topics-h">Topics</h2>
+      <p class="muted">Each topic has guides meant to be read in order, and scripts you can download and run.</p>
+    </div>
+    <ul class="topic-list">
+      <li><a class="topic-row" href="sharepoint/index.html"><span class="tname">SharePoint</span><span class="tdesc">Server and Online administration, upgrades and migrations, 2005 to 2024.</span><span class="st st-live">Live</span></a></li>
+      <li><div class="topic-row"><span class="tname">Azure</span><span class="tdesc">Subscription structure, governance, tagging, backup and day-to-day operations.</span><span class="st">In progress</span></div></li>
+      <li><div class="topic-row"><span class="tname">AWS</span><span class="tdesc">Account structure, IAM hygiene, compute and storage operations.</span><span class="st">In progress</span></div></li>
+      <li><div class="topic-row"><span class="tname">FinOps</span><span class="tdesc">Cost visibility, tagging, rightsizing and commitments across Azure and AWS.</span><span class="st">In progress</span></div></li>
+    </ul>
+  </div>
+</section>
+
+<section class="block block-alt" aria-labelledby="how-h">
+  <div class="wrap two-col">
+    <div class="col-head">
+      <h2 id="how-h">How these notes work</h2>
+    </div>
+    <div class="how">
+      <p><strong>Written from real work.</strong> Every tip comes from production farms, tenants and cloud estates, not from a lab.</p>
+      <p><strong>Safe by default.</strong> Reports are read-only. Anything that changes data supports <code>-WhatIf</code>, so you can see what it would do before it does it.</p>
+      <p><strong>Consistent examples.</strong> Each topic uses fixed example names and URLs, such as <code>sharepoint.ravindran.in</code>, so you know exactly what to replace.</p>
+    </div>
+  </div>
+</section>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="assets/site.js"></script>
+</body>
+</html>

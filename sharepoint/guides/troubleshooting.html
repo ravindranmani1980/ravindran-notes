@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Troubleshooting | Notes | Ravindran Mani</title>
+<meta name="description" content="Common error messages and what actually fixes them.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html" aria-current="page">SharePoint</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 5 of 5</p>
+    <ol>
+      <li><a href="#on-premises">On-premises</a></li>
+      <li><a href="#sharepoint-online">SharePoint Online</a></li>
+      <li><a href="#general-habits-that-prevent-most-problems">General habits that prevent most problems</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">SharePoint</a> / Guide 5</p>
+    <h1>Troubleshooting</h1>
+    <p class="lead">Common error messages and what actually fixes them.</p>
+
+<h2 id="on-premises">On-premises</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>The term 'Get-SPSite' is not recognized</code></td>
+<td>SharePoint cmdlets not loaded</td>
+<td><code>Add-PSSnapin Microsoft.SharePoint.PowerShell</code>, or use SharePoint Management Shell</td>
+</tr>
+<tr>
+<td><code>Cannot access the local farm</code></td>
+<td>Account lacks <code>SharePoint_Shell_Access</code> / not elevated</td>
+<td>Run as administrator; <code>Add-SPShellAdmin</code> (see Getting started, tip 4)</td>
+</tr>
+<tr>
+<td><code>Access denied</code> on a content DB in a script</td>
+<td>Shell admin granted on config DB only</td>
+<td><code>Add-SPShellAdmin -UserName ... -Database $db</code> for each DB</td>
+</tr>
+<tr>
+<td>"The attempted operation is prohibited because it exceeds the list view threshold"</td>
+<td>Query over 5,000 items without an index</td>
+<td>Index filter/sort columns; use folders or filtered views</td>
+</tr>
+<tr>
+<td>Timer jobs stuck / servers out of sync</td>
+<td>Stale configuration cache</td>
+<td>Clear the config cache (SharePoint Server tips, tip 10)</td>
+</tr>
+<tr>
+<td>Users report an error with a correlation ID</td>
+<td>Anything</td>
+<td><code>Get-SPLogsByCorrelation.ps1 -CorrelationId &lt;id&gt;</code></td>
+</tr>
+<tr>
+<td>Content DB shows <code>NeedsUpgrade = True</code> after patching</td>
+<td>PSConfig not run, or failed</td>
+<td>Run PSConfig on each server; then <code>Upgrade-SPContentDatabase</code></td>
+</tr>
+<tr>
+<td>Shell memory keeps growing during a long script</td>
+<td>Undisposed SPSite/SPWeb</td>
+<td>Dispose in <code>finally</code> blocks or use <code>Start-SPAssignment</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="sharepoint-online">SharePoint Online</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AADSTS700016</code> / application not found when running <code>Connect-PnPOnline</code></td>
+<td>Using the retired shared PnP app</td>
+<td>Register your own app and pass <code>-ClientId</code> (Getting started, tip 2)</td>
+</tr>
+<tr>
+<td><code>Connect-SPOService</code> fails in PowerShell 7</td>
+<td>Module compatibility</td>
+<td><code>Import-Module Microsoft.Online.SharePoint.PowerShell -UseWindowsPowerShell</code>, or use Windows PowerShell 5.1</td>
+</tr>
+<tr>
+<td><code>(429) Too Many Requests</code> / <code>(503) Server Unavailable</code></td>
+<td>Throttling</td>
+<td>Slow down, batch, run off-hours; PnP retries automatically</td>
+</tr>
+<tr>
+<td><code>Access denied</code> on <code>Get-SPOUser</code> for a site</td>
+<td>Not a site collection admin there</td>
+<td>Temporarily add yourself with <code>Set-SPOUser -IsSiteCollectionAdmin $true</code></td>
+</tr>
+<tr>
+<td>List view threshold error with <code>Get-PnPListItem</code></td>
+<td>No paging</td>
+<td>Add <code>-PageSize 500</code></td>
+</tr>
+<tr>
+<td>Search doesn't show new columns/content</td>
+<td>Not crawled yet</td>
+<td><code>Request-PnPReIndexList</code> / <code>Request-PnPReIndexWeb</code></td>
+</tr>
+<tr>
+<td>Storage still high after deleting versions/files</td>
+<td>Items are in the recycle bins</td>
+<td>Check first- and second-stage recycle bins; they count toward storage</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="general-habits-that-prevent-most-problems">General habits that prevent most problems</h2>
+<ul>
+<li>Run with <code>-WhatIf</code> first, and read what it says it will do.</li>
+<li>Start a transcript before any change.</li>
+<li>Test in a non-production site or farm.</li>
+<li>Change one thing at a time, and write down what you changed.</li>
+</ul>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="migration-tips.html"><span>Previous guide</span>Migration tips</a>
+      <span></span>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

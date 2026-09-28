@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SharePoint Server (on-premises) tips | Notes | Ravindran Mani</title>
+<meta name="description" content="Farm administration from SharePoint 2010 to Subscription Edition: ULS, patching, recovery, performance.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html" aria-current="page">SharePoint</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 2 of 5</p>
+    <ol>
+      <li><a href="#1-dispose-of-spsite-and-spweb-objects">1. Dispose of SPSite and SPWeb objects</a></li>
+      <li><a href="#2-correlation-ids-are-your-best-friend">2. Correlation IDs are your best friend</a></li>
+      <li><a href="#3-translate-your-old-stsadm-habits">3. Translate your old STSADM habits</a></li>
+      <li><a href="#4-plan-for-the-list-view-threshold-before-users-hit-it">4. Plan for the list view threshold before users hit it</a></li>
+      <li><a href="#5-recover-a-deleted-site-collection-without-a-restore">5. Recover a deleted site collection without a restore</a></li>
+      <li><a href="#6-back-up-a-single-site-safely">6. Back up a single site safely</a></li>
+      <li><a href="#7-patching-check-before-and-after">7. Patching: check before and after</a></li>
+      <li><a href="#8-move-a-big-site-collection-to-its-own-content-database">8. Move a big site collection to its own content database</a></li>
+      <li><a href="#9-find-failed-timer-jobs-quickly">9. Find failed timer jobs quickly</a></li>
+      <li><a href="#10-clearing-the-configuration-cache-the-classic-fix">10. Clearing the configuration cache (the classic fix)</a></li>
+      <li><a href="#11-lock-sites-during-a-migration-cutover">11. Lock sites during a migration cutover</a></li>
+      <li><a href="#12-clean-up-what-test-spcontentdatabase-finds-before-an-upgrade">12. Clean up what Test-SPContentDatabase finds before an upgrade</a></li>
+      <li><a href="#13-know-your-farm-before-you-touch-it">13. Know your farm before you touch it</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">SharePoint</a> / Guide 2</p>
+    <h1>SharePoint Server (on-premises) tips</h1>
+    <p class="lead">Farm administration from SharePoint 2010 to Subscription Edition: ULS, patching, recovery, performance.</p>
+
+<p>These apply to SharePoint 2010 through Subscription Edition unless noted.</p>
+<h2 id="1-dispose-of-spsite-and-spweb-objects">1. Dispose of SPSite and SPWeb objects</h2>
+<p><code>SPSite</code> and <code>SPWeb</code> hold unmanaged memory. In a long loop over thousands of webs, forgetting to dispose will eat the shell's memory and can slow the server.</p>
+<pre><code class="language-powershell">foreach ($site in Get-SPSite -Limit All) {
+    try {
+        foreach ($web in $site.AllWebs) {
+            try   { &lt;# work with $web #&gt; }
+            finally { $web.Dispose() }
+        }
+    }
+    finally { $site.Dispose() }
+}
+</code></pre>
+<p>For quick one-liners, wrap the work in <code>Start-SPAssignment -Global</code> / <code>Stop-SPAssignment -Global</code>.</p>
+<h2 id="2-correlation-ids-are-your-best-friend">2. Correlation IDs are your best friend</h2>
+<p>Users send a screenshot with a correlation ID. Instead of opening ULS files on every server, merge the entries from the whole farm:</p>
+<pre><code class="language-powershell">Merge-SPLogFile -Path C:\Temp\issue.log -Correlation 'a1b2c3d4-...' -StartTime (Get-Date).AddHours(-2) -Overwrite
+</code></pre>
+<p>See <a href="../scripts/get-splogsbycorrelation.html"><code>Get-SPLogsByCorrelation.ps1</code></a>.</p>
+<h2 id="3-translate-your-old-stsadm-habits">3. Translate your old STSADM habits</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>STSADM</th>
+<th>PowerShell</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>stsadm -o backup -url</code></td>
+<td><code>Backup-SPSite</code></td>
+</tr>
+<tr>
+<td><code>stsadm -o restore</code></td>
+<td><code>Restore-SPSite</code></td>
+</tr>
+<tr>
+<td><code>stsadm -o enumsites</code></td>
+<td><code>Get-SPSite -Limit All</code></td>
+</tr>
+<tr>
+<td><code>stsadm -o addsolution</code></td>
+<td><code>Add-SPSolution</code></td>
+</tr>
+<tr>
+<td><code>stsadm -o deploysolution</code></td>
+<td><code>Install-SPSolution</code></td>
+</tr>
+<tr>
+<td><code>stsadm -o addcontentdb</code></td>
+<td><code>Mount-SPContentDatabase</code></td>
+</tr>
+<tr>
+<td><code>stsadm -o execadmsvcjobs</code></td>
+<td><code>Start-SPAdminJob</code></td>
+</tr>
+<tr>
+<td><code>stsadm -o preupgradecheck</code></td>
+<td><code>Test-SPContentDatabase</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="4-plan-for-the-list-view-threshold-before-users-hit-it">4. Plan for the list view threshold before users hit it</h2>
+<p>The default threshold is 5,000 items per query. Don't wait for the error: find lists above ~4,000 items and index the columns people filter and sort on.</p>
+<pre><code class="language-powershell">.\Get-SPLargeLists.ps1 -Threshold 4000
+</code></pre>
+<p>Adding an index to a list that is already over the threshold may itself be blocked outside the daily time window, which is another reason to act early.</p>
+<h2 id="5-recover-a-deleted-site-collection-without-a-restore">5. Recover a deleted site collection without a restore</h2>
+<p>Since SharePoint 2010 SP1, deleted site collections go to a farm recycle bin first:</p>
+<pre><code class="language-powershell">Get-SPDeletedSite | Select-Object Path, DeletionTime, SiteId
+Restore-SPDeletedSite -Identity &lt;SiteId&gt;
+</code></pre>
+<h2 id="6-back-up-a-single-site-safely">6. Back up a single site safely</h2>
+<pre><code class="language-powershell">Backup-SPSite -Identity https://sharepoint.ravindran.in/sites/HR -Path D:\Backups\HR.bak -UseSqlSnapshot
+</code></pre>
+<p><code>-UseSqlSnapshot</code> avoids locking the site during backup (needs a SQL edition that supports database snapshots). Without it, consider <code>Set-SPSite -LockState ReadOnly</code> during the backup so content doesn't change mid-way.</p>
+<h2 id="7-patching-check-before-and-after">7. Patching: check before and after</h2>
+<pre><code class="language-powershell">(Get-SPFarm).BuildVersion
+Get-SPProduct -Local
+Get-SPContentDatabase | Where-Object NeedsUpgrade | Select-Object Name
+</code></pre>
+<p>After installing a CU on every server, run the configuration wizard from the command line, one server at a time:</p>
+<pre><code class="language-powershell">PSConfig.exe -cmd upgrade -inplace b2b -wait -cmd applicationcontent -install -cmd installfeatures -cmd secureresources -cmd services -install
+</code></pre>
+<h2 id="8-move-a-big-site-collection-to-its-own-content-database">8. Move a big site collection to its own content database</h2>
+<pre><code class="language-powershell">New-SPContentDatabase -Name WSS_Content_Projects -WebApplication https://sharepoint.ravindran.in
+Move-SPSite https://sharepoint.ravindran.in/sites/Projects -DestinationDatabase WSS_Content_Projects
+iisreset   # on each web server when finished
+</code></pre>
+<p>Keep content databases in the ~200 GB range for general collaboration sites where you can. Backup, restore and upgrade times are much easier to manage.</p>
+<h2 id="9-find-failed-timer-jobs-quickly">9. Find failed timer jobs quickly</h2>
+<pre><code class="language-powershell">Get-SPTimerJob | ForEach-Object {
+    $job = $_
+    $job.HistoryEntries | Where-Object Status -eq 'Failed' |
+        Select-Object -First 1 @{n='Job';e={$job.DisplayName}}, StartTime, ErrorMessage
+} | Sort-Object StartTime -Descending
+</code></pre>
+<h2 id="10-clearing-the-configuration-cache-the-classic-fix">10. Clearing the configuration cache (the classic fix)</h2>
+<p>When timer jobs stall or servers disagree about farm state, clearing the config cache still works. On every server: stop the SharePoint Timer Service, open <code>C:\ProgramData\Microsoft\SharePoint\Config\&lt;GUID&gt;</code>, delete all <code>.xml</code> files (not <code>cache.ini</code>), set the contents of <code>cache.ini</code> to <code>1</code>, then start the Timer Service again. Do it on all servers before starting the timers back up.</p>
+<h2 id="11-lock-sites-during-a-migration-cutover">11. Lock sites during a migration cutover</h2>
+<pre><code class="language-powershell">Set-SPSite -Identity https://sharepoint.ravindran.in/sites/Finance -LockState ReadOnly
+# Values: Unlock, NoAdditions, ReadOnly, NoAccess
+</code></pre>
+<h2 id="12-clean-up-what-test-spcontentdatabase-finds-before-an-upgrade">12. Clean up what Test-SPContentDatabase finds before an upgrade</h2>
+<p>Missing features, web parts and setup files from old custom solutions are the most common upgrade headaches. Run <a href="../scripts/test-spupgradereadiness.html"><code>Test-SPUpgradeReadiness.ps1</code></a> against every database and deal with anything flagged <code>UpgradeBlocking</code> first.</p>
+<h2 id="13-know-your-farm-before-you-touch-it">13. Know your farm before you touch it</h2>
+<p>On a new engagement, the first thing I run is an inventory. <a href="../scripts/get-spfarminventory.html"><code>Get-SPFarmInventory.ps1</code></a> gives you servers, web apps, databases, service apps and solutions in a few minutes, all read-only.</p>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="getting-started.html"><span>Previous guide</span>Getting started</a>
+      <a class="next" href="sharepoint-online-tips.html"><span>Next guide</span>SharePoint Online tips</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

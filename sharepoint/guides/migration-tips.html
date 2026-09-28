@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Migration tips | Notes | Ravindran Mani</title>
+<meta name="description" content="Planning and running migrations from file shares, older farms and SharePoint Server to Online.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html" aria-current="page">SharePoint</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 4 of 5</p>
+    <ol>
+      <li><a href="#before-you-migrate">Before you migrate</a></li>
+      <li><a href="#what-doesnt-move-as-is">What doesn&#x27;t move as-is</a></li>
+      <li><a href="#on-premises-upgrade-path">On-premises upgrade path</a></li>
+      <li><a href="#tools">Tools</a></li>
+      <li><a href="#running-the-migration">Running the migration</a></li>
+      <li><a href="#communication-tips">Communication tips</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">SharePoint</a> / Guide 4</p>
+    <h1>Migration tips</h1>
+    <p class="lead">Planning and running migrations from file shares, older farms and SharePoint Server to Online.</p>
+
+<p>Lessons from many migrations: file shares to SharePoint, on-prem version-to-version upgrades, and SharePoint Server to SharePoint Online.</p>
+<h2 id="before-you-migrate">Before you migrate</h2>
+<p><strong>Inventory first, estimate second.</strong> Run the inventory scripts (<code>Get-SPFarmInventory.ps1</code>, <code>Get-SPSiteStorageReport.ps1</code>, <code>Find-MigrationBlockers.ps1</code>) before you give anyone a timeline. The surprises are always in the data you didn't look at.</p>
+<p><strong>Clean up (ROT: Redundant, Obsolete, Trivial).</strong> Every GB you don't move is time and money saved. Sites untouched for 2+ years, duplicate copies, <code>.pst</code>, <code>.iso</code> and old backups are the usual suspects. The staleness flags in the storage reports make this conversation with the business much easier.</p>
+<p><strong>Check for blockers on file shares.</strong> SharePoint Online doesn't allow certain characters and names, has a 400-character limit on the decoded full path, and a 250 GB maximum file size. Run:</p>
+<pre><code class="language-powershell">.\Find-MigrationBlockers.ps1 -Path \\fileserver\Departments\Finance `
+    -TargetLibraryUrl &quot;https://sharepointonline.ravindran.in/sites/Finance/Shared Documents&quot;
+</code></pre>
+<p><strong>Watch the path length.</strong> Deep folder structures from a file share get longer once they sit under <code>sites/SiteName/Shared Documents/</code>. Shorten the top-level folders or split the share across several libraries.</p>
+<p><strong>Check versions.</strong> Migrating 500 versions of every file multiplies storage. Decide on a version policy (for example, last 10 versions) before you move.</p>
+<h2 id="what-doesnt-move-as-is">What doesn't move as-is</h2>
+<ul>
+<li><strong>Farm solutions and full-trust code</strong> (WSPs) don't run in SharePoint Online. Replace with SPFx, Power Platform, or out-of-the-box features.</li>
+<li><strong>SharePoint 2010 and 2013 workflows</strong> are retired in SharePoint Online. Rebuild them in Power Automate, and use the migration as a chance to simplify.</li>
+<li><strong>InfoPath forms</strong> have reached end of life. Plan replacements in Power Apps, Microsoft Forms or a list form. Check Microsoft's current retirement notices for exact dates.</li>
+<li><strong>Custom master pages and heavy branding</strong> don't carry over to modern sites. Use themes, hub sites and SPFx extensions.</li>
+<li><strong>Subsites</strong> can be migrated, but a flat structure of sites connected through hubs is usually easier to manage long-term.</li>
+</ul>
+<h2 id="on-premises-upgrade-path">On-premises upgrade path</h2>
+<p>Upgrades use database attach, and you can't skip versions except where Microsoft supports it:</p>
+<ul>
+<li>2010 → 2013 → 2016 → 2019</li>
+<li>2016 or 2019 → Subscription Edition</li>
+</ul>
+<p>For each hop: back up, run <code>Test-SPUpgradeReadiness.ps1</code>, fix blockers, mount with <code>Mount-SPContentDatabase</code>, check the upgrade logs.</p>
+<p>SharePoint Server 2016 and 2019 reached end of extended support in July 2026. If you're still on them, Subscription Edition or SharePoint Online are the supported paths.</p>
+<h2 id="tools">Tools</h2>
+<ul>
+<li><strong>SharePoint Migration Tool (SPMT)</strong>: free, from Microsoft, good for file shares and SharePoint Server 2010/2013/2016 to Online.</li>
+<li><strong>Migration Manager</strong> in the SharePoint admin center: good for large file share migrations using multiple agents.</li>
+<li><strong>Third-party tools</strong> (ShareGate, AvePoint, Quest and others): worth it for complex permissions, metadata mapping, reorganizing structure, and reporting.</li>
+</ul>
+<h2 id="running-the-migration">Running the migration</h2>
+<ol>
+<li><strong>Pilot</strong> with one friendly department. Measure throughput (GB/hour) and use it for the real schedule.</li>
+<li><strong>Bulk copy</strong> early while users keep working in the source.</li>
+<li><strong>Delta/incremental passes</strong> to catch changes.</li>
+<li><strong>Cutover</strong>: set the source read-only (<code>Set-SPSite -LockState ReadOnly</code>, or read-only share permissions), run the final delta, redirect users.</li>
+<li><strong>Keep the source read-only for a while</strong> (30–90 days) before decommissioning. Someone will always need "that one file".</li>
+</ol>
+<h2 id="communication-tips">Communication tips</h2>
+<ul>
+<li>Tell users what will change and when, including new URLs and how OneDrive sync will behave.</li>
+<li>Broken links inside Office documents and emails are the #1 complaint after migration. Warn people ahead of time and have a plan for the most-used documents.</li>
+<li>Train site owners, not just end users. They're the ones who get the questions.</li>
+</ul>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="sharepoint-online-tips.html"><span>Previous guide</span>SharePoint Online tips</a>
+      <a class="next" href="troubleshooting.html"><span>Next guide</span>Troubleshooting</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

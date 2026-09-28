@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Getting started | Notes | Ravindran Mani</title>
+<meta name="description" content="Which shell to use for what, installing the modules, and signing in to SharePoint Online.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html" aria-current="page">SharePoint</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 1 of 5</p>
+    <ol>
+      <li><a href="#about-the-example-urls">About the example URLs</a></li>
+      <li><a href="#tip-1-install-the-online-modules-for-your-user-only">Tip 1 – Install the online modules for your user only</a></li>
+      <li><a href="#tip-2-register-your-own-entra-id-app-for-pnppowershell">Tip 2 – Register your own Entra ID app for PnP.PowerShell</a></li>
+      <li><a href="#tip-3-use-certificate-auth-for-scheduled-jobs">Tip 3 – Use certificate auth for scheduled jobs</a></li>
+      <li><a href="#tip-4-on-premises-give-admins-shell-access-properly">Tip 4 – On-premises: give admins shell access properly</a></li>
+      <li><a href="#tip-5-load-sharepoint-cmdlets-in-any-powershell-window">Tip 5 – Load SharePoint cmdlets in any PowerShell window</a></li>
+      <li><a href="#tip-6-execution-policy-and-downloaded-scripts">Tip 6 – Execution policy and downloaded scripts</a></li>
+      <li><a href="#tip-7-always-keep-a-transcript">Tip 7 – Always keep a transcript</a></li>
+      <li><a href="#tip-8-read-the-help-before-you-run">Tip 8 – Read the help before you run</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">SharePoint</a> / Guide 1</p>
+    <h1>Getting started</h1>
+    <p class="lead">Which shell to use for what, installing the modules, and signing in to SharePoint Online.</p>
+
+<p>SharePoint has three PowerShell "worlds", and most early frustration comes from using the wrong one. Pick the shell by what you're managing.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>You want to manage</th>
+<th>Use</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SharePoint Server farm (2010 → Subscription Edition)</td>
+<td>SharePoint Management Shell</td>
+<td>Run on a farm server, elevated ("Run as administrator")</td>
+</tr>
+<tr>
+<td>SharePoint Online tenant settings, site collections, sharing</td>
+<td><code>Microsoft.Online.SharePoint.PowerShell</code> (SPO module)</td>
+<td>Needs the SharePoint Administrator role</td>
+</tr>
+<tr>
+<td>SharePoint Online content: lists, libraries, files, permissions, pages</td>
+<td><code>PnP.PowerShell</code></td>
+<td>Needs your own Entra ID app registration (see below)</td>
+</tr>
+<tr>
+<td>Microsoft 365 Groups, Teams, users</td>
+<td>Microsoft Graph PowerShell / Teams module</td>
+<td>Often needed alongside SharePoint work</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="about-the-example-urls">About the example URLs</h2>
+<p>All examples in this project use two test environments:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Environment</th>
+<th>Example URL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SharePoint Server (on-premises) test farm</td>
+<td><code>https://sharepoint.ravindran.in</code></td>
+</tr>
+<tr>
+<td>SharePoint Online test tenant</td>
+<td><code>https://sharepointonline.ravindran.in</code></td>
+</tr>
+<tr>
+<td>SharePoint Online admin center</td>
+<td><code>https://sharepointonline-admin.ravindran.in</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Replace them with your own. On a standard Microsoft 365 tenant, SharePoint Online sites live at <code>https://&lt;tenant&gt;.sharepoint.com</code> and the admin center at <code>https://&lt;tenant&gt;-admin.sharepoint.com</code>.</p>
+<h2 id="tip-1-install-the-online-modules-for-your-user-only">Tip 1 – Install the online modules for your user only</h2>
+<p>No admin rights needed and no conflicts with other users on the machine:</p>
+<pre><code class="language-powershell">Install-Module Microsoft.Online.SharePoint.PowerShell -Scope CurrentUser
+Install-Module PnP.PowerShell -Scope CurrentUser
+</code></pre>
+<p>Current PnP.PowerShell releases require PowerShell 7 (7.4 or later for version 3.x). The SPO module works best in Windows PowerShell 5.1; if you hit loading errors in PowerShell 7, import it with:</p>
+<pre><code class="language-powershell">Import-Module Microsoft.Online.SharePoint.PowerShell -UseWindowsPowerShell
+</code></pre>
+<p>Keep them updated: <code>Update-Module PnP.PowerShell</code></p>
+<h2 id="tip-2-register-your-own-entra-id-app-for-pnppowershell">Tip 2 – Register your own Entra ID app for PnP.PowerShell</h2>
+<p>The shared multi-tenant "PnP Management Shell" app was retired in September 2024. Every tenant now needs its own app registration. PnP can create it for you (you need rights to register apps and grant consent):</p>
+<pre><code class="language-powershell">Register-PnPEntraIDAppForInteractiveLogin -ApplicationName &quot;PnP PowerShell - SharePoint Admin&quot; `
+    -Tenant ravindran.onmicrosoft.com
+</code></pre>
+<p>Note the Client ID it returns, then connect with:</p>
+<pre><code class="language-powershell">Connect-PnPOnline -Url https://sharepointonline.ravindran.in/sites/HR -ClientId &lt;client-id&gt; -Interactive
+</code></pre>
+<p>All PnP scripts on this site accept <code>-ClientId</code>, or read it from an environment variable so you don't have to type it every time. Add this to your <code>$PROFILE</code>:</p>
+<pre><code class="language-powershell">$env:PNP_CLIENT_ID = '00000000-0000-0000-0000-000000000000'
+</code></pre>
+<h2 id="tip-3-use-certificate-auth-for-scheduled-jobs">Tip 3 – Use certificate auth for scheduled jobs</h2>
+<p>Interactive login doesn't work for unattended tasks. Use an app registration with a certificate:</p>
+<pre><code class="language-powershell">Connect-PnPOnline -Url https://sharepointonline.ravindran.in `
+    -ClientId &lt;client-id&gt; -Tenant ravindran.onmicrosoft.com -Thumbprint &lt;cert-thumbprint&gt;
+</code></pre>
+<p>Grant the app only the permissions it needs. <code>Sites.Selected</code> lets you give access to specific sites instead of the whole tenant.</p>
+<h2 id="tip-4-on-premises-give-admins-shell-access-properly">Tip 4 – On-premises: give admins shell access properly</h2>
+<p>"Cannot access the local farm" almost always means the account lacks database rights. From an account that already has access:</p>
+<pre><code class="language-powershell">Add-SPShellAdmin -UserName RAVINDRAN\sp-admin
+# Also grant access to every content database:
+Get-SPContentDatabase | ForEach-Object { Add-SPShellAdmin -UserName RAVINDRAN\sp-admin -Database $_ }
+</code></pre>
+<p>Always open the SharePoint Management Shell with "Run as administrator".</p>
+<h2 id="tip-5-load-sharepoint-cmdlets-in-any-powershell-window">Tip 5 – Load SharePoint cmdlets in any PowerShell window</h2>
+<p>In a plain PowerShell console on a farm server:</p>
+<pre><code class="language-powershell">Add-PSSnapin Microsoft.SharePoint.PowerShell -ErrorAction SilentlyContinue
+</code></pre>
+<p>The on-premises scripts on this site do this for you.</p>
+<h2 id="tip-6-execution-policy-and-downloaded-scripts">Tip 6 – Execution policy and downloaded scripts</h2>
+<pre><code class="language-powershell">Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+Get-ChildItem -Path .\scripts -Recurse -Filter *.ps1 | Unblock-File
+</code></pre>
+<h2 id="tip-7-always-keep-a-transcript">Tip 7 – Always keep a transcript</h2>
+<p>It's the cheapest audit trail you'll ever have, and it has saved me in more than one change review.</p>
+<pre><code class="language-powershell">Start-Transcript -Path &quot;C:\Logs\SP_$(Get-Date -Format yyyyMMdd_HHmm).log&quot;
+# ... your work ...
+Stop-Transcript
+</code></pre>
+<h2 id="tip-8-read-the-help-before-you-run">Tip 8 – Read the help before you run</h2>
+<p>Every script on this site has comment-based help:</p>
+<pre><code class="language-powershell">Get-Help .\Get-SPLargeLists.ps1 -Examples
+</code></pre>
+
+    <nav class="pager" aria-label="Guides">
+      <span></span>
+      <a class="next" href="on-premises-tips.html"><span>Next guide</span>SharePoint Server (on-premises) tips</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

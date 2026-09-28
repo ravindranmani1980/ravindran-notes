@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get-SPLogsByCorrelation | Notes | Ravindran Mani</title>
+<meta name="description" content="Collects ULS log entries for a correlation ID from the whole farm.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html" aria-current="page">SharePoint</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap">
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">SharePoint</a> / <a href="../../scripts/index.html">Scripts</a> / SharePoint Server</p>
+    <h1 class="script-title">Get-SPLogsByCorrelation</h1>
+    <p class="lead">Collects ULS log entries for a correlation ID from the whole farm.</p>
+    <dl class="facts">
+      <div><dt>Runs in</dt><dd>SharePoint Management Shell on a farm server</dd></div>
+      <div><dt>Safety</dt><dd><span class="flag flag-read">Read-only</span></dd></div>
+    </dl>
+    <p class="actions"><a class="btn btn-primary" href="Get-SPLogsByCorrelation.ps1" download>Download Get-SPLogsByCorrelation.ps1</a></p>
+
+    <h2 id="what-it-does">What it does</h2>
+    <p>Uses Merge-SPLogFile to gather matching entries from every server into one file, so you don&#x27;t have to open ULS logs server by server. Use -LocalOnly to search just the current server with Get-SPLogEvent, which is faster when you know where the error happened.</p>
+
+    <h2 id="parameters">Parameters</h2>
+    <div class="table-wrap">
+      <table class="params">
+          <tr><th scope="row"><code>-CorrelationId</code><span class="ptype">guid</span><span class="req">Required</span></th><td>The correlation ID from the error page.</td></tr>
+          <tr><th scope="row"><code>-StartTime</code><span class="ptype">datetime</span></th><td>Start of the search window. Default: 1 hour ago. Narrow windows are much faster.</td></tr>
+          <tr><th scope="row"><code>-EndTime</code><span class="ptype">datetime</span></th><td>End of the search window. Default: now.</td></tr>
+          <tr><th scope="row"><code>-LocalOnly</code><span class="ptype">switch</span></th><td>Search only the local server&#x27;s ULS logs.</td></tr>
+          <tr><th scope="row"><code>-OutputFile</code><span class="ptype">string</span></th><td>Output path. Default: .\ULS_&lt;CorrelationId&gt;.log (or .csv with -LocalOnly).</td></tr>
+      </table>
+    </div>
+
+    <h2 id="examples">Examples</h2>
+    <pre><code class="language-powershell">.\Get-SPLogsByCorrelation.ps1 -CorrelationId 3f2a9c4e-1b7d-4e0a-9f1e-8c2b5d6a7e90</code></pre>
+    <pre><code class="language-powershell">.\Get-SPLogsByCorrelation.ps1 -CorrelationId 3f2a9c4e-1b7d-4e0a-9f1e-8c2b5d6a7e90 -StartTime &#x27;2024-03-01 09:00&#x27; -EndTime &#x27;2024-03-01 09:30&#x27; -LocalOnly</code></pre>
+
+
+    <h2 id="source">Full script</h2>
+    <!-- Keep this in sync with Get-SPLogsByCorrelation.ps1 in this folder. -->
+    <pre><code class="language-powershell">&lt;#
+.SYNOPSIS
+    Collects ULS log entries for a correlation ID from the whole farm.
+
+.DESCRIPTION
+    Uses Merge-SPLogFile to gather matching entries from every server into one file,
+    so you don&#x27;t have to open ULS logs server by server. Use -LocalOnly to search just
+    the current server with Get-SPLogEvent, which is faster when you know where the
+    error happened.
+
+.PARAMETER CorrelationId
+    The correlation ID from the error page.
+
+.PARAMETER StartTime
+    Start of the search window. Default: 1 hour ago. Narrow windows are much faster.
+
+.PARAMETER EndTime
+    End of the search window. Default: now.
+
+.PARAMETER LocalOnly
+    Search only the local server&#x27;s ULS logs.
+
+.PARAMETER OutputFile
+    Output path. Default: .\ULS_&lt;CorrelationId&gt;.log (or .csv with -LocalOnly).
+
+.EXAMPLE
+    .\Get-SPLogsByCorrelation.ps1 -CorrelationId 3f2a9c4e-1b7d-4e0a-9f1e-8c2b5d6a7e90
+
+.EXAMPLE
+    .\Get-SPLogsByCorrelation.ps1 -CorrelationId 3f2a9c4e-1b7d-4e0a-9f1e-8c2b5d6a7e90 -StartTime &#x27;2024-03-01 09:00&#x27; -EndTime &#x27;2024-03-01 09:30&#x27; -LocalOnly
+#&gt;
+[CmdletBinding()]
+param(
+    [Parameter(Mandatory)][guid]$CorrelationId,
+    [datetime]$StartTime = (Get-Date).AddHours(-1),
+    [datetime]$EndTime = (Get-Date),
+    [switch]$LocalOnly,
+    [string]$OutputFile
+)
+
+if (-not (Get-Command Merge-SPLogFile -ErrorAction SilentlyContinue)) {
+    Add-PSSnapin Microsoft.SharePoint.PowerShell -ErrorAction SilentlyContinue
+}
+if (-not (Get-Command Merge-SPLogFile -ErrorAction SilentlyContinue)) {
+    throw &#x27;SharePoint cmdlets are not available. Run this on a farm server from the SharePoint Management Shell.&#x27;
+}
+
+if ($LocalOnly) {
+    if (-not $OutputFile) { $OutputFile = Join-Path (Get-Location) &quot;ULS_$CorrelationId.csv&quot; }
+    Write-Host &quot;Searching local ULS logs from $StartTime to $EndTime...&quot; -ForegroundColor Cyan
+    $entries = Get-SPLogEvent -StartTime $StartTime -EndTime $EndTime |
+        Where-Object { $_.Correlation -eq $CorrelationId } |
+        Select-Object Timestamp, Process, Area, Category, EventID, Level, Message
+
+    if (-not $entries) { Write-Warning &#x27;No entries found on this server. Try widening the time window or drop -LocalOnly.&#x27;; return }
+
+    $entries | Export-Csv -Path $OutputFile -NoTypeInformation -Encoding UTF8
+    # Show the most useful lines straight away
+    $entries | Where-Object { $_.Level -in &#x27;Unexpected&#x27;, &#x27;Critical&#x27;, &#x27;High&#x27;, &#x27;Exception&#x27; } |
+        Format-Table Timestamp, Level, Category, Message -Wrap | Out-Host
+}
+else {
+    if (-not $OutputFile) { $OutputFile = Join-Path (Get-Location) &quot;ULS_$CorrelationId.log&quot; }
+    Write-Host &quot;Merging ULS logs from all farm servers from $StartTime to $EndTime...&quot; -ForegroundColor Cyan
+    Merge-SPLogFile -Path $OutputFile -Correlation $CorrelationId -StartTime $StartTime -EndTime $EndTime -Overwrite
+}
+
+if (Test-Path $OutputFile) { Write-Host &quot;Saved: $OutputFile&quot; -ForegroundColor Green }
+else { Write-Warning &#x27;No matching entries were found. Check the time window (ULS uses server local time).&#x27; }
+</code></pre>
+
+    <nav class="pager" aria-label="More scripts">
+      <a class="prev" href="get-splargelists.html"><span>Previous script</span>Get-SPLargeLists</a>
+      <a class="next" href="get-spsitestoragereport.html"><span>Next script</span>Get-SPSiteStorageReport</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

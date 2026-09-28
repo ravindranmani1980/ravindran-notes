@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SharePoint Online tips | Notes | Ravindran Mani</title>
+<meta name="description" content="PnP.PowerShell and the SPO module in practice: paging, batching, sharing, recovery, storage.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html" aria-current="page">SharePoint</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 3 of 5</p>
+    <ol>
+      <li><a href="#1-two-modules-two-jobs">1. Two modules, two jobs</a></li>
+      <li><a href="#2-page-through-big-lists">2. Page through big lists</a></li>
+      <li><a href="#3-batch-your-writes">3. Batch your writes</a></li>
+      <li><a href="#4-respect-throttling">4. Respect throttling</a></li>
+      <li><a href="#5-use-search-for-fast-tenant-wide-reports">5. Use search for fast tenant-wide reports</a></li>
+      <li><a href="#6-force-a-re-crawl-after-schema-changes">6. Force a re-crawl after schema changes</a></li>
+      <li><a href="#7-restore-deleted-sites-within-93-days">7. Restore deleted sites (within 93 days)</a></li>
+      <li><a href="#8-control-sharing-per-site">8. Control sharing per site</a></li>
+      <li><a href="#9-get-storage-back-from-version-history">9. Get storage back from version history</a></li>
+      <li><a href="#10-temporarily-grant-yourself-site-collection-admin">10. Temporarily grant yourself site collection admin</a></li>
+      <li><a href="#11-hub-sites-for-navigation-and-branding">11. Hub sites for navigation and branding</a></li>
+      <li><a href="#12-copy-a-sites-structure-with-pnp-provisioning">12. Copy a site&#x27;s structure with PnP provisioning</a></li>
+      <li><a href="#13-lock-a-site-during-migration-or-legal-hold">13. Lock a site during migration or legal hold</a></li>
+      <li><a href="#14-custom-script-enable-only-as-long-as-you-need-it">14. Custom script: enable only as long as you need it</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">SharePoint</a> / Guide 3</p>
+    <h1>SharePoint Online tips</h1>
+    <p class="lead">PnP.PowerShell and the SPO module in practice: paging, batching, sharing, recovery, storage.</p>
+
+<h2 id="1-two-modules-two-jobs">1. Two modules, two jobs</h2>
+<p>Use the SPO module (<code>Connect-SPOService</code>) for tenant and site-collection settings: sharing, storage, lock state, hub sites, deleted sites. Use PnP.PowerShell (<code>Connect-PnPOnline</code>) for anything inside a site: lists, files, permissions, pages, provisioning. Trying to do content work with the SPO module is the most common dead end.</p>
+<pre><code class="language-powershell">Connect-SPOService -Url https://sharepointonline-admin.ravindran.in
+Connect-PnPOnline -Url https://sharepointonline.ravindran.in/sites/HR -ClientId $env:PNP_CLIENT_ID -Interactive
+</code></pre>
+<h2 id="2-page-through-big-lists">2. Page through big lists</h2>
+<pre><code class="language-powershell">Get-PnPListItem -List &quot;Documents&quot; -PageSize 500 -Fields FileRef, Modified
+</code></pre>
+<p>Without <code>-PageSize</code>, a large list will fail on the 5,000 list view threshold. In SharePoint Online that threshold can't be changed, even though a list can hold millions of items. Indexed columns and paging are how you work with it.</p>
+<h2 id="3-batch-your-writes">3. Batch your writes</h2>
+<p>Adding or updating thousands of items one call at a time is slow and gets throttled. Batch them:</p>
+<pre><code class="language-powershell">$batch = New-PnPBatch
+foreach ($row in Import-Csv .\items.csv) {
+    Add-PnPListItem -List &quot;Assets&quot; -Values @{ Title = $row.Title; Location = $row.Location } -Batch $batch
+}
+Invoke-PnPBatch -Batch $batch
+</code></pre>
+<h2 id="4-respect-throttling">4. Respect throttling</h2>
+<p>HTTP 429 and 503 responses mean you're being throttled. PnP.PowerShell retries automatically, but you can help: run heavy jobs outside business hours, avoid running many parallel sessions against the same site, and use search or Graph for read-only reporting instead of crawling every item.</p>
+<h2 id="5-use-search-for-fast-tenant-wide-reports">5. Use search for fast tenant-wide reports</h2>
+<p>Search indexes almost everything already. It's often the fastest way to answer "where is X":</p>
+<pre><code class="language-powershell">Submit-PnPSearchQuery -Query &quot;contentclass:STS_Site&quot; -All -SelectProperties Title, Path, LastModifiedTime
+Submit-PnPSearchQuery -Query &quot;filetype:pst OR filetype:iso&quot; -All
+</code></pre>
+<h2 id="6-force-a-re-crawl-after-schema-changes">6. Force a re-crawl after schema changes</h2>
+<p>Changed a managed property mapping or column? Request a reindex instead of waiting:</p>
+<pre><code class="language-powershell">Request-PnPReIndexList -Identity &quot;Contracts&quot;
+Request-PnPReIndexWeb
+</code></pre>
+<h2 id="7-restore-deleted-sites-within-93-days">7. Restore deleted sites (within 93 days)</h2>
+<pre><code class="language-powershell">Get-SPODeletedSite
+Restore-SPODeletedSite -Identity https://sharepointonline.ravindran.in/sites/OldProject
+</code></pre>
+<p>For a user who deleted hundreds of files by mistake (or a sync client gone wrong), see <a href="../scripts/restore-sporecyclebinbyuser.html"><code>Restore-SPORecycleBinByUser.ps1</code></a>.</p>
+<h2 id="8-control-sharing-per-site">8. Control sharing per site</h2>
+<p>Tenant settings are the ceiling; each site can be more restrictive:</p>
+<pre><code class="language-powershell">Set-SPOSite -Identity https://sharepointonline.ravindran.in/sites/Legal -SharingCapability ExistingExternalUserSharingOnly
+# Disabled | ExistingExternalUserSharingOnly | ExternalUserSharingOnly | ExternalUserAndGuestSharing
+</code></pre>
+<p>Run <a href="../scripts/get-spositeinventory.html"><code>Get-SPOSiteInventory.ps1</code></a> to see which sites allow "Anyone" links.</p>
+<h2 id="9-get-storage-back-from-version-history">9. Get storage back from version history</h2>
+<p>Versions of large files (videos, CAD, big Excel models) quietly consume a lot of tenant storage. Options, from least to most hands-on:</p>
+<ul>
+<li>Newer SPO module versions support automatic version trimming at tenant or site level (<code>EnableAutoExpirationVersionTrim</code> on <code>Set-SPOTenant</code> / <code>Set-SPOSite</code>) and site-level batch delete jobs (<code>New-SPOSiteFileVersionBatchDeleteJob</code>). Check <code>Get-Help</code> on your installed module version for the exact parameters.</li>
+<li>For a single library, use <a href="../scripts/remove-spooldfileversions.html"><code>Remove-SPOOldFileVersions.ps1</code></a> and always run it with <code>-WhatIf</code> first.</li>
+</ul>
+<h2 id="10-temporarily-grant-yourself-site-collection-admin">10. Temporarily grant yourself site collection admin</h2>
+<pre><code class="language-powershell">Set-SPOUser -Site https://sharepointonline.ravindran.in/sites/HR -LoginName admin@ravindran.in -IsSiteCollectionAdmin $true
+# ... do the work ...
+Set-SPOUser -Site https://sharepointonline.ravindran.in/sites/HR -LoginName admin@ravindran.in -IsSiteCollectionAdmin $false
+</code></pre>
+<p>Remove yourself afterwards. It's cleaner for audits and for the site owners.</p>
+<h2 id="11-hub-sites-for-navigation-and-branding">11. Hub sites for navigation and branding</h2>
+<pre><code class="language-powershell">Register-SPOHubSite -Site https://sharepointonline.ravindran.in/sites/Intranet -Principals $null
+Add-SPOHubSiteAssociation -Site https://sharepointonline.ravindran.in/sites/HR -HubSite https://sharepointonline.ravindran.in/sites/Intranet
+</code></pre>
+<p>Hubs replace most of what subsites were used for. Build flat, and connect with hubs.</p>
+<h2 id="12-copy-a-sites-structure-with-pnp-provisioning">12. Copy a site's structure with PnP provisioning</h2>
+<pre><code class="language-powershell"># From the source site
+Get-PnPSiteTemplate -Out .\ProjectTemplate.xml -Handlers Lists, Fields, ContentTypes, Navigation
+# On the target site
+Invoke-PnPSiteTemplate -Path .\ProjectTemplate.xml
+</code></pre>
+<h2 id="13-lock-a-site-during-migration-or-legal-hold">13. Lock a site during migration or legal hold</h2>
+<pre><code class="language-powershell">Set-SPOSite -Identity https://sharepointonline.ravindran.in/sites/Archive -LockState ReadOnly
+# Unlock | ReadOnly | NoAccess
+</code></pre>
+<h2 id="14-custom-script-enable-only-as-long-as-you-need-it">14. Custom script: enable only as long as you need it</h2>
+<p>Some legacy tasks need <code>DenyAddAndCustomizePages</code> turned off on a site. Turn it off, do the work, and let it go back on. Microsoft has also been tightening this setting over time, so don't build processes that depend on it staying off.</p>
+<pre><code class="language-powershell">Set-SPOSite -Identity https://sharepointonline.ravindran.in/sites/Legacy -DenyAddAndCustomizePages $false
+</code></pre>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="on-premises-tips.html"><span>Previous guide</span>SharePoint Server (on-premises) tips</a>
+      <a class="next" href="migration-tips.html"><span>Next guide</span>Migration tips</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AWS | Notes | Ravindran Mani</title>
+<meta name="description" content="Account structure, IAM hygiene, compute and storage operations.">
+<meta name="author" content="Ravindran Mani">
+<meta name="robots" content="noindex">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../index.html">Home</a></li>
+        <li><a href="../sharepoint/index.html">SharePoint</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../azure/index.html">Azure</a></li>
+        <li><a href="../aws/index.html">AWS</a></li>
+        <li><a href="../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../scripts/index.html">Scripts</a></li>
+        <li><a href="../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<!--
+  AWS topic page. Not linked from the menu yet.
+  To go live:
+    1. Add guides to aws/guides/ and scripts to aws/scripts/ (copy the files in _templates/).
+    2. Replace the "Planned" list below with a guide list and script list (copy the layout from sharepoint/index.html).
+    3. Add the menu link on every page, and move the topic from "In progress" to live on index.html.
+-->
+<section class="topic-head">
+  <div class="wrap">
+    <p class="crumbs"><a href="../index.html">Notes</a> / AWS</p>
+    <h1>AWS</h1>
+    <p class="lead">Account structure, IAM hygiene, compute and storage operations.</p>
+  </div>
+</section>
+
+<section class="block">
+  <div class="wrap two-col">
+    <div class="col-head">
+      <h2>Planned</h2>
+      <p class="muted">This section is being written. Guides and scripts will appear here as they're ready.</p>
+    </div>
+    <ul class="plan-list">
+      <li>Account structure with AWS Organizations</li>
+      <li>IAM hygiene: roles, access keys and least privilege</li>
+      <li>EC2 and EBS operations basics</li>
+      <li>Scripts: EC2 inventory; unattached EBS volumes; idle load balancers; S3 public access check</li>
+    </ul>
+  </div>
+</section>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../assets/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Remove-SPOOldFileVersions | Notes | Ravindran Mani</title>
+<meta name="description" content="Trims old file versions in a document library, keeping the newest N versions.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html" aria-current="page">SharePoint</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap">
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">SharePoint</a> / <a href="../../scripts/index.html">Scripts</a> / SharePoint Online</p>
+    <h1 class="script-title">Remove-SPOOldFileVersions</h1>
+    <p class="lead">Trims old file versions in a document library, keeping the newest N versions.</p>
+    <dl class="facts">
+      <div><dt>Runs in</dt><dd>PnP.PowerShell</dd></div>
+      <div><dt>Safety</dt><dd><span class="flag flag-change">Changes data. Run with -WhatIf first</span></dd></div>
+    </dl>
+    <p class="actions"><a class="btn btn-primary" href="Remove-SPOOldFileVersions.ps1" download>Download Remove-SPOOldFileVersions.ps1</a></p>
+
+    <h2 id="what-it-does">What it does</h2>
+    <p>For every file in the library, keeps the current version plus the newest -KeepVersions previous versions and deletes the older ones. Reports how much storage the removed versions used.</p>
+<p>THIS DELETES DATA. Always run with -WhatIf first and review the log. Depending on your PnP.PowerShell version, deleted versions may go to the site recycle bin, in which case storage is only freed once the recycle bins are emptied.</p>
+<p>For tenant-wide or site-wide version cleanup, also look at the built-in options described in the SharePoint Online tips guide (tip 9): https://notes.ravindran.in/sharepoint/guides/sharepoint-online-tips.html</p>
+
+    <h2 id="parameters">Parameters</h2>
+    <div class="table-wrap">
+      <table class="params">
+          <tr><th scope="row"><code>-SiteUrl</code><span class="ptype">string</span><span class="req">Required</span></th><td>The site containing the library.</td></tr>
+          <tr><th scope="row"><code>-Library</code><span class="ptype">string</span><span class="req">Required</span></th><td>Library title, e.g. &#x27;Documents&#x27;.</td></tr>
+          <tr><th scope="row"><code>-KeepVersions</code><span class="ptype">int</span></th><td>Number of previous versions to keep per file (the current version is always kept). Default 10.</td></tr>
+          <tr><th scope="row"><code>-ClientId</code><span class="ptype">string</span></th><td>Entra ID app (client) ID for PnP. Defaults to $env:PNP_CLIENT_ID.</td></tr>
+          <tr><th scope="row"><code>-LogFile</code><span class="ptype">string</span></th><td>CSV log of every version removed (or that would be removed with -WhatIf).<span class="pdefault">Default: <code>Timestamped file in the current folder</code></span></td></tr>
+      </table>
+    </div>
+
+    <h2 id="examples">Examples</h2>
+    <pre><code class="language-powershell">.\Remove-SPOOldFileVersions.ps1 -SiteUrl https://sharepointonline.ravindran.in/sites/Eng -Library Documents -KeepVersions 5 -WhatIf</code></pre>
+    <pre><code class="language-powershell">.\Remove-SPOOldFileVersions.ps1 -SiteUrl https://sharepointonline.ravindran.in/sites/Eng -Library Documents -KeepVersions 5 -Confirm:$false</code></pre>
+
+
+    <h2 id="source">Full script</h2>
+    <!-- Keep this in sync with Remove-SPOOldFileVersions.ps1 in this folder. -->
+    <pre><code class="language-powershell">&lt;#
+.SYNOPSIS
+    Trims old file versions in a document library, keeping the newest N versions.
+
+.DESCRIPTION
+    For every file in the library, keeps the current version plus the newest
+    -KeepVersions previous versions and deletes the older ones. Reports how much
+    storage the removed versions used.
+
+    THIS DELETES DATA. Always run with -WhatIf first and review the log. Depending on
+    your PnP.PowerShell version, deleted versions may go to the site recycle bin, in
+    which case storage is only freed once the recycle bins are emptied.
+
+    For tenant-wide or site-wide version cleanup, also look at the built-in options
+    described in the SharePoint Online tips guide (tip 9):
+    https://notes.ravindran.in/sharepoint/guides/sharepoint-online-tips.html
+
+.PARAMETER SiteUrl
+    The site containing the library.
+
+.PARAMETER Library
+    Library title, e.g. &#x27;Documents&#x27;.
+
+.PARAMETER KeepVersions
+    Number of previous versions to keep per file (the current version is always kept). Default 10.
+
+.PARAMETER ClientId
+    Entra ID app (client) ID for PnP. Defaults to $env:PNP_CLIENT_ID.
+
+.PARAMETER LogFile
+    CSV log of every version removed (or that would be removed with -WhatIf).
+
+.EXAMPLE
+    .\Remove-SPOOldFileVersions.ps1 -SiteUrl https://sharepointonline.ravindran.in/sites/Eng -Library Documents -KeepVersions 5 -WhatIf
+
+.EXAMPLE
+    .\Remove-SPOOldFileVersions.ps1 -SiteUrl https://sharepointonline.ravindran.in/sites/Eng -Library Documents -KeepVersions 5 -Confirm:$false
+#&gt;
+[CmdletBinding(SupportsShouldProcess, ConfirmImpact = &#x27;High&#x27;)]
+param(
+    [Parameter(Mandatory)][string]$SiteUrl,
+    [Parameter(Mandatory)][string]$Library,
+    [ValidateRange(1, 500)][int]$KeepVersions = 10,
+    [string]$ClientId = $env:PNP_CLIENT_ID,
+    [string]$LogFile = (Join-Path -Path (Get-Location) -ChildPath (&#x27;VersionCleanup_{0:yyyyMMdd_HHmm}.csv&#x27; -f (Get-Date)))
+)
+
+if (-not $ClientId) { throw &#x27;Provide -ClientId or set $env:PNP_CLIENT_ID. See https://notes.ravindran.in/sharepoint/guides/getting-started.html&#x27; }
+Connect-PnPOnline -Url $SiteUrl -ClientId $ClientId -Interactive
+
+Write-Host &quot;Reading files in &#x27;$Library&#x27;...&quot; -ForegroundColor Cyan
+$files = @(Get-PnPListItem -List $Library -PageSize 500 -Fields FileRef, FileLeafRef |
+    Where-Object { $_.FileSystemObjectType -eq &#x27;File&#x27; })
+
+$log = New-Object System.Collections.Generic.List[object]
+$bytes = 0L
+$i = 0
+
+foreach ($file in $files) {
+    $i++
+    $fileUrl = $file.FieldValues[&#x27;FileRef&#x27;]
+    Write-Progress -Activity &#x27;Checking versions&#x27; -Status $fileUrl -PercentComplete (($i / [math]::Max($files.Count, 1)) * 100)
+
+    # Previous versions only; the current version is never in this list
+    $versions = @(Get-PnPFileVersion -Url $fileUrl)
+    $excess = $versions.Count - $KeepVersions
+    if ($excess -le 0) { continue }
+
+    $oldest = $versions | Sort-Object Created | Select-Object -First $excess
+    foreach ($v in $oldest) {
+        $action = &#x27;WhatIf&#x27;
+        if ($PSCmdlet.ShouldProcess(&quot;$fileUrl (version $($v.VersionLabel))&quot;, &#x27;Delete file version&#x27;)) {
+            try {
+                Remove-PnPFileVersion -Url $fileUrl -Identity $v.Id -Force -ErrorAction Stop
+                $action = &#x27;Removed&#x27;
+            }
+            catch {
+                $action = &quot;Failed: $($_.Exception.Message)&quot;
+            }
+        }
+        if ($action -in &#x27;Removed&#x27;, &#x27;WhatIf&#x27;) { $bytes += [int64]$v.Size }
+        $log.Add([pscustomobject]@{
+            File     = $fileUrl
+            Version  = $v.VersionLabel
+            Created  = $v.Created
+            SizeMB   = [math]::Round($v.Size / 1MB, 2)
+            Action   = $action
+        })
+    }
+}
+Write-Progress -Activity &#x27;Checking versions&#x27; -Completed
+
+$log | Export-Csv -Path $LogFile -NoTypeInformation -Encoding UTF8
+$verb = if ($WhatIfPreference) { &#x27;would be removed&#x27; } else { &#x27;processed&#x27; }
+Write-Host (&quot;Files scanned: {0}  Versions {1}: {2}  Storage: {3:N2} GB&quot; -f $files.Count, $verb, $log.Count, ($bytes / 1GB))
+Write-Host &quot;Log: $LogFile&quot; -ForegroundColor Green
+</code></pre>
+
+    <nav class="pager" aria-label="More scripts">
+      <a class="prev" href="get-spouniquepermissions.html"><span>Previous script</span>Get-SPOUniquePermissions</a>
+      <a class="next" href="restore-sporecyclebinbyuser.html"><span>Next script</span>Restore-SPORecycleBinByUser</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

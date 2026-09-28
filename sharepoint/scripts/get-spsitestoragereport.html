@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get-SPSiteStorageReport | Notes | Ravindran Mani</title>
+<meta name="description" content="Reports storage, quota use and staleness for every site collection.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html" aria-current="page">SharePoint</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap">
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">SharePoint</a> / <a href="../../scripts/index.html">Scripts</a> / SharePoint Server</p>
+    <h1 class="script-title">Get-SPSiteStorageReport</h1>
+    <p class="lead">Reports storage, quota use and staleness for every site collection.</p>
+    <dl class="facts">
+      <div><dt>Runs in</dt><dd>SharePoint Management Shell on a farm server</dd></div>
+      <div><dt>Safety</dt><dd><span class="flag flag-read">Read-only</span></dd></div>
+    </dl>
+    <p class="actions"><a class="btn btn-primary" href="Get-SPSiteStorageReport.ps1" download>Download Get-SPSiteStorageReport.ps1</a></p>
+
+    <h2 id="what-it-does">What it does</h2>
+    <p>Lists each site collection with its owner, size, quota, percent of quota used, content database, number of webs and last content change. Sites with no content changes for -StaleDays days are flagged, which makes cleanup and migration scoping conversations much easier. Read-only.</p>
+
+    <h2 id="parameters">Parameters</h2>
+    <div class="table-wrap">
+      <table class="params">
+          <tr><th scope="row"><code>-WebApplication</code><span class="ptype">string</span></th><td>Limit the report to one web application URL. Default: all web applications.</td></tr>
+          <tr><th scope="row"><code>-StaleDays</code><span class="ptype">int</span></th><td>Days without content changes after which a site is flagged as stale. Default 365.</td></tr>
+          <tr><th scope="row"><code>-OutputFile</code><span class="ptype">string</span></th><td>CSV output path.<span class="pdefault">Default: <code>Timestamped file in the current folder</code></span></td></tr>
+      </table>
+    </div>
+
+    <h2 id="examples">Examples</h2>
+    <pre><code class="language-powershell">.\Get-SPSiteStorageReport.ps1 -WebApplication https://sharepoint.ravindran.in -StaleDays 730</code></pre>
+
+
+    <h2 id="source">Full script</h2>
+    <!-- Keep this in sync with Get-SPSiteStorageReport.ps1 in this folder. -->
+    <pre><code class="language-powershell">&lt;#
+.SYNOPSIS
+    Reports storage, quota use and staleness for every site collection.
+
+.DESCRIPTION
+    Lists each site collection with its owner, size, quota, percent of quota used,
+    content database, number of webs and last content change. Sites with no content
+    changes for -StaleDays days are flagged, which makes cleanup and migration
+    scoping conversations much easier. Read-only.
+
+.PARAMETER WebApplication
+    Limit the report to one web application URL. Default: all web applications.
+
+.PARAMETER StaleDays
+    Days without content changes after which a site is flagged as stale. Default 365.
+
+.PARAMETER OutputFile
+    CSV output path.
+
+.EXAMPLE
+    .\Get-SPSiteStorageReport.ps1 -WebApplication https://sharepoint.ravindran.in -StaleDays 730
+#&gt;
+[CmdletBinding()]
+param(
+    [string]$WebApplication,
+    [int]$StaleDays = 365,
+    [string]$OutputFile = (Join-Path -Path (Get-Location) -ChildPath (&#x27;SiteStorage_{0:yyyyMMdd_HHmm}.csv&#x27; -f (Get-Date)))
+)
+
+if (-not (Get-Command Get-SPSite -ErrorAction SilentlyContinue)) {
+    Add-PSSnapin Microsoft.SharePoint.PowerShell -ErrorAction SilentlyContinue
+}
+if (-not (Get-Command Get-SPSite -ErrorAction SilentlyContinue)) {
+    throw &#x27;SharePoint cmdlets are not available. Run this on a farm server from the SharePoint Management Shell.&#x27;
+}
+
+$cutoff = (Get-Date).AddDays(-$StaleDays)
+$sites  = @(if ($WebApplication) { Get-SPSite -WebApplication $WebApplication -Limit All } else { Get-SPSite -Limit All })
+$siteCount = [math]::Max($sites.Count, 1)
+$results = New-Object System.Collections.Generic.List[object]
+$i = 0
+
+foreach ($site in $sites) {
+    $i++
+    Write-Progress -Activity &#x27;Reading site collections&#x27; -Status $site.Url -PercentComplete (($i / $siteCount) * 100)
+    try {
+        $storageMB = [math]::Round($site.Usage.Storage / 1MB, 2)
+        $quotaMB   = [math]::Round($site.Quota.StorageMaximumLevel / 1MB, 2)
+        $results.Add([pscustomobject]@{
+            Url             = $site.Url
+            Owner           = $site.Owner.UserLogin
+            SecondaryOwner  = $site.SecondaryContact.UserLogin
+            StorageMB       = $storageMB
+            QuotaMB         = if ($quotaMB -gt 0) { $quotaMB } else { &#x27;No quota&#x27; }
+            PercentOfQuota  = if ($quotaMB -gt 0) { [math]::Round(($storageMB / $quotaMB) * 100, 1) } else { $null }
+            ContentDatabase = $site.ContentDatabase.Name
+            WebCount        = $site.AllWebs.Count
+            LastModified    = $site.LastContentModifiedDate
+            IsStale         = $site.LastContentModifiedDate -lt $cutoff
+            LockState       = if ($site.ReadOnly) { &#x27;ReadOnly&#x27; } elseif ($site.ReadLocked) { &#x27;NoAccess&#x27; } else { &#x27;Unlocked&#x27; }
+        })
+    }
+    finally {
+        $site.Dispose()
+    }
+}
+Write-Progress -Activity &#x27;Reading site collections&#x27; -Completed
+
+$results | Sort-Object StorageMB -Descending | Export-Csv -Path $OutputFile -NoTypeInformation -Encoding UTF8
+
+$totalGB = [math]::Round((($results | Measure-Object StorageMB -Sum).Sum) / 1024, 2)
+Write-Host &quot;Site collections: $($results.Count)  Total: $totalGB GB  Stale (&gt; $StaleDays days): $(@($results | Where-Object IsStale).Count)&quot;
+Write-Host &quot;Report: $OutputFile&quot; -ForegroundColor Green
+</code></pre>
+
+    <nav class="pager" aria-label="More scripts">
+      <a class="prev" href="get-splogsbycorrelation.html"><span>Previous script</span>Get-SPLogsByCorrelation</a>
+      <a class="next" href="test-spupgradereadiness.html"><span>Next script</span>Test-SPUpgradeReadiness</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

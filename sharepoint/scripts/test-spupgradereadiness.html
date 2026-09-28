@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test-SPUpgradeReadiness | Notes | Ravindran Mani</title>
+<meta name="description" content="Runs Test-SPContentDatabase and produces one readable report for upgrade planning.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html" aria-current="page">SharePoint</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap">
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">SharePoint</a> / <a href="../../scripts/index.html">Scripts</a> / SharePoint Server</p>
+    <h1 class="script-title">Test-SPUpgradeReadiness</h1>
+    <p class="lead">Runs Test-SPContentDatabase and produces one readable report for upgrade planning.</p>
+    <dl class="facts">
+      <div><dt>Runs in</dt><dd>SharePoint Management Shell on a farm server</dd></div>
+      <div><dt>Safety</dt><dd><span class="flag flag-read">Read-only</span></dd></div>
+    </dl>
+    <p class="actions"><a class="btn btn-primary" href="Test-SPUpgradeReadiness.ps1" download>Download Test-SPUpgradeReadiness.ps1</a></p>
+
+    <h2 id="what-it-does">What it does</h2>
+    <p>Attached mode (default): tests every content database already mounted in this farm, or only those of one web application. Use it before patching or before detaching databases to move to a new version.</p>
+<p>Unattached mode: tests a database that is restored to SQL but not yet mounted, against a web application in this (target) farm. This is the check to run before Mount-SPContentDatabase during a version-to-version upgrade.</p>
+<p>Pay the most attention to rows where UpgradeBlocking is True. Missing features, web parts and setup files are usually leftovers from old custom solutions.</p>
+
+    <h2 id="parameters">Parameters</h2>
+    <div class="table-wrap">
+      <table class="params">
+          <tr><th scope="row"><code>-WebApplication</code></th><td>Attached mode: limit to one web application URL.</td></tr>
+          <tr><th scope="row"><code>-DatabaseName</code></th><td>Unattached mode: the database name on SQL Server.</td></tr>
+          <tr><th scope="row"><code>-DatabaseServer</code></th><td>Unattached mode: SQL server or alias.</td></tr>
+          <tr><th scope="row"><code>-TargetWebApplication</code></th><td>Unattached mode: the web application the database will be mounted to.</td></tr>
+      </table>
+    </div>
+
+    <h2 id="examples">Examples</h2>
+    <pre><code class="language-powershell">.\Test-SPUpgradeReadiness.ps1 -WebApplication https://sharepoint.ravindran.in</code></pre>
+    <pre><code class="language-powershell">.\Test-SPUpgradeReadiness.ps1 -DatabaseName WSS_Content_Portal -DatabaseServer SQL01 -TargetWebApplication https://sharepoint.ravindran.in</code></pre>
+
+
+    <h2 id="source">Full script</h2>
+    <!-- Keep this in sync with Test-SPUpgradeReadiness.ps1 in this folder. -->
+    <pre><code class="language-powershell">&lt;#
+.SYNOPSIS
+    Runs Test-SPContentDatabase and produces one readable report for upgrade planning.
+
+.DESCRIPTION
+    Attached mode (default): tests every content database already mounted in this farm,
+    or only those of one web application. Use it before patching or before detaching
+    databases to move to a new version.
+
+    Unattached mode: tests a database that is restored to SQL but not yet mounted,
+    against a web application in this (target) farm. This is the check to run before
+    Mount-SPContentDatabase during a version-to-version upgrade.
+
+    Pay the most attention to rows where UpgradeBlocking is True. Missing features,
+    web parts and setup files are usually leftovers from old custom solutions.
+
+.PARAMETER WebApplication
+    Attached mode: limit to one web application URL.
+
+.PARAMETER DatabaseName
+    Unattached mode: the database name on SQL Server.
+
+.PARAMETER DatabaseServer
+    Unattached mode: SQL server or alias.
+
+.PARAMETER TargetWebApplication
+    Unattached mode: the web application the database will be mounted to.
+
+.EXAMPLE
+    .\Test-SPUpgradeReadiness.ps1 -WebApplication https://sharepoint.ravindran.in
+
+.EXAMPLE
+    .\Test-SPUpgradeReadiness.ps1 -DatabaseName WSS_Content_Portal -DatabaseServer SQL01 -TargetWebApplication https://sharepoint.ravindran.in
+#&gt;
+[CmdletBinding(DefaultParameterSetName = &#x27;Attached&#x27;)]
+param(
+    [Parameter(ParameterSetName = &#x27;Attached&#x27;)][string]$WebApplication,
+    [Parameter(ParameterSetName = &#x27;Unattached&#x27;, Mandatory)][string]$DatabaseName,
+    [Parameter(ParameterSetName = &#x27;Unattached&#x27;, Mandatory)][string]$DatabaseServer,
+    [Parameter(ParameterSetName = &#x27;Unattached&#x27;, Mandatory)][string]$TargetWebApplication,
+    [string]$OutputFile = (Join-Path -Path (Get-Location) -ChildPath (&#x27;UpgradeReadiness_{0:yyyyMMdd_HHmm}.csv&#x27; -f (Get-Date)))
+)
+
+if (-not (Get-Command Test-SPContentDatabase -ErrorAction SilentlyContinue)) {
+    Add-PSSnapin Microsoft.SharePoint.PowerShell -ErrorAction SilentlyContinue
+}
+if (-not (Get-Command Test-SPContentDatabase -ErrorAction SilentlyContinue)) {
+    throw &#x27;SharePoint cmdlets are not available. Run this on a farm server from the SharePoint Management Shell.&#x27;
+}
+
+function ConvertTo-ReportRow {
+    param($DatabaseName, $Result)
+    [pscustomobject]@{
+        Database        = $DatabaseName
+        Category        = $Result.Category
+        UpgradeBlocking = $Result.UpgradeBlocking
+        Error           = $Result.Error
+        Message         = $Result.Message
+        Remedy          = $Result.Remedy
+        Locations       = ($Result.Locations | Out-String).Trim()
+    }
+}
+
+$rows = New-Object System.Collections.Generic.List[object]
+
+if ($PSCmdlet.ParameterSetName -eq &#x27;Unattached&#x27;) {
+    Write-Host &quot;Testing unattached database $DatabaseName on $DatabaseServer against $TargetWebApplication...&quot; -ForegroundColor Cyan
+    $results = Test-SPContentDatabase -Name $DatabaseName -ServerInstance $DatabaseServer -WebApplication $TargetWebApplication
+    foreach ($r in $results) { $rows.Add((ConvertTo-ReportRow -DatabaseName $DatabaseName -Result $r)) }
+    if (-not $results) { $rows.Add([pscustomobject]@{ Database = $DatabaseName; Category = &#x27;None&#x27;; Message = &#x27;No issues found&#x27; }) }
+}
+else {
+    $dbs = if ($WebApplication) { Get-SPContentDatabase -WebApplication $WebApplication } else { Get-SPContentDatabase }
+    foreach ($db in $dbs) {
+        Write-Host &quot;Testing $($db.Name)...&quot; -ForegroundColor Cyan
+        $results = Test-SPContentDatabase -Identity $db
+        foreach ($r in $results) { $rows.Add((ConvertTo-ReportRow -DatabaseName $db.Name -Result $r)) }
+        if (-not $results) { $rows.Add([pscustomobject]@{ Database = $db.Name; Category = &#x27;None&#x27;; Message = &#x27;No issues found&#x27; }) }
+    }
+}
+
+$rows | Export-Csv -Path $OutputFile -NoTypeInformation -Encoding UTF8
+
+$rows | Group-Object Database | ForEach-Object {
+    [pscustomobject]@{
+        Database = $_.Name
+        Issues   = @($_.Group | Where-Object { $_.Category -ne &#x27;None&#x27; }).Count
+        Blocking = @($_.Group | Where-Object { $_.UpgradeBlocking -eq $true }).Count
+    }
+} | Format-Table -AutoSize | Out-Host
+
+Write-Host &quot;Report: $OutputFile&quot; -ForegroundColor Green
+</code></pre>
+
+    <nav class="pager" aria-label="More scripts">
+      <a class="prev" href="get-spsitestoragereport.html"><span>Previous script</span>Get-SPSiteStorageReport</a>
+      <a class="next" href="get-spoexternalusersreport.html"><span>Next script</span>Get-SPOExternalUsersReport</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>
