@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BLOB cache: why and how | Notes | Ravindran Mani</title>
+<meta name="description" content="Serve images, scripts, styles and video from web server disk instead of SQL, and let browsers cache them.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html" aria-current="page">SharePoint</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 9 of 14</p>
+    <ol>
+      <li><a href="#what-it-does">What it does</a></li>
+      <li><a href="#benefits">Benefits</a></li>
+      <li><a href="#when-its-worth-it">When it&#x27;s worth it</a></li>
+      <li><a href="#plan-before-you-enable-it">Plan before you enable it</a></li>
+      <li><a href="#the-webconfig-setting">The web.config setting</a></li>
+      <li><a href="#option-1-enable-it-with-powershell-recommended">Option 1: enable it with PowerShell (recommended)</a></li>
+      <li><a href="#option-2-edit-webconfig-by-hand">Option 2: edit web.config by hand</a></li>
+      <li><a href="#check-that-its-working">Check that it&#x27;s working</a></li>
+      <li><a href="#flush-the-cache">Flush the cache</a></li>
+      <li><a href="#common-problems">Common problems</a></li>
+      <li><a href="#the-sharepoint-online-equivalent">The SharePoint Online equivalent</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">SharePoint</a> / Guide 9</p>
+    <h1>BLOB cache: why and how</h1>
+    <p class="lead">Serve images, scripts, styles and video from web server disk instead of SQL, and let browsers cache them.</p>
+
+<p>The BLOB cache is one of the cheapest performance wins in SharePoint Server, and one of the most often left switched off. It's a disk-based cache on each web server that keeps copies of static files (images, style sheets, scripts, video) so they don't have to be read from the SQL content database on every request.</p>
+<p>It applies to SharePoint Server 2010, 2013, 2016, 2019 and Subscription Edition. It isn't available in SharePoint Foundation, and it doesn't exist in SharePoint Online (see the last section for the equivalent).</p>
+<h2 id="what-it-does">What it does</h2>
+<p>Without the BLOB cache, every image, <code>.css</code> and <code>.js</code> file on a page is a separate trip from the web server to SQL Server to fetch the file from the content database. A single intranet home page can easily make 30 to 60 of these requests.</p>
+<p>With the BLOB cache on, the first request for a file reads it from SQL and saves a copy on the web server's local disk. Every later request is served straight from that disk. The cache also:</p>
+<ul>
+<li>Sends browser caching headers (<code>Cache-Control</code> with a <code>max-age</code>), so users' browsers stop asking for the same logo and style sheet on every page.</li>
+<li>Supports byte-range requests for video and audio, so users can jump around in a video without downloading it from the start.</li>
+<li>Still checks SharePoint permissions before serving a file, so it doesn't bypass security.</li>
+</ul>
+<h2 id="benefits">Benefits</h2>
+<ul>
+<li><strong>Less load on SQL Server.</strong> Static files are often the majority of requests on a portal. Taking them off SQL frees it for the queries that actually need it.</li>
+<li><strong>Faster pages.</strong> Local disk is faster than a network round trip to SQL, and browser caching removes many requests entirely on repeat visits.</li>
+<li><strong>Better scaling.</strong> Each web server you add brings its own cache, so adding web servers scales static content without adding SQL load.</li>
+<li><strong>Smoother video.</strong> Byte-range support makes embedded video usable without a separate media server.</li>
+</ul>
+<h2 id="when-its-worth-it">When it's worth it</h2>
+<p>It helps most on:</p>
+<ul>
+<li>Intranet portals and publishing sites with images, branding, and custom CSS/JS</li>
+<li>Anonymous internet-facing sites built on SharePoint</li>
+<li>Any site where users watch video stored in SharePoint libraries</li>
+</ul>
+<p>It helps less on team sites where most traffic is opening and saving Office documents, because those file types aren't cached by default and shouldn't be. There's rarely a reason not to turn it on, though: it's cheap, and it only affects the file types you list.</p>
+<h2 id="plan-before-you-enable-it">Plan before you enable it</h2>
+<ol>
+<li><strong>Pick a dedicated drive.</strong> Put the cache on a data drive such as <code>D:\BlobCache</code>, not the system drive. If the cache fills the drive, it shouldn't take the operating system down with it.</li>
+<li><strong>Size it.</strong> <code>maxSize</code> is in GB and applies per web application on each server. The default of 10 GB is fine for most portals. Make sure the drive has room for the cache of every web application you enable, plus headroom.</li>
+<li><strong>Choose how long browsers keep files.</strong> <code>max-age</code> is in seconds. 86400 (24 hours) is a sensible default. Longer values mean fewer requests but slower pickup of changed files (see "Common problems" below).</li>
+<li><strong>Enable it on every web server.</strong> Every server that serves user traffic needs the same setting, or users get different performance depending on which server the load balancer picks.</li>
+<li><strong>Exclude the folder from antivirus scanning.</strong> Microsoft recommends excluding SharePoint's cache folders; real-time scanning of the BLOB cache slows every cached request.</li>
+</ol>
+<h2 id="the-webconfig-setting">The web.config setting</h2>
+<p>The BLOB cache is controlled by one element in each web application's <code>web.config</code>:</p>
+<pre><code class="language-xml">&lt;BlobCache location=&quot;C:\BlobCache\15&quot;
+           path=&quot;\.(gif|jpg|jpeg|jpe|jfif|bmp|dib|tif|tiff|themedbmp|themedcss|themedgif|themedjpg|themedpng|ico|png|wdp|hdp|css|js|asf|avi|flv|m4v|mov|mp3|mp4|mpeg|mpg|rm|rmvb|wma|wmv|ogg|ogv|oga|webm|xap)$&quot;
+           maxSize=&quot;10&quot;
+           enabled=&quot;false&quot; /&gt;
+</code></pre>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>What it means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>enabled</code></td>
+<td><code>true</code> turns the cache on. It's <code>false</code> by default.</td>
+</tr>
+<tr>
+<td><code>location</code></td>
+<td>Folder on each web server where cached files are stored.</td>
+</tr>
+<tr>
+<td><code>path</code></td>
+<td>A regular expression listing the file extensions to cache.</td>
+</tr>
+<tr>
+<td><code>maxSize</code></td>
+<td>Maximum cache size in GB, per web application, per server.</td>
+</tr>
+<tr>
+<td><code>max-age</code></td>
+<td>Optional. Seconds that browsers may keep a file before asking again.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>You can add extensions to <code>path</code>, such as <code>svg</code>, <code>woff</code> and <code>woff2</code> for modern branding. Don't add Office document types (<code>docx</code>, <code>xlsx</code> and so on); they're edited constantly and are better served directly.</p>
+<h2 id="option-1-enable-it-with-powershell-recommended">Option 1: enable it with PowerShell (recommended)</h2>
+<p>Editing <code>web.config</code> by hand on every server is where BLOB cache setups go wrong: one server gets missed, a typo breaks a site, or a new server joins the farm without the setting. The better way is <code>SPWebConfigModification</code>, which stores the change in the farm configuration and writes it to <code>web.config</code> on every web server, including servers you add later, and for every zone of the web application.</p>
+<p><a href="../scripts/set-spblobcache.html"><code>Set-SPBlobCache.ps1</code></a> wraps this up:</p>
+<pre><code class="language-powershell"># See the current setting on this server (read-only)
+.\Set-SPBlobCache.ps1 -WebApplication https://sharepoint.ravindran.in
+
+# Turn it on for every server in the farm
+.\Set-SPBlobCache.ps1 -WebApplication https://sharepoint.ravindran.in -Enable -Location D:\BlobCache -MaxSizeGB 10 -MaxAgeSeconds 86400 -WhatIf
+.\Set-SPBlobCache.ps1 -WebApplication https://sharepoint.ravindran.in -Enable -Location D:\BlobCache -MaxSizeGB 10 -MaxAgeSeconds 86400
+</code></pre>
+<p>The core of what it does:</p>
+<pre><code class="language-powershell">$wa = Get-SPWebApplication https://sharepoint.ravindran.in
+
+$mod = New-Object Microsoft.SharePoint.Administration.SPWebConfigModification
+$mod.Path  = 'configuration/SharePoint/BlobCache'
+$mod.Name  = 'enabled'
+$mod.Value = 'true'
+$mod.Owner = 'BlobCacheSettings'
+$mod.Type  = [Microsoft.SharePoint.Administration.SPWebConfigModification+SPWebConfigModificationType]::EnsureAttribute
+
+$wa.WebConfigModifications.Add($mod)
+$wa.Update()
+$wa.Parent.ApplyWebConfigModifications()
+</code></pre>
+<p>The change is pushed by a timer job, so give it a minute. The SharePoint Timer Service must be running on every server. Changing <code>web.config</code> recycles the web application's application pool, so users may see one slow page load; do it outside peak hours.</p>
+<h2 id="option-2-edit-webconfig-by-hand">Option 2: edit web.config by hand</h2>
+<p>If you can't use PowerShell, repeat these steps on <strong>every</strong> web server, for <strong>every</strong> zone of the web application:</p>
+<ol>
+<li>In IIS Manager, right-click the web application's site and choose <strong>Explore</strong> to find its folder (usually under <code>C:\inetpub\wwwroot\wss\VirtualDirectories\</code>).</li>
+<li>Make a copy of <code>web.config</code> first.</li>
+<li>Open <code>web.config</code> in a text editor and find the <code>&lt;BlobCache</code> element.</li>
+<li>Set <code>location</code>, <code>maxSize</code> and <code>enabled="true"</code>, and optionally add <code>max-age="86400"</code>.</li>
+<li>Save. IIS recycles the application pool automatically.</li>
+</ol>
+<p>Keep in mind that a manual edit can be overwritten when SharePoint reapplies its own web.config changes, and a new server won't have it. That's why option 1 is preferred.</p>
+<h2 id="check-that-its-working">Check that it's working</h2>
+<ul>
+<li><strong>Cache status:</strong> run <code>.\Set-SPBlobCache.ps1 -WebApplication &lt;url&gt;</code> on each web server. It reads that server's <code>web.config</code> for every zone and shows the cache folder size.</li>
+<li><strong>The cache folder:</strong> browse a few pages with images, then look in the cache location. Folders and files appear as the cache fills.</li>
+<li><strong>Browser caching:</strong> open the browser developer tools (F12), go to the Network tab, reload a page and click an image. The response should include a <code>Cache-Control</code> header whose <code>max-age</code> matches your setting. From PowerShell:</li>
+</ul>
+<p><code>powershell
+  (Invoke-WebRequest -Uri 'https://sharepoint.ravindran.in/SiteAssets/logo.png' -UseDefaultCredentials).Headers['Cache-Control']</code></p>
+<ul>
+<li><strong>Performance counters:</strong> Performance Monitor has a <strong>SharePoint Disk-Based Cache</strong> category, with counters for the cache hit ratio and cache compactions. A good hit ratio means it's working. Frequent compactions mean the cache is too small, so increase <code>maxSize</code>.</li>
+</ul>
+<h2 id="flush-the-cache">Flush the cache</h2>
+<p>If cached files are stale or corrupt, flush the cache for a web application on all its servers:</p>
+<pre><code class="language-powershell">.\Set-SPBlobCache.ps1 -WebApplication https://sharepoint.ravindran.in -Flush
+</code></pre>
+<p>Which runs:</p>
+<pre><code class="language-powershell">[void][System.Reflection.Assembly]::LoadWithPartialName('Microsoft.SharePoint.Publishing')
+[Microsoft.SharePoint.Publishing.PublishingCache]::FlushBlobCache((Get-SPWebApplication https://sharepoint.ravindran.in))
+</code></pre>
+<h2 id="common-problems">Common problems</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Updated image or CSS still shows the old version</td>
+<td>Browsers are honouring <code>max-age</code></td>
+<td>Wait for it to expire, or give updated branding files a new name (for example <code>logo-v2.png</code>). Lower <code>max-age</code> if files change often.</td>
+</tr>
+<tr>
+<td>Old file still served to everyone</td>
+<td>Stale cache entry</td>
+<td>Flush the cache</td>
+</tr>
+<tr>
+<td>Cache folder stays empty</td>
+<td>Not enabled on this server, or the app pool account can't write to the folder</td>
+<td>Check with <code>-Status</code> on that server; give the app pool account (or <code>WSS_WPG</code>) Modify rights on the folder</td>
+</tr>
+<tr>
+<td>Some files never cache</td>
+<td>Extension not in <code>path</code>, or the file is a draft</td>
+<td>Add the extension; only published (major) versions are cached</td>
+</tr>
+<tr>
+<td>Drive fills up</td>
+<td><code>maxSize</code> too large for the drive, or several web applications share it</td>
+<td>Lower <code>maxSize</code>, or move the cache to a bigger drive</td>
+</tr>
+<tr>
+<td>Performance varies by server</td>
+<td>Cache enabled on some servers only</td>
+<td>Use <code>SPWebConfigModification</code> (option 1) so every server matches</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="the-sharepoint-online-equivalent">The SharePoint Online equivalent</h2>
+<p>SharePoint Online has no BLOB cache setting; Microsoft runs the servers. The equivalent is the <strong>Microsoft 365 content delivery network (CDN)</strong>, which serves static assets such as images, scripts and style sheets from locations close to your users. You turn it on with the SPO module, for example:</p>
+<pre><code class="language-powershell">Set-SPOTenantCdnEnabled -CdnType Public -Enable $true
+Get-SPOTenantCdnOrigins -CdnType Public
+</code></pre>
+<p>Check Microsoft's current CDN documentation before enabling it, and think carefully about what goes into a public CDN origin: anything in it can be fetched without signing in.</p>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="performance.html"><span>Previous guide</span>Performance: warm-up and caching</a>
+      <a class="next" href="library-schemas.html"><span>Next guide</span>Library schemas and content type IDs</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

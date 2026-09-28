@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture from 2003 to Subscription Edition | Notes | Ravindran Mani</title>
+<meta name="description" content="How SharePoint sits on IIS and ASP.NET, from the 2003 ISAPI filter to Subscription Edition.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html" aria-current="page">SharePoint</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 2 of 14</p>
+    <ol>
+      <li><a href="#the-versions-at-a-glance">The versions at a glance</a></li>
+      <li><a href="#2003-an-isapi-filter-in-front-of-iis">2003: an ISAPI filter in front of IIS</a></li>
+      <li><a href="#2007-into-the-aspnet-20-pipeline">2007: into the ASP.NET 2.0 pipeline</a></li>
+      <li><a href="#2010-iis-7-integrated-pipeline-service-applications-and-claims">2010: IIS 7 integrated pipeline, service applications and claims</a></li>
+      <li><a href="#2013-claims-by-default-new-search-and-distributed-cache">2013: claims by default, new search and Distributed Cache</a></li>
+      <li><a href="#2016-and-2019-minrole-and-modern">2016 and 2019: MinRole and modern</a></li>
+      <li><a href="#subscription-edition-continuous-updates">Subscription Edition: continuous updates</a></li>
+      <li><a href="#how-a-request-flows-today">How a request flows today</a></li>
+      <li><a href="#the-virtual-directories-youll-recognise">The virtual directories you&#x27;ll recognise</a></li>
+      <li><a href="#why-upgrades-go-one-version-at-a-time">Why upgrades go one version at a time</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">SharePoint</a> / Guide 2</p>
+    <h1>Architecture from 2003 to Subscription Edition</h1>
+    <p class="lead">How SharePoint sits on IIS and ASP.NET, from the 2003 ISAPI filter to Subscription Edition.</p>
+
+<p>SharePoint has been rebuilt on top of IIS and ASP.NET several times. Knowing how a request travels through each version explains a lot of real-world behaviour: why old farms needed "excluded paths", why <code>_vti_bin</code> still exists, why a page can live in the database or on disk, and why upgrades have to go one version at a time.</p>
+<h2 id="the-versions-at-a-glance">The versions at a glance</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>Year</th>
+<th>Built on</th>
+<th>Windows / IIS</th>
+<th>Hive folder</th>
+<th>Headline change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>WSS 2.0 / SharePoint Portal Server 2003</td>
+<td>2003</td>
+<td>.NET 1.1</td>
+<td>Server 2003 / IIS 6</td>
+<td><code>60</code></td>
+<td>ISAPI filter in front of IIS</td>
+</tr>
+<tr>
+<td>WSS 3.0 / MOSS 2007</td>
+<td>2006–07</td>
+<td>.NET 2.0 and 3.0</td>
+<td>Server 2003–2008 / IIS 6–7</td>
+<td><code>12</code></td>
+<td>Moved into the ASP.NET pipeline</td>
+</tr>
+<tr>
+<td>SharePoint 2010</td>
+<td>2010</td>
+<td>.NET 3.5</td>
+<td>Server 2008 / R2, 64-bit only / IIS 7–7.5</td>
+<td><code>14</code></td>
+<td>Service applications, claims, PowerShell</td>
+</tr>
+<tr>
+<td>SharePoint 2013</td>
+<td>2012</td>
+<td>.NET 4.5</td>
+<td>Server 2008 R2 SP1–2012 R2 / IIS 7.5–8.5</td>
+<td><code>15</code></td>
+<td>Claims by default, new search, Distributed Cache, apps</td>
+</tr>
+<tr>
+<td>SharePoint 2016</td>
+<td>2016</td>
+<td>.NET 4.5.2 / 4.6</td>
+<td>Server 2012 R2–2016 / IIS 8.5–10</td>
+<td><code>16</code></td>
+<td>MinRole, zero-downtime patching</td>
+</tr>
+<tr>
+<td>SharePoint 2019</td>
+<td>2018</td>
+<td>.NET 4.7.2</td>
+<td>Server 2016–2019 / IIS 10</td>
+<td><code>16</code></td>
+<td>Modern sites, lists and libraries on-premises</td>
+</tr>
+<tr>
+<td>Subscription Edition</td>
+<td>2021</td>
+<td>.NET 4.8</td>
+<td>Server 2019 and later / IIS 10</td>
+<td><code>16</code></td>
+<td>Continuous feature updates, OpenID Connect</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The "hive" is the SharePoint install folder under <code>C:\Program Files\Common Files\microsoft shared\Web Server Extensions\</code>. Admins still say "the 16 hive" for 2016, 2019 and Subscription Edition.</p>
+<h2 id="2003-an-isapi-filter-in-front-of-iis">2003: an ISAPI filter in front of IIS</h2>
+<p>Windows SharePoint Services 2.0 didn't run inside ASP.NET the way later versions do. When you "extended" an IIS virtual server with WSS, it installed an <strong>ISAPI filter</strong> (<code>stsfltr.dll</code>) on that IIS site.</p>
+<p>Every request hit the filter first. If the URL was under a SharePoint managed path, the filter routed it to SharePoint, which read the page and its content from SQL Server. Anything else passed straight through to IIS. That's why WSS 2.0 had <strong>excluded paths</strong>: if you wanted to run another web application on the same IIS site, you had to tell the filter to leave that path alone.</p>
+<p>Two other pieces from this era still exist today:</p>
+<ul>
+<li><strong><code>owssvr.dll</code></strong>, an ISAPI extension from the FrontPage and SharePoint Team Services days. It implements the old URL protocol (for example <code>/_vti_bin/owssvr.dll?Cmd=Display&amp;List=...&amp;XMLDATA=TRUE</code>).</li>
+<li><strong>FrontPage Server Extensions RPC</strong> (<code>_vti_bin/_vti_aut/author.dll</code> and friends), which older Office clients used to open and save documents.</li>
+</ul>
+<p>The <code>_vti_bin</code> virtual directory maps to the hive's <strong>ISAPI</strong> folder. The folder name is a leftover from this design, even though it now mostly holds <code>.asmx</code> and <code>.svc</code> web services.</p>
+<p>SharePoint Portal Server 2003 added portal "areas", audiences, user profiles, and a search engine built on the Microsoft Search (MSSearch) service. WSS 2.0 on its own used SQL Server full-text search.</p>
+<h2 id="2007-into-the-aspnet-20-pipeline">2007: into the ASP.NET 2.0 pipeline</h2>
+<p>WSS 3.0 dropped the ISAPI filter and became a proper ASP.NET 2.0 application:</p>
+<ul>
+<li>On IIS 6, SharePoint configured a <strong>wildcard application map</strong>, so every request (including images and CSS) was handed to <code>aspnet_isapi.dll</code> and into ASP.NET.</li>
+<li>SharePoint's HTTP module (<code>SPRequestModule</code>) and its <strong>virtual path provider</strong> (<code>SPVirtualPathProvider</code>) took over from there.</li>
+<li>The virtual path provider decides whether a page comes from the file system (the hive) or from the content database. That's the "ghosted/unghosted" behaviour, later renamed <strong>uncustomized/customized</strong>: an uncustomized page is a pointer to a file on disk; editing it in SharePoint Designer stores a customized copy in the database.</li>
+</ul>
+<p>2007 also introduced most of the concepts still in use: <strong>content types</strong>, <strong>features and solutions (WSP)</strong>, master pages, alternate access mappings with five zones, and "web application" replacing "virtual server". Shared services (search, profiles, Excel Services, BDC) ran in a <strong>Shared Services Provider (SSP)</strong>.</p>
+<h2 id="2010-iis-7-integrated-pipeline-service-applications-and-claims">2010: IIS 7 integrated pipeline, service applications and claims</h2>
+<ul>
+<li><strong>IIS 7 integrated pipeline.</strong> No more wildcard maps. <code>SPRequestModule</code> is registered as a managed module in each web application's <code>web.config</code>, and IIS and ASP.NET process the request as one pipeline.</li>
+<li><strong>64-bit only</strong>, on Windows Server 2008 or 2008 R2.</li>
+<li><strong>Service applications</strong> replaced the SSP. Each service (search, managed metadata, user profiles, Secure Store, Excel) became independently deployable and shareable between web applications and even farms.</li>
+<li><strong>Claims-based authentication</strong> arrived alongside classic Windows authentication, enabling SAML sign-in (for example through AD FS) and forms-based authentication.</li>
+<li><strong>PowerShell</strong> replaced STSADM as the admin tool, and the client object model (CSOM, JSOM) and the REST endpoint arrived.</li>
+</ul>
+<h2 id="2013-claims-by-default-new-search-and-distributed-cache">2013: claims by default, new search and Distributed Cache</h2>
+<ul>
+<li><strong>Claims became the default</strong> for new web applications; classic mode was deprecated. <code>Convert-SPWebApplication</code> moves older web applications to claims.</li>
+<li><strong>Search was rebuilt</strong> by merging in FAST technology (see the search guide).</li>
+<li><strong>Distributed Cache</strong> (built on AppFabric) was added for the newsfeed, the logon token cache and other shared state across web servers.</li>
+<li>The <strong>app model</strong> (SharePoint Add-ins) with OAuth, and <code>/_api</code> REST endpoints (a friendly rewrite of <code>/_vti_bin/client.svc</code>).</li>
+<li><strong>Office Web Apps Server</strong> and <strong>Workflow Manager</strong> became separate server products that SharePoint connects to.</li>
+</ul>
+<h2 id="2016-and-2019-minrole-and-modern">2016 and 2019: MinRole and modern</h2>
+<ul>
+<li><strong>MinRole</strong> (2016) assigns each server a role and starts only the services that role needs (see the services guide). Combined roles came in Feature Pack 1.</li>
+<li><strong>Zero-downtime patching</strong> and much smaller update packages.</li>
+<li>Excel Services moved to <strong>Office Online Server</strong>, and the FIM-based profile sync engine was removed in favour of AD import or Microsoft Identity Manager.</li>
+<li><strong>2019</strong> brought the <strong>modern</strong> experience on-premises: modern lists, libraries, pages, communication sites and team sites, plus support for the OneDrive sync client, longer paths, and <code>#</code> and <code>%</code> in file names.</li>
+</ul>
+<h2 id="subscription-edition-continuous-updates">Subscription Edition: continuous updates</h2>
+<p>SharePoint Server Subscription Edition (2021) is the current on-premises version. There are no more "big bang" versions: new features arrive in <strong>feature updates</strong> delivered through the regular cumulative updates, and you choose whether your farm receives them early or on the standard schedule. Notable additions include <strong>OpenID Connect</strong> sign-in (for example with Microsoft Entra ID), TLS 1.3 support, SSL certificate management built into Central Administration and PowerShell, and support for Windows Server Core.</p>
+<h2 id="how-a-request-flows-today">How a request flows today</h2>
+<ol>
+<li><strong>HTTP.sys</strong> receives the request and hands it to the IIS worker process (<code>w3wp.exe</code>) of the web application's application pool.</li>
+<li>The <strong>integrated pipeline</strong> runs IIS and ASP.NET modules in order. <code>SPRequestModule</code> initialises the SharePoint context.</li>
+<li><strong>Authentication</strong> runs: Windows (NTLM or Kerberos), SAML, forms or OpenID Connect. SharePoint turns the result into a claims identity.</li>
+<li>The <strong>virtual path provider</strong> decides whether the requested page comes from disk (the hive) or the content database.</li>
+<li>The page renders. Static files may be served from the <strong>BLOB cache</strong> instead of SQL (see the BLOB cache guide).</li>
+</ol>
+<h2 id="the-virtual-directories-youll-recognise">The virtual directories you'll recognise</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>URL</th>
+<th>Maps to</th>
+<th>Used for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/_layouts/15/</code></td>
+<td><code>...\16\TEMPLATE\LAYOUTS</code></td>
+<td>Application pages (settings, upload, and so on)</td>
+</tr>
+<tr>
+<td><code>/_vti_bin/</code></td>
+<td><code>...\16\ISAPI</code></td>
+<td>Web services (<code>Lists.asmx</code>, <code>client.svc</code>), <code>owssvr.dll</code></td>
+</tr>
+<tr>
+<td><code>/_api/</code></td>
+<td>Rewritten to <code>/_vti_bin/client.svc</code></td>
+<td>REST API</td>
+</tr>
+<tr>
+<td><code>/_controltemplates/</code></td>
+<td><code>...\16\TEMPLATE\CONTROLTEMPLATES</code></td>
+<td>User controls (<code>.ascx</code>)</td>
+</tr>
+<tr>
+<td><code>/_login/</code></td>
+<td><code>...\16\TEMPLATE\IDENTITYMODEL\LOGIN</code></td>
+<td>Sign-in pages for claims and forms authentication</td>
+</tr>
+<tr>
+<td><code>/_wpresources/</code></td>
+<td>Web part resource files</td>
+<td>Images and scripts for web parts</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The URL stays <code>_layouts/15</code> in 2016, 2019 and Subscription Edition even though the hive is <code>16</code>.</p>
+<p>Each IIS site's files, including <code>web.config</code>, live in <code>C:\inetpub\wwwroot\wss\VirtualDirectories\&lt;host name or port&gt;</code>.</p>
+<h2 id="why-upgrades-go-one-version-at-a-time">Why upgrades go one version at a time</h2>
+<p>Each version changed the database schema and the way pages are stored and rendered. SharePoint only knows how to upgrade content databases from the version directly before it, so a 2010 database must go through 2013 and 2016 before it can reach 2019 or Subscription Edition (which accepts 2016 and 2019 databases). The migration guide covers the path in more detail.</p>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="getting-started.html"><span>Previous guide</span>Getting started</a>
+      <a class="next" href="services-and-server-roles.html"><span>Next guide</span>Services and server roles (MinRole)</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

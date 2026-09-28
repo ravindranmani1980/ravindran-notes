@@ -6,6 +6,7 @@
 <title>Troubleshooting | Notes | Ravindran Mani</title>
 <meta name="description" content="Common error messages and what actually fixes them.">
 <meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
 <link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -37,7 +38,7 @@
 <main id="main">
 <div class="wrap doc-wrap with-toc">
   <aside class="toc" aria-label="On this page">
-    <p class="toc-title">Guide 5 of 5</p>
+    <p class="toc-title">Guide 14 of 14</p>
     <ol>
       <li><a href="#on-premises">On-premises</a></li>
       <li><a href="#sharepoint-online">SharePoint Online</a></li>
@@ -45,7 +46,7 @@
     </ol>
   </aside>
   <article class="doc">
-    <p class="crumbs"><a href="../index.html">SharePoint</a> / Guide 5</p>
+    <p class="crumbs"><a href="../index.html">SharePoint</a> / Guide 14</p>
     <h1>Troubleshooting</h1>
     <p class="lead">Common error messages and what actually fixes them.</p>
 
@@ -99,6 +100,46 @@
 <td>Shell memory keeps growing during a long script</td>
 <td>Undisposed SPSite/SPWeb</td>
 <td>Dispose in <code>finally</code> blocks or use <code>Start-SPAssignment</code></td>
+</tr>
+<tr>
+<td>Pages slow to load images, CSS and scripts; high SQL load</td>
+<td>BLOB cache not enabled</td>
+<td>Enable it on every web server (see the BLOB cache guide)</td>
+</tr>
+<tr>
+<td>Changed image or CSS still shows the old version</td>
+<td>BLOB cache or browser cache</td>
+<td>Flush with <code>Set-SPBlobCache.ps1 -Flush</code>; rename updated branding files</td>
+</tr>
+<tr>
+<td>First page of the day takes 30+ seconds</td>
+<td>Application pool recycled overnight, nothing warmed it</td>
+<td>Schedule <code>Invoke-SPWarmup.ps1</code> after the recycle (Performance guide)</td>
+</tr>
+<tr>
+<td>Event ID 7362 about the object cache super user</td>
+<td>Portal super user/reader accounts not set</td>
+<td><code>Set-SPObjectCacheAccounts.ps1</code>, then <code>iisreset</code> on each web server</td>
+</tr>
+<tr>
+<td>Publishing sites return "access denied" to everyone after a change</td>
+<td>Object cache accounts wrong or missing</td>
+<td>Check the accounts with <code>Set-SPObjectCacheAccounts.ps1 -WebApplication &lt;url&gt;</code></td>
+</tr>
+<tr>
+<td>Servers show different patch levels in Central Administration</td>
+<td>PSConfig not run on every server</td>
+<td><code>Get-SPPatchStatus.ps1</code>, then <code>Invoke-SPPostPatchConfig.ps1</code> on the servers behind</td>
+</tr>
+<tr>
+<td>Health Analyzer: server not compliant with its role</td>
+<td>A service was started or stopped by hand</td>
+<td>Let MinRole fix it, or check with <code>Get-SPServiceMatrix.ps1</code></td>
+</tr>
+<tr>
+<td>Popularity Trends reports are empty</td>
+<td>Usage data collection off, or search analytics not running</td>
+<td>Reporting and BI guide, "SharePoint's own analytics"</td>
 </tr>
 </tbody>
 </table>

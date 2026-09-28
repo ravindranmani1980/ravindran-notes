@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security patches | Notes | Ravindran Mani</title>
+<meta name="description" content="Why patching matters, how to install updates, what to run afterwards, and how to verify every server.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html" aria-current="page">SharePoint</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 7 of 14</p>
+    <ol>
+      <li><a href="#why-it-matters">Why it matters</a></li>
+      <li><a href="#what-microsoft-ships">What Microsoft ships</a></li>
+      <li><a href="#before-you-patch">Before you patch</a></li>
+      <li><a href="#installing-the-two-phases">Installing: the two phases</a></li>
+      <li><a href="#zero-downtime-patching-2016-and-later">Zero-downtime patching (2016 and later)</a></li>
+      <li><a href="#after-you-patch">After you patch</a></li>
+      <li><a href="#verify-every-server">Verify every server</a></li>
+      <li><a href="#hardening-that-goes-with-patching">Hardening that goes with patching</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">SharePoint</a> / Guide 7</p>
+    <h1>Security patches</h1>
+    <p class="lead">Why patching matters, how to install updates, what to run afterwards, and how to verify every server.</p>
+
+<p>Patching is the most important routine job on an on-premises farm, and the one most often postponed. This guide covers why it matters, how to install updates safely, what to run afterwards, and how to prove every server is on the same build.</p>
+<h2 id="why-it-matters">Why it matters</h2>
+<p>On-premises SharePoint servers are high-value targets: they're often reachable from the internet, run with powerful service accounts, and hold sensitive documents.</p>
+<p>In <strong>July 2025</strong>, attackers exploited a critical remote code execution vulnerability in on-premises SharePoint Server (<strong>CVE-2025-53770</strong>, widely called "ToolShell") before most farms were patched. Organisations around the world were compromised. The response required installing the emergency update <strong>and</strong> rotating the farm's ASP.NET machine keys, because attackers had stolen them. Farms that were already current on updates, with AMSI integration turned on, were in a much better position. SharePoint Online wasn't affected.</p>
+<p>The lesson: treat SharePoint updates like Windows updates. Install the monthly security update every month.</p>
+<p><strong>Check your version is still supported.</strong> SharePoint Server 2016 and 2019 reached end of extended support in July 2026 and no longer receive security updates. Subscription Edition is the supported on-premises version.</p>
+<h2 id="what-microsoft-ships">What Microsoft ships</h2>
+<ul>
+<li><strong>Monthly updates on Patch Tuesday.</strong> For 2016, 2019 and Subscription Edition, the monthly public update contains both security and non-security fixes. It's the same as a cumulative update (CU).</li>
+<li><strong>2016 and 2019</strong> usually have two packages each month: the core <strong><code>sts</code></strong> package and the language-dependent <strong><code>wssloc</code></strong> package. Install both, plus language pack updates if you use language packs.</li>
+<li><strong>Subscription Edition</strong> has a single package each month, and it also delivers feature updates.</li>
+<li><strong>Emergency (out-of-band) updates</strong> for actively exploited vulnerabilities. Watch the Microsoft Security Response Center for these.</li>
+</ul>
+<p>Every update is cumulative, so the latest one brings a farm up to date from any earlier build of the same version.</p>
+<h2 id="before-you-patch">Before you patch</h2>
+<ol>
+<li><strong>Back up</strong>: farm configuration, content and service databases, and a snapshot of each server if they're virtual machines.</li>
+<li><strong>Record the current build</strong> and state: run <a href="../scripts/get-sppatchstatus.html"><code>Get-SPPatchStatus.ps1</code></a> and keep the output.</li>
+<li><strong>Check the farm is healthy</strong>: no databases already needing upgrade, Health Analyzer reviewed, enough free disk space on every server.</li>
+<li><strong>Pause search</strong> so crawls don't fight the upgrade:</li>
+</ol>
+<p><code>powershell
+   $ssa = Get-SPEnterpriseSearchServiceApplication
+   Suspend-SPEnterpriseSearchServiceApplication -Identity $ssa</code></p>
+<ol start="5">
+<li><strong>Download every package</strong> for your version and languages, and copy them to each server.</li>
+</ol>
+<h2 id="installing-the-two-phases">Installing: the two phases</h2>
+<p>A SharePoint update is two separate steps. Every server must finish phase 1 before any server starts phase 2.</p>
+<p><strong>Phase 1: install the binaries on every server.</strong> Run the update package (<code>.exe</code>) on each SharePoint server; this can be done on several servers at once. When the installer asks, <strong>don't</strong> run the configuration wizard yet. Restart the server if the installer asks you to.</p>
+<p>Stopping these Windows services before installing speeds the installer up considerably, especially on search servers; start them again afterwards:</p>
+<pre><code class="language-powershell">$services = 'SPTimerV4', 'SPAdminV4', 'SPSearchHostController', 'OSearch16', 'W3SVC'
+Stop-Service -Name $services -Force -ErrorAction SilentlyContinue
+# ... run the update package ...
+Start-Service -Name $services -ErrorAction SilentlyContinue
+</code></pre>
+<p>(<code>OSearch16</code> is the search service on 2016, 2019 and Subscription Edition; on 2013 it's <code>OSearch15</code>.)</p>
+<p><strong>Phase 2: run the configuration on each server, one at a time.</strong> Start with the server that hosts Central Administration, then do the others one by one. This upgrades the databases and brings each server to the new build:</p>
+<pre><code class="language-powershell">.\Invoke-SPPostPatchConfig.ps1
+</code></pre>
+<p><a href="../scripts/invoke-sppostpatchconfig.html"><code>Invoke-SPPostPatchConfig.ps1</code></a> checks it's running elevated and runs the standard command:</p>
+<pre><code class="language-powershell">PSConfig.exe -cmd upgrade -inplace b2b -wait -cmd applicationcontent -install -cmd installfeatures -cmd secureresources -cmd services -install
+</code></pre>
+<h2 id="zero-downtime-patching-2016-and-later">Zero-downtime patching (2016 and later)</h2>
+<p>With at least two servers in every MinRole role behind a load balancer, users don't need to see an outage:</p>
+<ol>
+<li>Take one front-end server out of the load balancer, install the binaries, run PSConfig, and put it back.</li>
+<li>Repeat for each server in turn, keeping at least one server of each role serving users at all times.</li>
+<li>Turn on <strong>side-by-side</strong> support so users on upgraded and not-yet-upgraded servers get matching static files (JavaScript, CSS) during the rollout. Enable it once, then copy the files on each server after installing the binaries:</li>
+</ol>
+<p><code>powershell
+   $ws = [Microsoft.SharePoint.Administration.SPWebService]::ContentService
+   $ws.EnableSideBySide = $true
+   $ws.Update()
+   Copy-SPSideBySideFiles</code></p>
+<h2 id="after-you-patch">After you patch</h2>
+<ol>
+<li><strong>Upgrade any content database still behind</strong> (PSConfig usually does this; large databases sometimes need a separate run):</li>
+</ol>
+<p><code>powershell
+   Get-SPContentDatabase | Where-Object NeedsUpgrade | Upgrade-SPContentDatabase -Confirm:$false</code></p>
+<p><code>Invoke-SPPostPatchConfig.ps1 -UpgradeContentDatabases</code> does the same.</p>
+<ol start="2">
+<li><strong>Resume search:</strong></li>
+</ol>
+<p><code>powershell
+   Resume-SPEnterpriseSearchServiceApplication -Identity $ssa</code></p>
+<ol start="3">
+<li><strong>Check the upgrade logs</strong> in the hive's <code>LOGS</code> folder (<code>Upgrade-*.log</code> and <code>PSCDiagnostics_*.log</code>) for errors.</li>
+<li><strong>Review Health Analyzer</strong> in Central Administration.</li>
+<li><strong>Test</strong> the key sites, search, and any custom solutions.</li>
+</ol>
+<h2 id="verify-every-server">Verify every server</h2>
+<p>A farm is only patched when every server is on the same build and nothing is waiting for an upgrade. Run:</p>
+<pre><code class="language-powershell">.\Get-SPPatchStatus.ps1
+</code></pre>
+<p><a href="../scripts/get-sppatchstatus.html"><code>Get-SPPatchStatus.ps1</code></a> reports, for every SharePoint server: the file version of the core SharePoint DLL, whether the server still needs upgrade, and the state of the Timer and IIS services. It also lists any database that still needs upgrading, and gives an overall verdict.</p>
+<p>In Central Administration, <strong>Upgrade and Migration</strong> has the same information: <strong>Check product and patch installation status</strong> (every server should show the same patch level) and <strong>Review database status</strong>.</p>
+<h2 id="hardening-that-goes-with-patching">Hardening that goes with patching</h2>
+<ul>
+<li><strong>Keep AMSI integration on.</strong> Current updates for 2016, 2019 and Subscription Edition support the Windows Antimalware Scan Interface, which lets Microsoft Defender (or a compatible antivirus) inspect requests. Use it in full mode where supported.</li>
+<li><strong>Rotate machine keys after any suspected compromise</strong>, and restart IIS on every server afterwards:</li>
+</ul>
+<p><code>powershell
+  Set-SPMachineKey    -WebApplication https://sharepoint.ravindran.in
+  Update-SPMachineKey -WebApplication https://sharepoint.ravindran.in</code></p>
+<ul>
+<li><strong>Don't publish Central Administration</strong> to the internet, and limit which networks can reach the farm.</li>
+<li><strong>Follow Microsoft's guidance for any emergency update</strong>; it sometimes includes steps beyond installing the package, as ToolShell did.</li>
+</ul>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="on-premises-tips.html"><span>Previous guide</span>SharePoint Server (on-premises) tips</a>
+      <a class="next" href="performance.html"><span>Next guide</span>Performance: warm-up and caching</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

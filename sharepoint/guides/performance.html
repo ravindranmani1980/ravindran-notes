@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Performance: warm-up and caching | Notes | Ravindran Mani</title>
+<meta name="description" content="Warm-up scripts, the object cache, the BLOB cache and the page output cache.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html" aria-current="page">SharePoint</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 8 of 14</p>
+    <ol>
+      <li><a href="#which-cache-does-what">Which cache does what</a></li>
+      <li><a href="#warm-up-remove-the-slow-first-hit">Warm-up: remove the slow first hit</a></li>
+      <li><a href="#object-cache">Object cache</a></li>
+      <li><a href="#blob-cache">BLOB cache</a></li>
+      <li><a href="#page-output-cache">Page output cache</a></li>
+      <li><a href="#other-quick-wins">Other quick wins</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">SharePoint</a> / Guide 8</p>
+    <h1>Performance: warm-up and caching</h1>
+    <p class="lead">Warm-up scripts, the object cache, the BLOB cache and the page output cache.</p>
+
+<p>Most SharePoint Server performance complaints come down to four things: cold application pools, publishing features working without their caches, static files read from SQL on every request, and pages rendered again for every user. This guide covers the fixes: warm-up scripts, the object cache, the BLOB cache and the page output cache.</p>
+<h2 id="which-cache-does-what">Which cache does what</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Warm-up</th>
+<th>Object cache</th>
+<th>BLOB cache</th>
+<th>Page output cache</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Solves</strong></td>
+<td>Slow first page after a recycle</td>
+<td>Repeated reads of the same list items, navigation and queries</td>
+<td>Static files read from SQL</td>
+<td>The same page rendered again and again</td>
+</tr>
+<tr>
+<td><strong>Stores</strong></td>
+<td>Nothing; it pre-loads</td>
+<td>Objects in the web server's memory</td>
+<td>Files on the web server's disk</td>
+<td>Rendered HTML in memory</td>
+</tr>
+<tr>
+<td><strong>Needs publishing features</strong></td>
+<td>No</td>
+<td>Yes</td>
+<td>No (SharePoint Server, not Foundation)</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><strong>Best for</strong></td>
+<td>Every farm</td>
+<td>Publishing and portal sites</td>
+<td>Portals, sites with images and video</td>
+<td>Anonymous and read-mostly publishing sites</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="warm-up-remove-the-slow-first-hit">Warm-up: remove the slow first hit</h2>
+<p>IIS recycles each application pool regularly (by default once a day). The next request after a recycle has to load and compile SharePoint's assemblies and pages, which can take 30 seconds or more. Whoever makes that request, often the first user in the morning, pays for it.</p>
+<p>A warm-up script requests the important pages right after the recycle, so users never see a cold server.</p>
+<ol>
+<li><strong>Set a predictable recycle time.</strong> In IIS Manager, for each SharePoint application pool, open <strong>Recycling</strong> and use a specific time outside business hours (for example 2:00 AM) instead of a fixed interval.</li>
+<li><strong>Schedule the warm-up</strong> 10 to 15 minutes later with Task Scheduler, on <strong>every</strong> web server, running as an account with read access to the sites:</li>
+</ol>
+<p><code>powershell
+   .\Invoke-SPWarmup.ps1 -IncludeSubsites -LogFile D:\Logs\Warmup.csv</code></p>
+<p><a href="../scripts/invoke-spwarmup.html"><code>Invoke-SPWarmup.ps1</code></a> requests the home page of every site collection (and optionally every subsite) plus one application page per web application, and logs the status and time of each request.</p>
+<ol start="3">
+<li><strong>Make each server warm itself.</strong> Behind a load balancer, a request for <code>https://sharepoint.ravindran.in</code> might go to any server. On each web server, add a hosts file entry pointing the site names at that server's own IP address, so the warm-up hits the local server. Because Windows blocks authenticated requests back to the local machine by default, add the site names to the <code>BackConnectionHostNames</code> registry value on that server (this is safer than turning off the loopback check entirely).</li>
+</ol>
+<p>Also run the warm-up after patching, after an IIS reset, and after deploying solutions.</p>
+<h2 id="object-cache">Object cache</h2>
+<p>The object cache keeps frequently read objects (list items used by navigation, content query web part results, cross-list queries) in each web server's memory. It's part of the publishing infrastructure.</p>
+<p><strong>Configure the super user and super reader accounts.</strong> The object cache reads content as two special accounts so it can cache one copy for all users and then trim it per user. If they aren't set, SharePoint falls back to slower behaviour and logs warnings (event ID 7362) in the Application event log.</p>
+<ol>
+<li>Create two <strong>dedicated</strong> domain accounts, for example <code>RAVINDRAN\sp-superuser</code> and <code>RAVINDRAN\sp-superreader</code>. Nobody should sign in with them, and they must not be the application pool or farm account.</li>
+<li>Give them <strong>Full Control</strong> and <strong>Full Read</strong> user policies on the web application, and store them in the web application's properties. <a href="../scripts/set-spobjectcacheaccounts.html"><code>Set-SPObjectCacheAccounts.ps1</code></a> does both:</li>
+</ol>
+<p><code>powershell
+   .\Set-SPObjectCacheAccounts.ps1 -WebApplication https://sharepoint.ravindran.in `
+       -SuperUser RAVINDRAN\sp-superuser -SuperReader RAVINDRAN\sp-superreader -WhatIf</code></p>
+<ol start="3">
+<li>Run <code>iisreset</code> on every web server.</li>
+</ol>
+<p><strong>Test straight away.</strong> If these accounts are wrong (a typo, or an account that doesn't exist), publishing sites can return "access denied" to everyone. Run the script outside business hours and browse the sites immediately afterwards.</p>
+<p><strong>Size it.</strong> The default is 100 MB per site collection, set in <strong>Site Settings &gt; Site collection object cache</strong>. The web application-wide limit is the <code>&lt;ObjectCache maxSize="100" /&gt;</code> element in <code>web.config</code>. Increase it for large portals with heavy navigation or many content query web parts.</p>
+<h2 id="blob-cache">BLOB cache</h2>
+<p>The BLOB cache serves images, style sheets, scripts and video from each web server's disk instead of the SQL content database, and tells browsers to cache them. It has its own guide: see <a href="blob-cache.html">BLOB cache: why and how</a>.</p>
+<h2 id="page-output-cache">Page output cache</h2>
+<p>The page output cache stores the fully rendered HTML of publishing pages and serves it to the next user who's allowed to see the same version, skipping page rendering entirely. It helps most on anonymous internet sites and read-mostly intranet portals.</p>
+<ol>
+<li>In the site collection, go to <strong>Site Settings &gt; Site collection output cache</strong> and turn it on.</li>
+<li>Choose a <strong>cache profile</strong>. The built-in profiles are:
+   - <strong>Public Internet (Purely Anonymous)</strong>: longest caching, for anonymous sites.
+   - <strong>Extranet (Published Site)</strong>: for authenticated, read-mostly sites.
+   - <strong>Intranet (Collaboration Site)</strong>: shorter caching, varies by user rights.
+   - <strong>Disabled</strong>.</li>
+<li>Optionally allow page layouts and individual sites to override the profile.</li>
+</ol>
+<p>Keep it off for collaboration sites where content changes constantly or pages are personalised per user. The web application-wide defaults are in the <code>&lt;OutputCacheProfiles&gt;</code> element of <code>web.config</code>, including <code>varyByRights="true"</code>, which keeps users with different permissions from seeing each other's cached pages. Leave that on.</p>
+<h2 id="other-quick-wins">Other quick wins</h2>
+<ul>
+<li><strong>SQL Server:</strong> set <strong>max degree of parallelism (MAXDOP) to 1</strong> on the SQL instance that hosts SharePoint databases (this is a SharePoint requirement), pre-size databases, and use fixed-size autogrowth rather than percentages.</li>
+<li><strong>Keep content databases a manageable size</strong>, as covered in the SharePoint Server tips.</li>
+<li><strong>Distributed Cache:</strong> give it enough memory and keep it off busy search servers (see the services guide).</li>
+<li><strong>Find slow pages</strong> with the Developer Dashboard, which shows the time spent in each part of a page:</li>
+</ul>
+<p><code>powershell
+  $svc = [Microsoft.SharePoint.Administration.SPWebService]::ContentService
+  $dds = $svc.DeveloperDashboardSettings
+  $dds.DisplayLevel = 'On'   # set back to 'Off' when finished
+  $dds.Update()</code></p>
+<ul>
+<li><strong>Crawl from a dedicated target</strong> so search doesn't slow down users (see the search guide).</li>
+</ul>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="security-patches.html"><span>Previous guide</span>Security patches</a>
+      <a class="next" href="blob-cache.html"><span>Next guide</span>BLOB cache: why and how</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

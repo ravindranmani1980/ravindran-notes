@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reporting and BI: SSRS, analytics and Power BI | Notes | Ravindran Mani</title>
+<meta name="description" content="SSRS integration through the versions, SharePoint usage analytics, and Power BI.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html" aria-current="page">SharePoint</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 11 of 14</p>
+    <ol>
+      <li><a href="#the-short-version">The short version</a></li>
+      <li><a href="#ssrs-and-sharepoint-how-it-changed">SSRS and SharePoint: how it changed</a></li>
+      <li><a href="#other-bi-features-you-may-still-meet">Other BI features you may still meet</a></li>
+      <li><a href="#sharepoints-own-analytics">SharePoint&#x27;s own analytics</a></li>
+      <li><a href="#power-bi">Power BI</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">SharePoint</a> / Guide 11</p>
+    <h1>Reporting and BI: SSRS, analytics and Power BI</h1>
+    <p class="lead">SSRS integration through the versions, SharePoint usage analytics, and Power BI.</p>
+
+<p>SharePoint has been a home for reports and dashboards since 2007, and the options have changed almost completely. This guide covers SQL Server Reporting Services (SSRS), SharePoint's own usage analytics, and Power BI, on-premises and in Microsoft 365.</p>
+<h2 id="the-short-version">The short version</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>You want to...</th>
+<th>On-premises</th>
+<th>SharePoint Online</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Show paginated (SSRS) reports in SharePoint</td>
+<td>SSRS or Power BI Report Server in <strong>native mode</strong>, shown with the Report Viewer web part or an embedded page</td>
+<td>Power BI paginated reports, embedded with the Power BI web part</td>
+</tr>
+<tr>
+<td>Show interactive dashboards</td>
+<td>Power BI Report Server, embedded in a page</td>
+<td><strong>Power BI web part</strong> on a modern page</td>
+</tr>
+<tr>
+<td>Report on SharePoint list data</td>
+<td>Power BI Desktop with an on-premises data gateway, or SSRS</td>
+<td>Power BI (SharePoint Online list connector)</td>
+</tr>
+<tr>
+<td>See site usage</td>
+<td>Popularity Trends and usage analytics</td>
+<td>Site usage page and Microsoft 365 usage reports</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="ssrs-and-sharepoint-how-it-changed">SSRS and SharePoint: how it changed</h2>
+<p><strong>SQL Server 2005 to 2008 R2: SharePoint integrated mode (add-in).</strong> Reporting Services ran on its own server in "SharePoint integrated mode". Reports, data sources and subscriptions were stored in SharePoint libraries, and the Reporting Services add-in on the SharePoint servers connected the two.</p>
+<p><strong>SQL Server 2012 to 2016: SSRS as a SharePoint service application.</strong> Reporting Services in SharePoint mode was installed on the SharePoint servers themselves and managed like any other service application in Central Administration, with PowerShell cmdlets for setup. Reports lived in document libraries and appeared with the Report Viewer web part.</p>
+<p><strong>SQL Server 2017 and later: native mode only.</strong> Microsoft removed SharePoint integrated mode. Reporting Services (and <strong>Power BI Report Server</strong>, which includes it) runs in native mode on its own servers, with its own web portal. To show reports in SharePoint you use the native-mode <strong>Report Viewer web part</strong> (check that it supports your SharePoint version) or embed the report page.</p>
+<p><strong>What's next.</strong> Microsoft has announced that on-premises reporting is consolidating on <strong>Power BI Report Server</strong>, starting with SQL Server 2025. If you're planning new on-premises reporting, start there, and check Microsoft's current SQL Server documentation for the details.</p>
+<p><strong>Migrating off integrated mode:</strong> when you upgrade to SharePoint 2019 or Subscription Edition, integrated-mode reports don't come along. Move reports, data sources and subscriptions to a native-mode server first (Microsoft provides a migration tool for this), then update the links in SharePoint.</p>
+<h3 id="embedding-a-power-bi-report-server-or-ssrs-report-in-a-page">Embedding a Power BI Report Server or SSRS report in a page</h3>
+<p>Power BI Report Server supports an embed parameter that shows a report without the portal around it:</p>
+<pre><code>https://reports.ravindran.in/reports/powerbi/Sales/Monthly?rs:embed=true
+</code></pre>
+<p>Use the Page Viewer web part (classic pages) or the Embed web part (modern pages) with that URL. Users need permission on the report server as well as the SharePoint page, and the report server should use the same authentication (ideally Kerberos) so they aren't prompted to sign in.</p>
+<h2 id="other-bi-features-you-may-still-meet">Other BI features you may still meet</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Versions</th>
+<th>Where it went</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Excel Services</td>
+<td>2007–2013</td>
+<td>Moved to Office Online Server in 2016</td>
+</tr>
+<tr>
+<td>PerformancePoint Services</td>
+<td>2010 onward</td>
+<td>Deprecated; Power BI is the replacement</td>
+</tr>
+<tr>
+<td>PowerPivot for SharePoint</td>
+<td>2010–2016 (with SQL Server Analysis Services in SharePoint mode)</td>
+<td>Replaced by Power BI</td>
+</tr>
+<tr>
+<td>Power View (Silverlight)</td>
+<td>2013</td>
+<td>Retired; replaced by Power BI</td>
+</tr>
+<tr>
+<td>Visio Services</td>
+<td>2010 onward</td>
+<td>Deprecated on-premises; Visio for the web in Microsoft 365</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>If a farm still depends on any of these, plan the move to Power BI before your next upgrade.</p>
+<h2 id="sharepoints-own-analytics">SharePoint's own analytics</h2>
+<p><strong>2010: Web Analytics service application.</strong> Reports for traffic, search and inventory, per site and site collection.</p>
+<p><strong>2013 and later: usage analytics in search.</strong> The Web Analytics service was removed. The <strong>analytics processing component</strong> of search now processes usage events and produces:</p>
+<ul>
+<li><strong>Popularity Trends</strong> (Site Settings &gt; Site Collection Administration, and per item and library), which open in Excel with daily and monthly views and unique users</li>
+<li><strong>Most Popular Items</strong> per library</li>
+<li><strong>Search reports</strong> (top queries, no-result queries, abandoned queries)</li>
+</ul>
+<p>These depend on the <strong>Usage and Health Data Collection</strong> service application, the usage timer jobs, and search crawls. If Popularity Trends are empty, check that usage data collection is on in Central Administration (Monitoring &gt; Configure usage and health data collection), that the search service application is healthy, and that the usage definitions are enabled (look for any showing <code>False</code>):</p>
+<pre><code class="language-powershell">Get-SPUsageDefinition | Select-Object Name, Enabled
+</code></pre>
+<p>Usage log files are written to the hive's <code>LOGS</code> folder (or the location you set) and imported by timer jobs, so reports lag real activity by a day or so.</p>
+<h2 id="power-bi">Power BI</h2>
+<p><strong>Power BI web part (SharePoint Online).</strong> On a modern page, add the <strong>Power BI</strong> web part and paste the report link from the Power BI service (File &gt; Embed report &gt; SharePoint Online). Viewers need a Power BI Pro or Premium Per User license, unless the report is in a workspace on Premium or Fabric capacity. The report respects Power BI permissions and row-level security, so sharing the SharePoint page doesn't give access to the data on its own.</p>
+<p><strong>Reporting on SharePoint data.</strong></p>
+<ul>
+<li><strong>SharePoint Online lists:</strong> use the <strong>SharePoint Online list</strong> connector in Power BI Desktop; its newer implementation is much faster on large lists.</li>
+<li><strong>Files in a library</strong> (Excel, CSV): use the <strong>SharePoint folder</strong> connector with the site URL.</li>
+<li><strong>SharePoint Server lists:</strong> use the SharePoint list connector with the site URL. Scheduled refresh in the Power BI service needs an <strong>on-premises data gateway</strong> that can reach the farm.</li>
+</ul>
+<p><strong>Tips from the field:</strong></p>
+<ul>
+<li>Point reports at a <strong>view with only the columns you need</strong>, or filter in Power Query; pulling every column of a large list is slow.</li>
+<li><strong>Lookup, person and managed metadata columns</strong> come through as records; expand only the fields you need.</li>
+<li>For heavy reporting on SharePoint Online data, consider landing it in a database or Fabric first, rather than querying the list directly on every refresh.</li>
+</ul>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="library-schemas.html"><span>Previous guide</span>Library schemas and content type IDs</a>
+      <a class="next" href="sharepoint-online-tips.html"><span>Next guide</span>SharePoint Online tips</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

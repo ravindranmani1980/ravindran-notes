@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Single sign-on and authentication | Notes | Ravindran Mani</title>
+<meta name="description" content="Kerberos, SAML with AD FS, OpenID Connect, and Secure Store for reaching other systems.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html" aria-current="page">SharePoint</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 5 of 14</p>
+    <ol>
+      <li><a href="#how-it-progressed">How it progressed</a></li>
+      <li><a href="#windows-authentication-done-right-kerberos">Windows authentication done right: Kerberos</a></li>
+      <li><a href="#saml-sign-in-with-ad-fs">SAML sign-in with AD FS</a></li>
+      <li><a href="#openid-connect-in-subscription-edition">OpenID Connect in Subscription Edition</a></li>
+      <li><a href="#moving-old-web-applications-to-claims">Moving old web applications to claims</a></li>
+      <li><a href="#secure-store-sharepoint-signing-in-to-other-systems">Secure Store: SharePoint signing in to other systems</a></li>
+      <li><a href="#sharepoint-online">SharePoint Online</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">SharePoint</a> / Guide 5</p>
+    <h1>Single sign-on and authentication</h1>
+    <p class="lead">Kerberos, SAML with AD FS, OpenID Connect, and Secure Store for reaching other systems.</p>
+
+<p>"Single sign-on" means two different things in SharePoint, and it helps to keep them apart:</p>
+<ol>
+<li><strong>Users signing in to SharePoint</strong> once, without extra prompts (Windows authentication, AD FS, Microsoft Entra ID).</li>
+<li><strong>SharePoint signing in to other systems</strong> on a user's behalf (a database, an SAP system, a web service). This is what the old Single Sign-On service and today's Secure Store do.</li>
+</ol>
+<h2 id="how-it-progressed">How it progressed</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>Users signing in</th>
+<th>SharePoint reaching other systems</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2003</td>
+<td>Windows authentication (NTLM or Kerberos)</td>
+<td><strong>Microsoft Single Sign-On Service</strong> (SPS 2003) stored credentials for "enterprise application definitions"</td>
+</tr>
+<tr>
+<td>2007</td>
+<td>Windows, plus ASP.NET forms authentication</td>
+<td>Same <strong>SSO service</strong> (SSOSrv), used by BDC and Excel Services; notoriously hard to set up</td>
+</tr>
+<tr>
+<td>2010</td>
+<td><strong>Claims-based authentication</strong> added: Windows claims, forms, SAML via AD FS</td>
+<td><strong>Secure Store Service</strong> replaced SSO. <strong>Claims to Windows Token Service</strong> (C2WTS) for Kerberos delegation</td>
+</tr>
+<tr>
+<td>2013 to 2019</td>
+<td>Claims by default; classic mode deprecated. SAML with AD FS is the common SSO setup</td>
+<td>Secure Store, used by Business Connectivity Services and other services</td>
+</tr>
+<tr>
+<td>Subscription Edition</td>
+<td>Adds <strong>OpenID Connect (OIDC)</strong>, for example with Microsoft Entra ID or AD FS</td>
+<td>Secure Store</td>
+</tr>
+<tr>
+<td>SharePoint Online</td>
+<td>Microsoft Entra ID, with conditional access and multi-factor authentication</td>
+<td>Handled by Microsoft 365 and Microsoft Graph</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="windows-authentication-done-right-kerberos">Windows authentication done right: Kerberos</h2>
+<p>NTLM works out of the box but can't pass a user's identity on to another server (the "double hop" problem) and adds load on domain controllers. <strong>Kerberos</strong> gives true single sign-on for domain users and allows delegation to back-end systems.</p>
+<p>Kerberos needs a <strong>Service Principal Name (SPN)</strong> for each web application URL, registered to the application pool account:</p>
+<pre><code class="language-powershell">setspn -S HTTP/sharepoint.ravindran.in RAVINDRAN\sp-webapp-pool
+setspn -L RAVINDRAN\sp-webapp-pool
+</code></pre>
+<p>Then set the web application's Windows authentication to <strong>Negotiate (Kerberos)</strong>. Check it's working by opening the site from a client and running <code>klist</code>: you should see a ticket for <code>HTTP/sharepoint.ravindran.in</code>.</p>
+<p>Common mistakes: duplicate SPNs (<code>setspn -X</code> finds them), using a CNAME in DNS for the site name (use an A record), and forgetting the SPN for every host name users actually type.</p>
+<h2 id="saml-sign-in-with-ad-fs">SAML sign-in with AD FS</h2>
+<p>For single sign-on with non-Windows sessions, partners, or a central identity provider, SharePoint trusts a SAML identity provider such as AD FS. The setup has three parts: trust AD FS's token-signing certificate, define which claims SharePoint accepts, and create the trusted identity provider.</p>
+<pre><code class="language-powershell">$cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2(&quot;C:\Certs\adfs-token-signing.cer&quot;)
+New-SPTrustedRootAuthority -Name &quot;AD FS token signing&quot; -Certificate $cert
+
+$email = New-SPClaimTypeMapping -IncomingClaimType &quot;http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress&quot; -IncomingClaimTypeDisplayName &quot;Email&quot; -SameAsIncoming
+$upn   = New-SPClaimTypeMapping -IncomingClaimType &quot;http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn&quot; -IncomingClaimTypeDisplayName &quot;UPN&quot; -SameAsIncoming
+
+New-SPTrustedIdentityTokenIssuer -Name &quot;AD FS&quot; -Description &quot;Sign in with AD FS&quot; `
+    -Realm &quot;urn:sharepoint:portal&quot; -ImportTrustCertificate $cert `
+    -ClaimsMappings $email, $upn -SignInUrl &quot;https://adfs.ravindran.in/adfs/ls&quot; `
+    -IdentifierClaim $email.InputClaimType
+</code></pre>
+<p>Then add the provider to the web application's zone in Central Administration, and create a matching relying party trust in AD FS with the same realm.</p>
+<p><strong>Plan for the people picker.</strong> With SAML, SharePoint can't look users up by itself, so the people picker accepts anything typed. A <strong>custom claims provider</strong> fixes this; the community projects LDAPCP and EntraCP are widely used.</p>
+<h2 id="openid-connect-in-subscription-edition">OpenID Connect in Subscription Edition</h2>
+<p>Subscription Edition can use <strong>OpenID Connect 1.0</strong> with Microsoft Entra ID or AD FS. It's the modern choice for tying an on-premises farm to the same sign-in (and conditional access policies) as Microsoft 365. Follow Microsoft's current Subscription Edition documentation for the exact steps, as they have been refined in feature updates.</p>
+<h2 id="moving-old-web-applications-to-claims">Moving old web applications to claims</h2>
+<p>Classic-mode web applications must be converted to claims before you can upgrade past 2013:</p>
+<pre><code class="language-powershell">Convert-SPWebApplication -Identity https://sharepoint.ravindran.in -From Legacy -To Claims -RetainPermissions
+</code></pre>
+<p>Test on a copy first. Custom code and some third-party products that read user names directly may need changes because user names become claims (for example <code>i:0#.w|ravindran\jane</code>).</p>
+<h2 id="secure-store-sharepoint-signing-in-to-other-systems">Secure Store: SharePoint signing in to other systems</h2>
+<p>Secure Store keeps encrypted credentials for <strong>target applications</strong> and hands them to services such as Business Connectivity Services at run time. A <strong>group</strong> target application maps a whole AD group to one set of credentials; an <strong>individual</strong> one stores credentials per user.</p>
+<pre><code class="language-powershell"># One-time: generate the master key (Central Administration can do this too)
+Update-SPSecureStoreMasterKey -ServiceApplicationProxy (Get-SPServiceApplicationProxy | Where-Object { $_.TypeName -like '*Secure Store*' }) -Passphrase 'Use-a-long-passphrase-and-store-it-safely'
+
+# Create a group target application
+$ta     = New-SPSecureStoreTargetApplication -Name &quot;HRDB&quot; -FriendlyName &quot;HR database&quot; -ApplicationType Group
+$fUser  = New-SPSecureStoreApplicationField -Name &quot;User name&quot; -Type WindowsUserName -Masked:$false
+$fPass  = New-SPSecureStoreApplicationField -Name &quot;Password&quot;  -Type WindowsPassword -Masked:$true
+$admin  = New-SPClaimsPrincipal -Identity &quot;RAVINDRAN\sp-admin&quot; -IdentityType WindowsSamAccountName
+$users  = New-SPClaimsPrincipal -Identity &quot;RAVINDRAN\HR Readers&quot; -IdentityType WindowsSecurityGroupName
+
+New-SPSecureStoreApplication -ServiceContext https://sharepoint.ravindran.in `
+    -TargetApplication $ta -Fields $fUser, $fPass -Administrator $admin -CredentialsOwnerGroup $users
+</code></pre>
+<p>Then set the stored credentials in Central Administration (Secure Store Service &gt; the target application &gt; Set Credentials).</p>
+<p><strong>Keep the passphrase.</strong> You need it to add new servers and to recover Secure Store. Store it in your password vault, not in a script.</p>
+<h2 id="sharepoint-online">SharePoint Online</h2>
+<p>Sign-in is Microsoft Entra ID. On-premises identities reach it through Entra Connect with password hash sync, pass-through authentication or federation. Use conditional access and multi-factor authentication, and manage external users through Entra B2B guest settings together with SharePoint sharing settings.</p>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="search.html"><span>Previous guide</span>Search: from 2003 to today</a>
+      <a class="next" href="on-premises-tips.html"><span>Next guide</span>SharePoint Server (on-premises) tips</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

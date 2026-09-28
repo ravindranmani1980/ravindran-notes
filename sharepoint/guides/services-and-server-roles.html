@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Services and server roles (MinRole) | Notes | Ravindran Mani</title>
+<meta name="description" content="Which services run on which servers, how MinRole works, and how Microsoft changed the model.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html" aria-current="page">SharePoint</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 3 of 14</p>
+    <ol>
+      <li><a href="#how-the-model-changed">How the model changed</a></li>
+      <li><a href="#the-minrole-roles">The MinRole roles</a></li>
+      <li><a href="#typical-farm-layouts">Typical farm layouts</a></li>
+      <li><a href="#changing-a-servers-role">Changing a server&#x27;s role</a></li>
+      <li><a href="#distributed-cache-handle-with-care">Distributed Cache: handle with care</a></li>
+      <li><a href="#classic-farms-2010-and-2013">Classic farms (2010 and 2013)</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">SharePoint</a> / Guide 3</p>
+    <h1>Services and server roles (MinRole)</h1>
+    <p class="lead">Which services run on which servers, how MinRole works, and how Microsoft changed the model.</p>
+
+<p>Which services run on which servers decides how well a farm performs, how it survives a server failure, and how painful patching is. Microsoft has changed the model several times, and the current one, MinRole, does most of the work for you.</p>
+<h2 id="how-the-model-changed">How the model changed</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>How services were placed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2007</td>
+<td>Servers were described by what they ran: web front ends, an index server (only one per SSP), query servers, and Excel Calculation servers. Shared services lived in the Shared Services Provider.</td>
+</tr>
+<tr>
+<td>2010</td>
+<td>Service applications replaced the SSP. Admins started and stopped each <strong>service instance</strong> by hand on "Services on Server" in Central Administration.</td>
+</tr>
+<tr>
+<td>2013</td>
+<td>Same manual model, with two new heavyweights: the rebuilt search components and <strong>Distributed Cache</strong>. Dedicated search and cache servers became common in larger farms.</td>
+</tr>
+<tr>
+<td>2016</td>
+<td><strong>MinRole</strong>: you choose a role for each server and SharePoint starts only the services that role needs, and fixes drift automatically.</td>
+</tr>
+<tr>
+<td>2016 Feature Pack 1</td>
+<td><strong>Shared roles</strong> for smaller farms: Front-end with Distributed Cache, and Application with Search.</td>
+</tr>
+<tr>
+<td>2019 and Subscription Edition</td>
+<td>Same MinRole model. In Subscription Edition, Distributed Cache no longer depends on the retired AppFabric product.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Microsoft brings these changes in through new versions and, since 2016, through <strong>feature packs</strong> and <strong>feature updates</strong> in the regular cumulative updates. That's why reading the release notes of each update matters, not just installing it.</p>
+<h2 id="the-minrole-roles">The MinRole roles</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>PowerShell name</th>
+<th>Runs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Front-end</td>
+<td><code>WebFrontEnd</code></td>
+<td>Services that serve user requests with low latency. Handles page requests.</td>
+</tr>
+<tr>
+<td>Application</td>
+<td><code>Application</code></td>
+<td>Background and batch services: timer jobs, workflow, Word Automation, Machine Translation and similar.</td>
+</tr>
+<tr>
+<td>Distributed Cache</td>
+<td><code>DistributedCache</code></td>
+<td>Distributed Cache only.</td>
+</tr>
+<tr>
+<td>Search</td>
+<td><code>Search</code></td>
+<td>Search components only.</td>
+</tr>
+<tr>
+<td>Front-end with Distributed Cache</td>
+<td><code>WebFrontEndWithDistributedCache</code></td>
+<td>Both (shared role, 2016 FP1 and later).</td>
+</tr>
+<tr>
+<td>Application with Search</td>
+<td><code>ApplicationWithSearch</code></td>
+<td>Both (shared role, 2016 FP1 and later).</td>
+</tr>
+<tr>
+<td>Custom</td>
+<td><code>Custom</code></td>
+<td>Whatever you start by hand; MinRole leaves it alone.</td>
+</tr>
+<tr>
+<td>Single-Server Farm</td>
+<td><code>SingleServerFarm</code></td>
+<td>Everything, for test and development only.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>For the exact list of services each role runs on your version and update level, check Microsoft's "Services on MinRole-managed servers" reference, or run <a href="../scripts/get-spservicematrix.html"><code>Get-SPServiceMatrix.ps1</code></a> to see what actually runs where.</p>
+<h2 id="typical-farm-layouts">Typical farm layouts</h2>
+<p><strong>Small, highly available (4 servers):</strong> two Front-end with Distributed Cache servers behind a load balancer, and two Application with Search servers.</p>
+<p><strong>Medium (6 to 8 servers):</strong> two Front-end, two Application, two or three Distributed Cache, and two Search servers.</p>
+<p><strong>Large:</strong> add Front-end servers for user load and Search servers for index size and crawl volume, and consider dedicated crawl targets so crawling doesn't slow down user traffic.</p>
+<p>Whatever the size, have at least two servers of every role that users depend on, so one server can be patched or fail without an outage. That's also what makes zero-downtime patching possible.</p>
+<h2 id="changing-a-servers-role">Changing a server's role</h2>
+<p>From 2016 Feature Pack 1 onward you can change a server's role without removing it from the farm:</p>
+<pre><code class="language-powershell">Set-SPServer -Identity SP-APP01 -Role ApplicationWithSearch
+Get-SPServer | Select-Object Name, Role, CompliantWithMinRole
+</code></pre>
+<p>When a server drifts (someone starts a service by hand), the Health Analyzer reports that the server isn't compliant with its role, and a timer job can fix it for you.</p>
+<h2 id="distributed-cache-handle-with-care">Distributed Cache: handle with care</h2>
+<p>Distributed Cache holds the logon token cache, newsfeed data and other shared state in memory. A few rules save a lot of pain:</p>
+<ul>
+<li>Don't run it on servers that are also busy with search or other memory-hungry work.</li>
+<li>Never just stop the service. Remove a cache host gracefully so its data moves to the others:</li>
+</ul>
+<p><code>powershell
+  Stop-SPDistributedCacheServiceInstance -Graceful
+  Remove-SPDistributedCacheServiceInstance</code></p>
+<ul>
+<li>Size the cache memory consistently on every cache host, and patch cache hosts one at a time.</li>
+</ul>
+<h2 id="classic-farms-2010-and-2013">Classic farms (2010 and 2013)</h2>
+<p>Without MinRole, keep the same principles by hand:</p>
+<ul>
+<li><strong>Web servers:</strong> Microsoft SharePoint Foundation Web Application service, plus services that need low latency.</li>
+<li><strong>Application servers:</strong> service applications, timer-heavy services and anything that does batch work.</li>
+<li><strong>Search:</strong> on its own servers once the index or crawl load grows.</li>
+<li><strong>Distributed Cache (2013):</strong> on its own servers in medium and large farms.</li>
+</ul>
+<p>Document what runs where (the service matrix script gives you a CSV for this), and check it after every change. Undocumented services started "just to test something" are a classic source of problems during upgrades.</p>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="architecture.html"><span>Previous guide</span>Architecture from 2003 to Subscription Edition</a>
+      <a class="next" href="search.html"><span>Next guide</span>Search: from 2003 to today</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

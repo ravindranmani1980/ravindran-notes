@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Invoke-SPWarmup | Notes | Ravindran Mani</title>
+<meta name="description" content="Warms up SharePoint web applications by requesting their pages after an app pool recycle.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html" aria-current="page">SharePoint</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap">
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">SharePoint</a> / <a href="../../scripts/index.html">Scripts</a> / SharePoint Server</p>
+    <h1 class="script-title">Invoke-SPWarmup</h1>
+    <p class="lead">Warms up SharePoint web applications by requesting their pages after an app pool recycle.</p>
+    <dl class="facts">
+      <div><dt>Runs in</dt><dd>SharePoint Management Shell on a farm server</dd></div>
+      <div><dt>Safety</dt><dd><span class="flag flag-read">Read-only</span></dd></div>
+    </dl>
+    <p class="actions"><a class="btn btn-primary" href="Invoke-SPWarmup.ps1" download>Download Invoke-SPWarmup.ps1</a></p>
+
+    <h2 id="what-it-does">What it does</h2>
+    <p>Requests the home page of every site collection (and optionally every subsite) in each web application, plus one application page per web application, so ASP.NET compiles and caches everything before users arrive. Logs the HTTP status and response time of every request.</p>
+<p>Run it on every web server, 10 to 15 minutes after the scheduled application pool recycle, as an account with read access to the sites. To warm the local server rather than whichever server the load balancer picks, add hosts file entries on each web server that point the site host names at that server&#x27;s own IP address, and list those host names in the BackConnectionHostNames registry value.</p>
+<p>Read-only: it only sends GET requests.</p>
+
+    <h2 id="parameters">Parameters</h2>
+    <div class="table-wrap">
+      <table class="params">
+          <tr><th scope="row"><code>-WebApplication</code><span class="ptype">string[]</span></th><td>One or more web application URLs. Default: every web application except Central Administration.</td></tr>
+          <tr><th scope="row"><code>-IncludeSubsites</code><span class="ptype">switch</span></th><td>Also request every subsite, not just site collection home pages.</td></tr>
+          <tr><th scope="row"><code>-IncludeCentralAdmin</code><span class="ptype">switch</span></th><td>Also warm up Central Administration.</td></tr>
+          <tr><th scope="row"><code>-ExtraUrl</code><span class="ptype">string[]</span></th><td>Additional URLs to request, for example a search results page.</td></tr>
+          <tr><th scope="row"><code>-TimeoutSec</code><span class="ptype">int</span></th><td>Timeout per request. Default 180 seconds (the first request after a recycle can be slow).</td></tr>
+          <tr><th scope="row"><code>-LogFile</code><span class="ptype">string</span></th><td>CSV log of every request.<span class="pdefault">Default: <code>Timestamped file in the current folder</code></span></td></tr>
+      </table>
+    </div>
+
+    <h2 id="examples">Examples</h2>
+    <pre><code class="language-powershell">.\Invoke-SPWarmup.ps1</code></pre>
+    <pre><code class="language-powershell">.\Invoke-SPWarmup.ps1 -WebApplication https://sharepoint.ravindran.in -IncludeSubsites -ExtraUrl https://sharepoint.ravindran.in/search/Pages/results.aspx?k=test -LogFile D:\Logs\Warmup.csv</code></pre>
+
+    <h2 id="notes">Notes</h2>
+    <p>Schedule with Task Scheduler: program powershell.exe, arguments -NoProfile -ExecutionPolicy Bypass -File D:\Scripts\Invoke-SPWarmup.ps1 -LogFile D:\Logs\Warmup.csv Tick &quot;Run whether user is logged on or not&quot;.</p>
+
+    <h2 id="source">Full script</h2>
+    <!-- Keep this in sync with Invoke-SPWarmup.ps1 in this folder. -->
+    <pre><code class="language-powershell">&lt;#
+.SYNOPSIS
+    Warms up SharePoint web applications by requesting their pages after an app pool recycle.
+
+.DESCRIPTION
+    Requests the home page of every site collection (and optionally every subsite) in
+    each web application, plus one application page per web application, so ASP.NET
+    compiles and caches everything before users arrive. Logs the HTTP status and
+    response time of every request.
+
+    Run it on every web server, 10 to 15 minutes after the scheduled application pool
+    recycle, as an account with read access to the sites. To warm the local server
+    rather than whichever server the load balancer picks, add hosts file entries on
+    each web server that point the site host names at that server&#x27;s own IP address,
+    and list those host names in the BackConnectionHostNames registry value.
+
+    Read-only: it only sends GET requests.
+
+.PARAMETER WebApplication
+    One or more web application URLs. Default: every web application except Central Administration.
+
+.PARAMETER IncludeSubsites
+    Also request every subsite, not just site collection home pages.
+
+.PARAMETER IncludeCentralAdmin
+    Also warm up Central Administration.
+
+.PARAMETER ExtraUrl
+    Additional URLs to request, for example a search results page.
+
+.PARAMETER TimeoutSec
+    Timeout per request. Default 180 seconds (the first request after a recycle can be slow).
+
+.PARAMETER LogFile
+    CSV log of every request.
+
+.EXAMPLE
+    .\Invoke-SPWarmup.ps1
+
+.EXAMPLE
+    .\Invoke-SPWarmup.ps1 -WebApplication https://sharepoint.ravindran.in -IncludeSubsites -ExtraUrl https://sharepoint.ravindran.in/search/Pages/results.aspx?k=test -LogFile D:\Logs\Warmup.csv
+
+.NOTES
+    Schedule with Task Scheduler: program powershell.exe, arguments
+    -NoProfile -ExecutionPolicy Bypass -File D:\Scripts\Invoke-SPWarmup.ps1 -LogFile D:\Logs\Warmup.csv
+    Tick &quot;Run whether user is logged on or not&quot;.
+#&gt;
+[CmdletBinding()]
+param(
+    [string[]]$WebApplication,
+    [switch]$IncludeSubsites,
+    [switch]$IncludeCentralAdmin,
+    [string[]]$ExtraUrl,
+    [int]$TimeoutSec = 180,
+    [string]$LogFile = (Join-Path -Path (Get-Location) -ChildPath (&#x27;Warmup_{0:yyyyMMdd_HHmm}.csv&#x27; -f (Get-Date)))
+)
+
+if (-not (Get-Command Get-SPWebApplication -ErrorAction SilentlyContinue)) {
+    Add-PSSnapin Microsoft.SharePoint.PowerShell -ErrorAction SilentlyContinue
+}
+if (-not (Get-Command Get-SPWebApplication -ErrorAction SilentlyContinue)) {
+    throw &#x27;SharePoint cmdlets are not available. Run this on a farm server from the SharePoint Management Shell.&#x27;
+}
+
+# _layouts/15 for 2013 and later; _layouts for 2010
+$layouts = if ((Get-SPFarm).BuildVersion.Major -ge 15) { &#x27;_layouts/15&#x27; } else { &#x27;_layouts&#x27; }
+
+$webApps = if ($WebApplication) { $WebApplication | ForEach-Object { Get-SPWebApplication -Identity $_ } }
+           else { Get-SPWebApplication }
+if ($IncludeCentralAdmin) {
+    $webApps = @($webApps) + @(Get-SPWebApplication -IncludeCentralAdministration | Where-Object { $_.IsAdministrationWebApplication })
+}
+
+# Build the URL list
+$urls = New-Object System.Collections.Generic.List[string]
+foreach ($wa in $webApps) {
+    $root = $wa.Url.TrimEnd(&#x27;/&#x27;)
+    $urls.Add(&quot;$root/$layouts/viewlsts.aspx&quot;)
+    foreach ($site in Get-SPSite -WebApplication $wa -Limit All) {
+        try {
+            if ($IncludeSubsites) {
+                foreach ($web in $site.AllWebs) {
+                    try { $urls.Add($web.Url) } finally { $web.Dispose() }
+                }
+            }
+            else {
+                $urls.Add($site.Url)
+            }
+        }
+        finally { $site.Dispose() }
+    }
+}
+foreach ($u in $ExtraUrl) { $urls.Add($u) }
+$urls = $urls | Select-Object -Unique
+
+Write-Host &quot;Warming up $(@($urls).Count) URLs on $env:COMPUTERNAME...&quot; -ForegroundColor Cyan
+$log = New-Object System.Collections.Generic.List[object]
+$i = 0
+
+foreach ($url in $urls) {
+    $i++
+    Write-Progress -Activity &#x27;Warming up&#x27; -Status $url -PercentComplete (($i / [math]::Max(@($urls).Count, 1)) * 100)
+    $timer = [System.Diagnostics.Stopwatch]::StartNew()
+    $status = $null; $message = &#x27;&#x27;
+    try {
+        $response = Invoke-WebRequest -Uri $url -UseDefaultCredentials -UseBasicParsing -TimeoutSec $TimeoutSec -ErrorAction Stop
+        $status = [int]$response.StatusCode
+    }
+    catch {
+        if ($_.Exception.Response) { $status = [int]$_.Exception.Response.StatusCode }
+        $message = $_.Exception.Message
+    }
+    $timer.Stop()
+    $log.Add([pscustomobject]@{
+        Time    = Get-Date
+        Server  = $env:COMPUTERNAME
+        Url     = $url
+        Status  = $status
+        Seconds = [math]::Round($timer.Elapsed.TotalSeconds, 2)
+        Error   = $message
+    })
+}
+Write-Progress -Activity &#x27;Warming up&#x27; -Completed
+
+$log | Export-Csv -Path $LogFile -NoTypeInformation -Encoding UTF8 -Append
+$failed = @($log | Where-Object { $_.Status -ne 200 })
+Write-Host (&quot;Done. {0} URLs, {1} failed, slowest {2}s.&quot; -f $log.Count, $failed.Count, ($log | Measure-Object Seconds -Maximum).Maximum)
+if ($failed.Count) { $failed | Select-Object Url, Status, Error | Format-Table -AutoSize -Wrap | Out-Host }
+Write-Host &quot;Log: $LogFile&quot; -ForegroundColor Green
+</code></pre>
+
+    <nav class="pager" aria-label="More scripts">
+      <a class="prev" href="invoke-sppostpatchconfig.html"><span>Previous script</span>Invoke-SPPostPatchConfig</a>
+      <a class="next" href="set-spblobcache.html"><span>Next script</span>Set-SPBlobCache</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

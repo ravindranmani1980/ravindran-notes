@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Library schemas and content type IDs | Notes | Ravindran Mani</title>
+<meta name="description" content="Content type IDs from 0x down, list templates, schema.xml, and building custom libraries the right way.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html" aria-current="page">SharePoint</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 10 of 14</p>
+    <ol>
+      <li><a href="#content-type-ids-reading-the-0x">Content type IDs: reading the 0x</a></li>
+      <li><a href="#list-templates-and-base-types">List templates and base types</a></li>
+      <li><a href="#inside-a-library-definition-schemaxml">Inside a library definition (schema.xml)</a></li>
+      <li><a href="#custom-library-templates-four-approaches">Custom library templates: four approaches</a></li>
+      <li><a href="#explore-content-types-with-powershell">Explore content types with PowerShell</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">SharePoint</a> / Guide 10</p>
+    <h1>Library schemas and content type IDs</h1>
+    <p class="lead">Content type IDs from 0x down, list templates, schema.xml, and building custom libraries the right way.</p>
+
+<p>Every list and library in SharePoint is defined by a <strong>list template</strong> (what kind of list it is) and a set of <strong>content types</strong> (what kinds of items it holds). Content type IDs, the long values starting with <code>0x</code>, encode the whole inheritance chain. Once you can read them, a lot of SharePoint's behaviour makes sense.</p>
+<h2 id="content-type-ids-reading-the-0x">Content type IDs: reading the 0x</h2>
+<p>A content type ID is a hexadecimal string that contains its parent's ID. Reading from the left, you can see every ancestor:</p>
+<pre><code>0x                      System (the root of everything)
+0x01                    Item
+0x0101                  Document          (Item + 01)
+0x010101                Form              (Document + 01)
+0x0120                  Folder            (Item + 20)
+0x0120D520              Document Set      (Folder + D520)
+</code></pre>
+<p>So a content type whose ID starts with <code>0x0101</code> is a kind of Document, and anything starting with <code>0x0120</code> is a kind of Folder.</p>
+<h3 id="well-known-content-type-ids">Well-known content type IDs</h3>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Content type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0x</code></td>
+<td>System</td>
+</tr>
+<tr>
+<td><code>0x01</code></td>
+<td>Item</td>
+</tr>
+<tr>
+<td><code>0x0101</code></td>
+<td>Document</td>
+</tr>
+<tr>
+<td><code>0x010101</code></td>
+<td>Form</td>
+</tr>
+<tr>
+<td><code>0x010102</code></td>
+<td>Picture</td>
+</tr>
+<tr>
+<td><code>0x010105</code></td>
+<td>Master Page</td>
+</tr>
+<tr>
+<td><code>0x010108</code></td>
+<td>Wiki Page</td>
+</tr>
+<tr>
+<td><code>0x010109</code></td>
+<td>Basic Page</td>
+</tr>
+<tr>
+<td><code>0x01010901</code></td>
+<td>Web Part Page</td>
+</tr>
+<tr>
+<td><code>0x01010A</code></td>
+<td>Link to a Document</td>
+</tr>
+<tr>
+<td><code>0x0102</code></td>
+<td>Event</td>
+</tr>
+<tr>
+<td><code>0x0103</code></td>
+<td>Issue</td>
+</tr>
+<tr>
+<td><code>0x0104</code></td>
+<td>Announcement</td>
+</tr>
+<tr>
+<td><code>0x0105</code></td>
+<td>Link</td>
+</tr>
+<tr>
+<td><code>0x0106</code></td>
+<td>Contact</td>
+</tr>
+<tr>
+<td><code>0x0107</code></td>
+<td>Message</td>
+</tr>
+<tr>
+<td><code>0x0108</code></td>
+<td>Task</td>
+</tr>
+<tr>
+<td><code>0x0109</code></td>
+<td>Workflow History</td>
+</tr>
+<tr>
+<td><code>0x0120</code></td>
+<td>Folder</td>
+</tr>
+<tr>
+<td><code>0x012002</code></td>
+<td>Discussion</td>
+</tr>
+<tr>
+<td><code>0x0120D520</code></td>
+<td>Document Set</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Check any of these in your own site with the snippets at the end of this guide; Microsoft adds new built-in content types over time.</p>
+<h3 id="building-your-own-ids">Building your own IDs</h3>
+<p>There are two ways to extend an ID:</p>
+<ol>
+<li><strong>Parent ID + two hex digits</strong> (not <code>00</code>), for example <code>0x0101</code> + <code>01</code> = <code>0x010101</code>. Microsoft uses this for built-in types, so avoid it for your own.</li>
+<li><strong>Parent ID + <code>00</code> + a GUID</strong> without dashes. This is the right way for custom content types, because the GUID guarantees uniqueness:</li>
+</ol>
+<p><code>0x0101 00 A1B2C3D4E5F6478890ABCDEF12345678
+   = 0x010100A1B2C3D4E5F6478890ABCDEF12345678    "Contract", based on Document</code></p>
+<p>A child of that type then adds two digits: <code>0x010100A1B2C3D4E5F6478890ABCDEF1234567801</code> for "Supplier contract".</p>
+<p>Content type IDs can be up to 1,024 characters long, so deep hierarchies are possible. In practice, keep them to two or three levels.</p>
+<p><strong>When a content type is added to a list,</strong> SharePoint creates a <strong>list content type</strong> as a child of the site content type, so its ID in the list is longer than the site version. That's normal: code should compare with "starts with" rather than "equals".</p>
+<h2 id="list-templates-and-base-types">List templates and base types</h2>
+<p>Every list is created from a list template, identified by a number (<code>BaseTemplate</code>), and belongs to a <code>BaseType</code>.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>BaseTemplate</th>
+<th>List template</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>100</td>
+<td>Custom list</td>
+</tr>
+<tr>
+<td>101</td>
+<td>Document library</td>
+</tr>
+<tr>
+<td>102</td>
+<td>Survey</td>
+</tr>
+<tr>
+<td>103</td>
+<td>Links</td>
+</tr>
+<tr>
+<td>104</td>
+<td>Announcements</td>
+</tr>
+<tr>
+<td>105</td>
+<td>Contacts</td>
+</tr>
+<tr>
+<td>106</td>
+<td>Calendar (events)</td>
+</tr>
+<tr>
+<td>107</td>
+<td>Tasks (2010 style)</td>
+</tr>
+<tr>
+<td>108</td>
+<td>Discussion board</td>
+</tr>
+<tr>
+<td>109</td>
+<td>Picture library</td>
+</tr>
+<tr>
+<td>115</td>
+<td>Form library (InfoPath)</td>
+</tr>
+<tr>
+<td>116</td>
+<td>Master page gallery</td>
+</tr>
+<tr>
+<td>119</td>
+<td>Wiki page library (Site Pages)</td>
+</tr>
+<tr>
+<td>130</td>
+<td>Data connection library</td>
+</tr>
+<tr>
+<td>140</td>
+<td>Workflow history</td>
+</tr>
+<tr>
+<td>150</td>
+<td>Project tasks</td>
+</tr>
+<tr>
+<td>170</td>
+<td>Promoted links</td>
+</tr>
+<tr>
+<td>171</td>
+<td>Tasks (2013 and later)</td>
+</tr>
+<tr>
+<td>850</td>
+<td>Pages library (publishing)</td>
+</tr>
+<tr>
+<td>851</td>
+<td>Asset library</td>
+</tr>
+<tr>
+<td>1100</td>
+<td>Issue tracking</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>BaseType</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>Generic list</td>
+</tr>
+<tr>
+<td>1</td>
+<td>Document library</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Discussion board (legacy)</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Survey</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Issue</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="inside-a-library-definition-schemaxml">Inside a library definition (schema.xml)</h2>
+<p>On SharePoint Server, the out-of-the-box document library is defined in the hive under <code>TEMPLATE\FEATURES\DocumentLibrary\DocLib\schema.xml</code>. A list definition has four main parts:</p>
+<ul>
+<li><strong><code>&lt;ContentTypes&gt;</code></strong>: which content types the library starts with (for a document library, Document <code>0x0101</code> and Folder <code>0x0120</code>).</li>
+<li><strong><code>&lt;Fields&gt;</code></strong>: columns defined only for this list.</li>
+<li><strong><code>&lt;Views&gt;</code></strong>: the views, written in CAML.</li>
+<li><strong><code>&lt;Forms&gt;</code></strong>: the display, edit and new forms.</li>
+</ul>
+<p>The feature's <code>elements.xml</code> registers the template with a <code>&lt;ListTemplate&gt;</code> element that gives it a <code>Type</code> (the BaseTemplate number), a <code>BaseType</code>, a name and an icon.</p>
+<p><strong>Don't edit the built-in schema.xml files.</strong> Changes are overwritten by updates and make upgrades fail.</p>
+<p>Some core document library columns you'll meet in CAML, PowerShell and REST (use the internal name):</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Internal name</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>FileLeafRef</code></td>
+<td>File name</td>
+</tr>
+<tr>
+<td><code>FileRef</code></td>
+<td>Server-relative URL</td>
+</tr>
+<tr>
+<td><code>ContentTypeId</code></td>
+<td>The item's content type ID</td>
+</tr>
+<tr>
+<td><code>FSObjType</code></td>
+<td>0 = file, 1 = folder</td>
+</tr>
+<tr>
+<td><code>_UIVersionString</code></td>
+<td>Version label, e.g. 3.0</td>
+</tr>
+<tr>
+<td><code>CheckoutUser</code></td>
+<td>Who has it checked out</td>
+</tr>
+<tr>
+<td><code>Author</code> / <code>Editor</code></td>
+<td>Created by / Modified by</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="custom-library-templates-four-approaches">Custom library templates: four approaches</h2>
+<p><strong>1. Save as template (.stp).</strong> List settings &gt; Save list as template stores the library (optionally with content) in the List Template Gallery (BaseTemplate 114). Quick, but tied to the site's features and language, and not suitable for repeatable deployment.</p>
+<p><strong>2. Feature-based list definition (farm solution).</strong> A <code>&lt;ListTemplate&gt;</code> plus your own <code>schema.xml</code>, deployed in a WSP. This was the standard approach in 2007 and 2010. It works only on-premises, and custom list definitions make upgrades and migrations harder, so avoid it for new work.</p>
+<p><strong>3. Content types + provisioning (recommended).</strong> Create the library from the standard Document Library template (101), and add your site columns and content types with a provisioning script. The library stays "standard", so upgrades and migrations stay simple. PnP provisioning templates make this repeatable:</p>
+<pre><code class="language-powershell"># Capture from a reference site
+Get-PnPSiteTemplate -Out .\ContractsLibrary.xml -Handlers Fields, ContentTypes, Lists
+# Apply to a new site
+Invoke-PnPSiteTemplate -Path .\ContractsLibrary.xml
+</code></pre>
+<p><strong>4. SharePoint Online site scripts and list templates.</strong> In Microsoft 365, site scripts (<code>createSPList</code> action) and custom list templates (<code>Add-SPOListDesign</code>) let users create your library from the "New" menu, with your columns and views already in place.</p>
+<h2 id="explore-content-types-with-powershell">Explore content types with PowerShell</h2>
+<p><strong>SharePoint Server:</strong></p>
+<pre><code class="language-powershell">$web = Get-SPWeb https://sharepoint.ravindran.in/sites/HR
+$web.ContentTypes |
+    Select-Object Name, @{n='Id';e={$_.Id.ToString()}}, @{n='Parent';e={$_.Parent.Name}}, Group, Hidden |
+    Sort-Object Id | Format-Table -AutoSize
+$web.Dispose()
+</code></pre>
+<p><strong>Which content types a library uses:</strong></p>
+<pre><code class="language-powershell">$web  = Get-SPWeb https://sharepoint.ravindran.in/sites/HR
+$list = $web.Lists[&quot;Documents&quot;]
+$list.ContentTypes | Select-Object Name, @{n='Id';e={$_.Id.ToString()}}
+&quot;BaseTemplate: $($list.BaseTemplate)  BaseType: $($list.BaseType)&quot;
+$web.Dispose()
+</code></pre>
+<p><strong>SharePoint Online (PnP.PowerShell):</strong></p>
+<pre><code class="language-powershell">Connect-PnPOnline -Url https://sharepointonline.ravindran.in/sites/HR -ClientId $env:PNP_CLIENT_ID -Interactive
+Get-PnPContentType | Select-Object Name, @{n='Id';e={$_.Id.StringValue}}, Group | Sort-Object Id
+Get-PnPContentType -List &quot;Documents&quot;
+</code></pre>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="blob-cache.html"><span>Previous guide</span>BLOB cache: why and how</a>
+      <a class="next" href="reporting-and-bi.html"><span>Next guide</span>Reporting and BI: SSRS, analytics and Power BI</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

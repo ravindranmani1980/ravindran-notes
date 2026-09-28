@@ -1,155 +1,73 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
 <title>SharePoint | Notes | Ravindran Mani</title>
-<meta name="description" content="SharePoint guides and PowerShell scripts from 2005 to 2024.">
-<meta name="author" content="Ravindran Mani">
-<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/site.css">
+<meta content="SharePoint guides and PowerShell scripts from 2005 to 2024." name="description"/>
+<meta content="Ravindran Mani" name="author"/>
+<link href="../assets/favicon.svg" rel="icon" type="image/svg+xml"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="../assets/site.css" rel="stylesheet"/>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="site-header">
-  <div class="wrap header-row">
-    <a class="brand" href="../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
-    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
-    <nav id="site-nav" class="site-nav" aria-label="Main">
-      <ul>
-        <li><a href="../index.html">Home</a></li>
-        <li><a href="../sharepoint/index.html" aria-current="page">SharePoint</a></li>
-        <!-- Add each topic here when it goes live, for example:
+<div class="wrap header-row">
+<a class="brand" href="../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+<button aria-controls="site-nav" aria-expanded="false" class="menu-toggle" type="button">Menu</button>
+<nav aria-label="Main" class="site-nav" id="site-nav">
+<ul>
+<li><a href="../index.html">Home</a></li>
+<li><a aria-current="page" href="../sharepoint/index.html">SharePoint</a></li>
+<!-- Add each topic here when it goes live, for example:
         <li><a href="../azure/index.html">Azure</a></li>
         <li><a href="../aws/index.html">AWS</a></li>
         <li><a href="../finops/index.html">FinOps</a></li>
         -->
-        <li><a href="../scripts/index.html">Scripts</a></li>
-        <li><a href="../about.html">About</a></li>
-        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
-      </ul>
-    </nav>
-  </div>
+<li><a href="../scripts/index.html">Scripts</a></li>
+<li><a href="../about.html">About</a></li>
+<li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+</ul>
+</nav>
+</div>
 </header>
 <main id="main">
 <section class="topic-head">
-  <div class="wrap">
-    <p class="crumbs"><a href="../index.html">Notes</a> / SharePoint</p>
-    <h1>SharePoint</h1>
-    <p class="lead">Nineteen years of running, upgrading and migrating SharePoint, from on-premises farms to SharePoint Online. 5 guides to read in order, and 12 PowerShell scripts.</p>
-  </div>
+<div class="wrap">
+<p class="crumbs"><a href="../index.html">Notes</a> / SharePoint</p>
+<h1>SharePoint</h1>
+<p class="lead">Nineteen years of running, upgrading and migrating SharePoint, from on-premises farms to SharePoint Online. 14 guides to read in order, and 18 PowerShell scripts.</p>
+</div>
+</section>
+<section aria-labelledby="span-h" class="span">
+<div class="wrap">
+<h2 id="span-h">2005 to 2024</h2>
+<p class="muted span-intro">Every major release in between. The tips come from real farms and tenants, not lab notes.</p>
+<ol class="releases">
+<li><span class="year">2003</span><span class="rel">SharePoint Portal Server 2003</span></li>
+<li><span class="year">2007</span><span class="rel">MOSS 2007</span></li>
+<li><span class="year">2010</span><span class="rel">SharePoint 2010</span></li>
+<li><span class="year">2013</span><span class="rel">SharePoint 2013</span></li>
+<li><span class="year">2016</span><span class="rel">SharePoint 2016</span></li>
+<li><span class="year">2019</span><span class="rel">SharePoint 2019</span></li>
+<li><span class="year">2021</span><span class="rel">Subscription Edition</span></li>
+<li><span class="year">Cloud</span><span class="rel">SharePoint Online</span></li>
+</ol>
+</div>
 </section>
 
-<section class="span" aria-labelledby="span-h">
-  <div class="wrap">
-    <h2 id="span-h">2005 to 2024</h2>
-    <p class="muted span-intro">Every major release in between. The tips come from real farms and tenants, not lab notes.</p>
-    <ol class="releases">
-      <li><span class="year">2003</span><span class="rel">SharePoint Portal Server 2003</span></li>
-      <li><span class="year">2007</span><span class="rel">MOSS 2007</span></li>
-      <li><span class="year">2010</span><span class="rel">SharePoint 2010</span></li>
-      <li><span class="year">2013</span><span class="rel">SharePoint 2013</span></li>
-      <li><span class="year">2016</span><span class="rel">SharePoint 2016</span></li>
-      <li><span class="year">2019</span><span class="rel">SharePoint 2019</span></li>
-      <li><span class="year">2021</span><span class="rel">Subscription Edition</span></li>
-      <li><span class="year">Cloud</span><span class="rel">SharePoint Online</span></li>
-    </ol>
-  </div>
-</section>
 
-<section class="block" aria-labelledby="guides-h">
-  <div class="wrap two-col">
-    <div class="col-head">
-      <h2 id="guides-h">Guides</h2>
-      <p class="muted">Read in order if you're new; jump to troubleshooting if something is on fire.</p>
-    </div>
-    <ol class="guide-list">
-      <li><a href="guides/getting-started.html"><span class="num">01</span><span class="gtext"><span class="gtitle">Getting started</span><span class="gsum">Which shell to use for what, installing the modules, and signing in to SharePoint Online.</span></span></a></li>
-      <li><a href="guides/on-premises-tips.html"><span class="num">02</span><span class="gtext"><span class="gtitle">SharePoint Server (on-premises) tips</span><span class="gsum">Farm administration from SharePoint 2010 to Subscription Edition: ULS, patching, recovery, performance.</span></span></a></li>
-      <li><a href="guides/sharepoint-online-tips.html"><span class="num">03</span><span class="gtext"><span class="gtitle">SharePoint Online tips</span><span class="gsum">PnP.PowerShell and the SPO module in practice: paging, batching, sharing, recovery, storage.</span></span></a></li>
-      <li><a href="guides/migration-tips.html"><span class="num">04</span><span class="gtext"><span class="gtitle">Migration tips</span><span class="gsum">Planning and running migrations from file shares, older farms and SharePoint Server to Online.</span></span></a></li>
-      <li><a href="guides/troubleshooting.html"><span class="num">05</span><span class="gtext"><span class="gtitle">Troubleshooting</span><span class="gsum">Common error messages and what actually fixes them.</span></span></a></li>
-    </ol>
-  </div>
-</section>
 
-<section class="block block-alt" aria-labelledby="scripts-h">
-  <div class="wrap">
-    <div class="col-head wide">
-      <h2 id="scripts-h">Scripts</h2>
-      <p class="muted">Every script has built-in help (<code>Get-Help .\Script.ps1 -Full</code>). Reports are read-only; scripts that change data support <code>-WhatIf</code>.</p>
-    </div>
-    <div class="script-columns">
-    <section class="script-group">
-      <h3>SharePoint Server</h3>
-      <p class="muted">Run on a farm server from the SharePoint Management Shell.</p>
-      <ul class="script-list">
-      <li><a class="script-link" href="scripts/get-spfarminventory.html">Get-SPFarmInventory</a>
-        <p>Builds a CSV inventory of a SharePoint Server farm.</p></li>
-      <li><a class="script-link" href="scripts/get-splargelists.html">Get-SPLargeLists</a>
-        <p>Finds lists and libraries that are approaching or over the list view threshold.</p></li>
-      <li><a class="script-link" href="scripts/get-splogsbycorrelation.html">Get-SPLogsByCorrelation</a>
-        <p>Collects ULS log entries for a correlation ID from the whole farm.</p></li>
-      <li><a class="script-link" href="scripts/get-spsitestoragereport.html">Get-SPSiteStorageReport</a>
-        <p>Reports storage, quota use and staleness for every site collection.</p></li>
-      <li><a class="script-link" href="scripts/test-spupgradereadiness.html">Test-SPUpgradeReadiness</a>
-        <p>Runs Test-SPContentDatabase and produces one readable report for upgrade planning.</p></li>
-      </ul>
-    </section>
-    <section class="script-group">
-      <h3>SharePoint Online</h3>
-      <p class="muted">Run from any workstation with the SPO module or PnP.PowerShell.</p>
-      <ul class="script-list">
-      <li><a class="script-link" href="scripts/get-spoexternalusersreport.html">Get-SPOExternalUsersReport</a>
-        <p>Lists guest (external) users on every SharePoint Online site that allows sharing.</p></li>
-      <li><a class="script-link" href="scripts/get-spolistsnearthreshold.html">Get-SPOListsNearThreshold</a>
-        <p>Finds large lists and libraries in a SharePoint Online site and shows their indexes.</p></li>
-      <li><a class="script-link" href="scripts/get-spositeinventory.html">Get-SPOSiteInventory</a>
-        <p>Tenant-wide SharePoint Online site inventory: storage, sharing, staleness, hubs.</p></li>
-      <li><a class="script-link" href="scripts/get-spouniquepermissions.html">Get-SPOUniquePermissions</a>
-        <p>Reports where permission inheritance is broken in a SharePoint Online site.</p></li>
-      <li><a class="script-link" href="scripts/remove-spooldfileversions.html">Remove-SPOOldFileVersions</a>
-        <p>Trims old file versions in a document library, keeping the newest N versions.</p></li>
-      <li><a class="script-link" href="scripts/restore-sporecyclebinbyuser.html">Restore-SPORecycleBinByUser</a>
-        <p>Restores items that one user deleted in a time window (mass-deletion recovery).</p></li>
-      </ul>
-    </section>
-    <section class="script-group">
-      <h3>Migration</h3>
-      <p class="muted">Pre-migration checks that run anywhere PowerShell can read the source.</p>
-      <ul class="script-list">
-      <li><a class="script-link" href="scripts/find-migrationblockers.html">Find-MigrationBlockers</a>
-        <p>Scans a file share (or any folder) for problems that block or complicate a move to SharePoint Online / OneDrive.</p></li>
-      </ul>
-    </section>
-    </div>
-  </div>
-</section>
-
-<section class="block" aria-labelledby="env-h">
-  <div class="wrap two-col">
-    <div class="col-head">
-      <h2 id="env-h">Test environments</h2>
-      <p class="muted">Every example uses these URLs. Swap in your own.</p>
-    </div>
-    <div class="table-wrap">
-      <table class="env">
-        <tr><th scope="row">SharePoint Server test farm</th><td><code>https://sharepoint.ravindran.in</code></td></tr>
-        <tr><th scope="row">SharePoint Online test tenant</th><td><code>https://sharepointonline.ravindran.in</code></td></tr>
-        <tr><th scope="row">SharePoint Online admin center</th><td><code>https://sharepointonline-admin.ravindran.in</code></td></tr>
-      </table>
-    </div>
-  </div>
-</section>
-</main>
+<section aria-labelledby="explore-h" class="block"><div class="wrap"><div class="col-head wide"><h2 id="explore-h">Explore SharePoint notes</h2><p class="muted">Open only the section you need. This keeps the SharePoint landing page small and quick to load.</p></div><ul class="topic-list"><li><a class="topic-row" href="guides/"><span class="tname">Guides</span><span class="tdesc">14 practical guides covering architecture, operations, Online and migration.</span><span class="st st-live">Open</span></a></li><li><a class="topic-row" href="scripts/"><span class="tname">Scripts</span><span class="tdesc">18 documented PowerShell scripts for Server, Online and migration work.</span><span class="st st-live">Open</span></a></li><li><a class="topic-row" href="environment/"><span class="tname">Test environments</span><span class="tdesc">Reference URLs used consistently throughout examples.</span><span class="st">Reference</span></a></li></ul></div></section></main>
 <footer class="site-footer">
-  <div class="wrap footer-row">
-    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
-    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
-  </div>
+<div class="wrap footer-row">
+<p>© 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+<p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+</div>
 </footer>
 <script src="../assets/site.js"></script>
 </body>

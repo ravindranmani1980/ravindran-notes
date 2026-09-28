@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Search: from 2003 to today | Notes | Ravindran Mani</title>
+<meta name="description" content="Every generation of SharePoint search, and how to manage today&#x27;s search topology.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html" aria-current="page">SharePoint</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 4 of 14</p>
+    <ol>
+      <li><a href="#2003-two-separate-engines">2003: two separate engines</a></li>
+      <li><a href="#2007-the-shared-services-provider-era">2007: the Shared Services Provider era</a></li>
+      <li><a href="#2010-scale-out-search-and-fast-as-an-add-on">2010: scale-out search and FAST as an add-on</a></li>
+      <li><a href="#2013-one-engine-rebuilt">2013: one engine, rebuilt</a></li>
+      <li><a href="#2016-to-subscription-edition-hybrid-and-modern">2016 to Subscription Edition: hybrid and modern</a></li>
+      <li><a href="#sharepoint-online-microsoft-search">SharePoint Online: Microsoft Search</a></li>
+      <li><a href="#working-with-search-in-powershell-2013-and-later">Working with search in PowerShell (2013 and later)</a></li>
+      <li><a href="#tips-from-the-field">Tips from the field</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">SharePoint</a> / Guide 4</p>
+    <h1>Search: from 2003 to today</h1>
+    <p class="lead">Every generation of SharePoint search, and how to manage today&#x27;s search topology.</p>
+
+<p>Search is the SharePoint component that has changed the most. Each generation brought a different engine, a different topology and a different way to administer it.</p>
+<h2 id="2003-two-separate-engines">2003: two separate engines</h2>
+<ul>
+<li><strong>Windows SharePoint Services 2.0</strong> sites used <strong>SQL Server full-text search</strong> on the content database. It worked within a site and nothing more.</li>
+<li><strong>SharePoint Portal Server 2003</strong> had its own engine built on the Microsoft Search (MSSearch) service, with content sources, crawls, search scopes and a portal-wide index.</li>
+</ul>
+<h2 id="2007-the-shared-services-provider-era">2007: the Shared Services Provider era</h2>
+<ul>
+<li>WSS 3.0 had a basic built-in search limited to site content.</li>
+<li><strong>MOSS 2007</strong> search ran in the Shared Services Provider. One <strong>index server</strong> crawled content and built the index, then <strong>propagated</strong> it to the query servers.</li>
+<li>Admins got content sources, crawl rules, scopes, managed properties and best bets.</li>
+<li>The single index server was the weak spot: it was a single point of failure and a hard scaling limit.</li>
+<li>Microsoft also released <strong>Search Server 2008</strong> (and a free Express edition) for search without the rest of SharePoint.</li>
+</ul>
+<h2 id="2010-scale-out-search-and-fast-as-an-add-on">2010: scale-out search and FAST as an add-on</h2>
+<ul>
+<li><strong>SharePoint Server 2010 search</strong> split crawling from querying. You could run several <strong>crawl components</strong> (each with a crawl database) and several <strong>query components</strong>, with the index split into <strong>partitions</strong> and <strong>mirrors</strong>.</li>
+<li><strong>Refiners</strong>, people search with phonetic matching, and better relevance arrived.</li>
+<li><strong>FAST Search Server 2010 for SharePoint</strong> was a separate product and farm for organisations that needed more: entity extraction, deep refiners, document thumbnails and custom content processing.</li>
+</ul>
+<h2 id="2013-one-engine-rebuilt">2013: one engine, rebuilt</h2>
+<p>SharePoint 2013 merged FAST into SharePoint itself. The search system is made of six component types:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Crawl</td>
+<td>Fetches content from content sources</td>
+</tr>
+<tr>
+<td>Content processing</td>
+<td>Parses documents, extracts metadata, maps crawled properties to managed properties</td>
+</tr>
+<tr>
+<td>Analytics processing</td>
+<td>Usage and search analytics, popularity, recommendations</td>
+</tr>
+<tr>
+<td>Index</td>
+<td>Stores the index; scales out in <strong>partitions</strong>, made resilient with <strong>replicas</strong></td>
+</tr>
+<tr>
+<td>Query processing</td>
+<td>Handles queries, applies query rules</td>
+</tr>
+<tr>
+<td>Search administration</td>
+<td>Runs the search system itself</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Other changes that are still with us:</p>
+<ul>
+<li><strong>Result sources</strong> replaced scopes and federated locations.</li>
+<li><strong>Query rules</strong>, <strong>result types</strong> and <strong>display templates</strong> control what users see.</li>
+<li><strong>Continuous crawl</strong> for SharePoint content keeps the index fresh within minutes.</li>
+<li>The topology is changed only with <strong>PowerShell</strong>, never in Central Administration.</li>
+</ul>
+<h2 id="2016-to-subscription-edition-hybrid-and-modern">2016 to Subscription Edition: hybrid and modern</h2>
+<ul>
+<li><strong>Cloud hybrid search</strong> (2016, also back-ported to 2013) indexes on-premises content into the Microsoft 365 index, so users see on-premises and cloud results together in SharePoint Online.</li>
+<li>The <strong>Search</strong> MinRole role keeps search on its own servers.</li>
+<li>2019 and Subscription Edition add the <strong>modern search</strong> box and results in modern sites. The engine underneath is the 2013 design.</li>
+</ul>
+<h2 id="sharepoint-online-microsoft-search">SharePoint Online: Microsoft Search</h2>
+<p>In Microsoft 365 you don't manage a topology. <strong>Microsoft Search</strong> gives one search across SharePoint, OneDrive, Teams and Outlook. Admins manage bookmarks, acronyms, verticals and result types in the Microsoft 365 admin center, and <strong>Microsoft Graph connectors</strong> bring in content from other systems. The community <strong>PnP Modern Search</strong> web parts are widely used to build custom search pages.</p>
+<h2 id="working-with-search-in-powershell-2013-and-later">Working with search in PowerShell (2013 and later)</h2>
+<p><strong>Health at a glance:</strong></p>
+<pre><code class="language-powershell">$ssa = Get-SPEnterpriseSearchServiceApplication
+Get-SPEnterpriseSearchStatus -SearchApplication $ssa -Text
+Get-SPEnterpriseSearchCrawlContentSource -SearchApplication $ssa |
+    Select-Object Name, CrawlState, CrawlCompleted
+</code></pre>
+<p><strong>See the active topology:</strong></p>
+<pre><code class="language-powershell">$active = Get-SPEnterpriseSearchTopology -SearchApplication $ssa -Active
+Get-SPEnterpriseSearchComponent -SearchTopology $active |
+    Select-Object Name, ServerName | Sort-Object ServerName
+</code></pre>
+<p><strong>Change the topology</strong> (clone, change the clone, activate it). This example adds a query processing component on another server:</p>
+<pre><code class="language-powershell">$ssa    = Get-SPEnterpriseSearchServiceApplication
+$active = Get-SPEnterpriseSearchTopology -SearchApplication $ssa -Active
+$clone  = New-SPEnterpriseSearchTopology -SearchApplication $ssa -Clone -SearchTopology $active
+
+$si = Get-SPEnterpriseSearchServiceInstance -Identity &quot;SP-SRCH02&quot;
+Start-SPEnterpriseSearchServiceInstance -Identity $si
+New-SPEnterpriseSearchQueryProcessingComponent -SearchTopology $clone -SearchServiceInstance $si
+
+Set-SPEnterpriseSearchTopology -Identity $clone
+</code></pre>
+<p><strong>Pause search</strong> during patching or maintenance, and resume it afterwards:</p>
+<pre><code class="language-powershell">Suspend-SPEnterpriseSearchServiceApplication -Identity $ssa
+Resume-SPEnterpriseSearchServiceApplication  -Identity $ssa
+</code></pre>
+<h2 id="tips-from-the-field">Tips from the field</h2>
+<ul>
+<li><strong>Crawl a dedicated target.</strong> Point the crawl server at a web server that isn't in the user load balancer (for example with a hosts file entry on the crawl server), so crawls don't slow down users.</li>
+<li><strong>Give the crawl account read access only</strong>, through the web application's "Full Read" user policy. Never use a farm admin account.</li>
+<li><strong>Keep an eye on the crawl log.</strong> A spike in errors usually means a permissions change, an expired certificate or a site that was moved.</li>
+<li><strong>Resetting the index is a last resort.</strong> It empties search for every user until the full crawl completes. Try a full crawl of the problem content source first.</li>
+<li><strong>Plan index size.</strong> Each index partition holds a limited number of items. Add partitions before you reach the limit, not after.</li>
+</ul>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="services-and-server-roles.html"><span>Previous guide</span>Services and server roles (MinRole)</a>
+      <a class="next" href="single-sign-on.html"><span>Next guide</span>Single sign-on and authentication</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

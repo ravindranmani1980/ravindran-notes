@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Invoke-SPPostPatchConfig | Notes | Ravindran Mani</title>
+<meta name="description" content="Runs the SharePoint configuration step (PSConfig) on this server after installing an update.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html" aria-current="page">SharePoint</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap">
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">SharePoint</a> / <a href="../../scripts/index.html">Scripts</a> / SharePoint Server</p>
+    <h1 class="script-title">Invoke-SPPostPatchConfig</h1>
+    <p class="lead">Runs the SharePoint configuration step (PSConfig) on this server after installing an update.</p>
+    <dl class="facts">
+      <div><dt>Runs in</dt><dd>SharePoint Management Shell on a farm server</dd></div>
+      <div><dt>Safety</dt><dd><span class="flag flag-change">Makes changes. Run with -WhatIf first</span></dd></div>
+    </dl>
+    <p class="actions"><a class="btn btn-primary" href="Invoke-SPPostPatchConfig.ps1" download>Download Invoke-SPPostPatchConfig.ps1</a></p>
+
+    <h2 id="what-it-does">What it does</h2>
+    <p>After an update&#x27;s binaries are installed on every server in the farm, run this on each server, one server at a time, starting with the server that hosts Central Administration. It checks the session is elevated, shows whether this server needs upgrade, and runs PSConfig with the standard build-to-build upgrade command:</p>
+<p>PSConfig.exe -cmd upgrade -inplace b2b -wait -cmd applicationcontent -install -cmd installfeatures -cmd secureresources -cmd services -install</p>
+<p>-UpgradeContentDatabases then upgrades any content database still marked as needing upgrade (use this on the last server, or on its own after all servers are done).</p>
+<p>Take the server out of the load balancer first if you&#x27;re patching with zero downtime.</p>
+
+    <h2 id="parameters">Parameters</h2>
+    <div class="table-wrap">
+      <table class="params">
+          <tr><th scope="row"><code>-UpgradeContentDatabases</code><span class="ptype">switch</span></th><td>After PSConfig, run Upgrade-SPContentDatabase on every content database that still needs it.</td></tr>
+          <tr><th scope="row"><code>-SkipPSConfig</code><span class="ptype">switch</span></th><td>Don&#x27;t run PSConfig; only upgrade content databases (use with -UpgradeContentDatabases).</td></tr>
+      </table>
+    </div>
+
+    <h2 id="examples">Examples</h2>
+    <pre><code class="language-powershell">.\Invoke-SPPostPatchConfig.ps1 -WhatIf</code></pre>
+    <pre><code class="language-powershell">.\Invoke-SPPostPatchConfig.ps1</code></pre>
+    <pre><code class="language-powershell">.\Invoke-SPPostPatchConfig.ps1 -SkipPSConfig -UpgradeContentDatabases</code></pre>
+
+    <h2 id="notes">Notes</h2>
+    <p>PSConfig logs are written to the hive&#x27;s LOGS folder (PSCDiagnostics_*.log and Upgrade-*.log). Verify the whole farm afterwards with Get-SPPatchStatus.ps1.</p>
+
+    <h2 id="source">Full script</h2>
+    <!-- Keep this in sync with Invoke-SPPostPatchConfig.ps1 in this folder. -->
+    <pre><code class="language-powershell">&lt;#
+.SYNOPSIS
+    Runs the SharePoint configuration step (PSConfig) on this server after installing an update.
+
+.DESCRIPTION
+    After an update&#x27;s binaries are installed on every server in the farm, run this on
+    each server, one server at a time, starting with the server that hosts Central
+    Administration. It checks the session is elevated, shows whether this server needs
+    upgrade, and runs PSConfig with the standard build-to-build upgrade command:
+
+        PSConfig.exe -cmd upgrade -inplace b2b -wait -cmd applicationcontent -install
+                     -cmd installfeatures -cmd secureresources -cmd services -install
+
+    -UpgradeContentDatabases then upgrades any content database still marked as needing
+    upgrade (use this on the last server, or on its own after all servers are done).
+
+    Take the server out of the load balancer first if you&#x27;re patching with zero downtime.
+
+.PARAMETER UpgradeContentDatabases
+    After PSConfig, run Upgrade-SPContentDatabase on every content database that still needs it.
+
+.PARAMETER SkipPSConfig
+    Don&#x27;t run PSConfig; only upgrade content databases (use with -UpgradeContentDatabases).
+
+.EXAMPLE
+    .\Invoke-SPPostPatchConfig.ps1 -WhatIf
+
+.EXAMPLE
+    .\Invoke-SPPostPatchConfig.ps1
+
+.EXAMPLE
+    .\Invoke-SPPostPatchConfig.ps1 -SkipPSConfig -UpgradeContentDatabases
+
+.NOTES
+    PSConfig logs are written to the hive&#x27;s LOGS folder (PSCDiagnostics_*.log and Upgrade-*.log).
+    Verify the whole farm afterwards with Get-SPPatchStatus.ps1.
+#&gt;
+[CmdletBinding(SupportsShouldProcess, ConfirmImpact = &#x27;High&#x27;)]
+param(
+    [switch]$UpgradeContentDatabases,
+    [switch]$SkipPSConfig
+)
+
+$identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+if (-not ([Security.Principal.WindowsPrincipal]$identity).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    throw &#x27;Run this from an elevated (Run as administrator) SharePoint Management Shell.&#x27;
+}
+
+if (-not (Get-Command Get-SPFarm -ErrorAction SilentlyContinue)) {
+    Add-PSSnapin Microsoft.SharePoint.PowerShell -ErrorAction SilentlyContinue
+}
+
+# Find PSConfig.exe in the newest installed hive
+$psconfig = foreach ($hive in 16, 15, 14) {
+    $candidate = Join-Path $env:CommonProgramFiles &quot;microsoft shared\Web Server Extensions\$hive\BIN\psconfig.exe&quot;
+    if (Test-Path $candidate) { $candidate; break }
+}
+if (-not $psconfig) { throw &#x27;PSConfig.exe was not found. Is SharePoint installed on this server?&#x27; }
+
+try {
+    $local = Get-SPServer -Identity $env:COMPUTERNAME -ErrorAction Stop
+    Write-Host &quot;Server $env:COMPUTERNAME  Role: $($local.Role)  Needs upgrade: $($local.NeedsUpgrade)&quot; -ForegroundColor Cyan
+    Write-Host &quot;Farm build before: $((Get-SPFarm).BuildVersion)&quot;
+}
+catch {
+    Write-Warning &quot;Could not read farm details ($($_.Exception.Message)). Continuing with PSConfig.&quot;
+}
+
+if (-not $SkipPSConfig) {
+    $arguments = @(&#x27;-cmd&#x27;, &#x27;upgrade&#x27;, &#x27;-inplace&#x27;, &#x27;b2b&#x27;, &#x27;-wait&#x27;,
+                   &#x27;-cmd&#x27;, &#x27;applicationcontent&#x27;, &#x27;-install&#x27;,
+                   &#x27;-cmd&#x27;, &#x27;installfeatures&#x27;,
+                   &#x27;-cmd&#x27;, &#x27;secureresources&#x27;,
+                   &#x27;-cmd&#x27;, &#x27;services&#x27;, &#x27;-install&#x27;)
+
+    if ($PSCmdlet.ShouldProcess($env:COMPUTERNAME, &quot;Run PSConfig b2b upgrade ($psconfig)&quot;)) {
+        Write-Host &#x27;Running PSConfig. This can take from a few minutes to an hour; do not close this window.&#x27; -ForegroundColor Cyan
+        $started = Get-Date
+        &amp; $psconfig @arguments
+        $exit = $LASTEXITCODE
+        $minutes = [math]::Round(((Get-Date) - $started).TotalMinutes, 1)
+        if ($exit -eq 0) {
+            Write-Host &quot;PSConfig completed successfully in $minutes minutes.&quot; -ForegroundColor Green
+        }
+        else {
+            Write-Warning &quot;PSConfig exited with code $exit after $minutes minutes. Check PSCDiagnostics_*.log and Upgrade-*.log in the LOGS folder before continuing.&quot;
+            return
+        }
+    }
+}
+
+if ($UpgradeContentDatabases) {
+    $behind = @(Get-SPContentDatabase | Where-Object { $_.NeedsUpgrade })
+    if ($behind.Count -eq 0) {
+        Write-Host &#x27;No content databases need upgrade.&#x27; -ForegroundColor Green
+    }
+    foreach ($db in $behind) {
+        if ($PSCmdlet.ShouldProcess($db.Name, &#x27;Upgrade-SPContentDatabase&#x27;)) {
+            Write-Host &quot;Upgrading $($db.Name)...&quot; -ForegroundColor Cyan
+            Upgrade-SPContentDatabase -Identity $db -Confirm:$false
+        }
+    }
+}
+
+try {
+    Write-Host &quot;Farm build now: $((Get-SPFarm).BuildVersion). Next: run this on the next server, then Get-SPPatchStatus.ps1.&quot; -ForegroundColor Cyan
+} catch { }
+</code></pre>
+
+    <nav class="pager" aria-label="More scripts">
+      <a class="prev" href="get-spsitestoragereport.html"><span>Previous script</span>Get-SPSiteStorageReport</a>
+      <a class="next" href="invoke-spwarmup.html"><span>Next script</span>Invoke-SPWarmup</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

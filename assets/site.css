@@ -184,6 +184,11 @@ h3 { font-size: 1.15rem; margin: 0 0 0.4rem; }
 /* guides list: a numbered sequence, so numbers are meaningful */
 .guide-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
 .guide-list li { border-bottom: 1px solid var(--line); }
+.guide-list li.guide-group {
+  border-bottom: 0; padding: 1.75rem 0.25rem 0.5rem; font-size: 0.85rem; font-weight: 600;
+  color: var(--muted); letter-spacing: 0.02em;
+}
+.guide-list li.guide-group:first-child { padding-top: 0.75rem; }
 .guide-list a {
   display: grid; grid-template-columns: 3.5rem 1fr; gap: 1rem; align-items: baseline;
   padding: 1.15rem 0.25rem; text-decoration: none; color: var(--ink);

@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Set-SPObjectCacheAccounts | Notes | Ravindran Mani</title>
+<meta name="description" content="Shows or sets the object cache super user and super reader accounts for a web application.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html" aria-current="page">SharePoint</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap">
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">SharePoint</a> / <a href="../../scripts/index.html">Scripts</a> / SharePoint Server</p>
+    <h1 class="script-title">Set-SPObjectCacheAccounts</h1>
+    <p class="lead">Shows or sets the object cache super user and super reader accounts for a web application.</p>
+    <dl class="facts">
+      <div><dt>Runs in</dt><dd>SharePoint Management Shell on a farm server</dd></div>
+      <div><dt>Safety</dt><dd><span class="flag flag-change">Makes changes. Run with -WhatIf first</span></dd></div>
+    </dl>
+    <p class="actions"><a class="btn btn-primary" href="Set-SPObjectCacheAccounts.ps1" download>Download Set-SPObjectCacheAccounts.ps1</a></p>
+
+    <h2 id="what-it-does">What it does</h2>
+    <p>The publishing object cache reads content as two dedicated accounts. Without them SharePoint logs event ID 7362 and caching is less effective. This script:</p>
+<ul><li>with only -WebApplication: shows the current accounts and matching user policies (read-only)</li><li>with -SuperUser and -SuperReader: adds Full Control and Full Read user policies for the accounts and stores them in the web application&#x27;s properties</li></ul>
+<p>Use two dedicated accounts that nobody signs in with, and that are not the app pool or farm account. Run iisreset on every web server afterwards and test immediately: wrong accounts can make publishing sites return &quot;access denied&quot; to everyone.</p>
+
+    <h2 id="parameters">Parameters</h2>
+    <div class="table-wrap">
+      <table class="params">
+          <tr><th scope="row"><code>-WebApplication</code><span class="ptype">string</span><span class="req">Required</span></th><td>The web application URL.</td></tr>
+          <tr><th scope="row"><code>-SuperUser</code></th><td>Account for the Portal Super User, e.g. RAVINDRAN\sp-superuser.</td></tr>
+          <tr><th scope="row"><code>-SuperReader</code></th><td>Account for the Portal Super Reader, e.g. RAVINDRAN\sp-superreader.</td></tr>
+      </table>
+    </div>
+
+    <h2 id="examples">Examples</h2>
+    <pre><code class="language-powershell">.\Set-SPObjectCacheAccounts.ps1 -WebApplication https://sharepoint.ravindran.in</code></pre>
+    <pre><code class="language-powershell">.\Set-SPObjectCacheAccounts.ps1 -WebApplication https://sharepoint.ravindran.in -SuperUser RAVINDRAN\sp-superuser -SuperReader RAVINDRAN\sp-superreader -WhatIf</code></pre>
+
+
+    <h2 id="source">Full script</h2>
+    <!-- Keep this in sync with Set-SPObjectCacheAccounts.ps1 in this folder. -->
+    <pre><code class="language-powershell">&lt;#
+.SYNOPSIS
+    Shows or sets the object cache super user and super reader accounts for a web application.
+
+.DESCRIPTION
+    The publishing object cache reads content as two dedicated accounts. Without them
+    SharePoint logs event ID 7362 and caching is less effective. This script:
+      - with only -WebApplication: shows the current accounts and matching user policies (read-only)
+      - with -SuperUser and -SuperReader: adds Full Control and Full Read user policies for
+        the accounts and stores them in the web application&#x27;s properties
+
+    Use two dedicated accounts that nobody signs in with, and that are not the app pool
+    or farm account. Run iisreset on every web server afterwards and test immediately:
+    wrong accounts can make publishing sites return &quot;access denied&quot; to everyone.
+
+.PARAMETER WebApplication
+    The web application URL.
+
+.PARAMETER SuperUser
+    Account for the Portal Super User, e.g. RAVINDRAN\sp-superuser.
+
+.PARAMETER SuperReader
+    Account for the Portal Super Reader, e.g. RAVINDRAN\sp-superreader.
+
+.EXAMPLE
+    .\Set-SPObjectCacheAccounts.ps1 -WebApplication https://sharepoint.ravindran.in
+
+.EXAMPLE
+    .\Set-SPObjectCacheAccounts.ps1 -WebApplication https://sharepoint.ravindran.in -SuperUser RAVINDRAN\sp-superuser -SuperReader RAVINDRAN\sp-superreader -WhatIf
+#&gt;
+[CmdletBinding(SupportsShouldProcess, DefaultParameterSetName = &#x27;Show&#x27;)]
+param(
+    [Parameter(Mandatory)][string]$WebApplication,
+    [Parameter(ParameterSetName = &#x27;Set&#x27;, Mandatory)][string]$SuperUser,
+    [Parameter(ParameterSetName = &#x27;Set&#x27;, Mandatory)][string]$SuperReader
+)
+
+if (-not (Get-Command Get-SPWebApplication -ErrorAction SilentlyContinue)) {
+    Add-PSSnapin Microsoft.SharePoint.PowerShell -ErrorAction SilentlyContinue
+}
+if (-not (Get-Command Get-SPWebApplication -ErrorAction SilentlyContinue)) {
+    throw &#x27;SharePoint cmdlets are not available. Run this on a farm server from the SharePoint Management Shell.&#x27;
+}
+
+$wa = Get-SPWebApplication -Identity $WebApplication -ErrorAction Stop
+
+function Show-Current {
+    [pscustomobject]@{
+        WebApplication = $wa.Url
+        ClaimsAuth     = $wa.UseClaimsAuthentication
+        SuperUser      = $wa.Properties[&#x27;portalsuperuseraccount&#x27;]
+        SuperReader    = $wa.Properties[&#x27;portalsuperreaderaccount&#x27;]
+    } | Format-List | Out-Host
+    $wa.Policies | Where-Object { $_.DisplayName -in &#x27;Portal Super User&#x27;, &#x27;Portal Super Reader&#x27; } |
+        Select-Object DisplayName, UserName, @{n=&#x27;Permission&#x27;;e={($_.PolicyRoleBindings | ForEach-Object Name) -join &#x27;, &#x27;}} |
+        Format-Table -AutoSize | Out-Host
+}
+
+if ($PSCmdlet.ParameterSetName -eq &#x27;Show&#x27;) {
+    Show-Current
+    return
+}
+
+if ($SuperUser -ieq $SuperReader) { throw &#x27;Use two different accounts for the super user and the super reader.&#x27; }
+
+# Claims web applications need the encoded claim, e.g. i:0#.w|ravindran\sp-superuser
+function Resolve-Account([string]$Account) {
+    if ($wa.UseClaimsAuthentication) {
+        (New-SPClaimsPrincipal -Identity $Account -IdentityType WindowsSamAccountName).ToEncodedString()
+    }
+    else { $Account }
+}
+$su = Resolve-Account $SuperUser
+$sr = Resolve-Account $SuperReader
+
+function Add-Policy([string]$UserName, [string]$DisplayName, [Microsoft.SharePoint.Administration.SPPolicyRoleType]$RoleType) {
+    $existing = $wa.Policies | Where-Object { $_.UserName -eq $UserName }
+    $policy = if ($existing) { $existing } else { $wa.Policies.Add($UserName, $DisplayName) }
+    $role = $wa.PolicyRoles.GetSpecialRole($RoleType)
+    if (-not ($policy.PolicyRoleBindings | Where-Object { $_.Id -eq $role.Id })) {
+        $policy.PolicyRoleBindings.Add($role)
+    }
+}
+
+if ($PSCmdlet.ShouldProcess($wa.Url, &quot;Set object cache accounts: super user $su, super reader $sr&quot;)) {
+    Add-Policy -UserName $su -DisplayName &#x27;Portal Super User&#x27;   -RoleType ([Microsoft.SharePoint.Administration.SPPolicyRoleType]::FullControl)
+    Add-Policy -UserName $sr -DisplayName &#x27;Portal Super Reader&#x27; -RoleType ([Microsoft.SharePoint.Administration.SPPolicyRoleType]::FullRead)
+    $wa.Properties[&#x27;portalsuperuseraccount&#x27;]   = $su
+    $wa.Properties[&#x27;portalsuperreaderaccount&#x27;] = $sr
+    $wa.Update()
+    Show-Current
+    Write-Host &#x27;Done. Run iisreset on every web server, then browse your publishing sites to confirm they load.&#x27; -ForegroundColor Green
+}
+</code></pre>
+
+    <nav class="pager" aria-label="More scripts">
+      <a class="prev" href="set-spblobcache.html"><span>Previous script</span>Set-SPBlobCache</a>
+      <a class="next" href="test-spupgradereadiness.html"><span>Next script</span>Test-SPUpgradeReadiness</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

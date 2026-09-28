@@ -6,7 +6,7 @@ The site is plain HTML and CSS. There is no build step: what's in this repositor
 
 | Topic | Status |
 |---|---|
-| SharePoint | Live: 5 guides, 12 scripts (2005–2024) |
+| SharePoint | Live: 14 guides, 18 scripts (2005–2024) |
 | Azure | In progress (not linked yet) |
 | AWS | In progress (not linked yet) |
 | FinOps | In progress (not linked yet) |

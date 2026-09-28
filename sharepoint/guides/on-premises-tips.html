@@ -6,6 +6,7 @@
 <title>SharePoint Server (on-premises) tips | Notes | Ravindran Mani</title>
 <meta name="description" content="Farm administration from SharePoint 2010 to Subscription Edition: ULS, patching, recovery, performance.">
 <meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
 <link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -37,7 +38,7 @@
 <main id="main">
 <div class="wrap doc-wrap with-toc">
   <aside class="toc" aria-label="On this page">
-    <p class="toc-title">Guide 2 of 5</p>
+    <p class="toc-title">Guide 6 of 14</p>
     <ol>
       <li><a href="#1-dispose-of-spsite-and-spweb-objects">1. Dispose of SPSite and SPWeb objects</a></li>
       <li><a href="#2-correlation-ids-are-your-best-friend">2. Correlation IDs are your best friend</a></li>
@@ -51,11 +52,12 @@
       <li><a href="#10-clearing-the-configuration-cache-the-classic-fix">10. Clearing the configuration cache (the classic fix)</a></li>
       <li><a href="#11-lock-sites-during-a-migration-cutover">11. Lock sites during a migration cutover</a></li>
       <li><a href="#12-clean-up-what-test-spcontentdatabase-finds-before-an-upgrade">12. Clean up what Test-SPContentDatabase finds before an upgrade</a></li>
-      <li><a href="#13-know-your-farm-before-you-touch-it">13. Know your farm before you touch it</a></li>
+      <li><a href="#13-turn-on-the-blob-cache">13. Turn on the BLOB cache</a></li>
+      <li><a href="#14-know-your-farm-before-you-touch-it">14. Know your farm before you touch it</a></li>
     </ol>
   </aside>
   <article class="doc">
-    <p class="crumbs"><a href="../index.html">SharePoint</a> / Guide 2</p>
+    <p class="crumbs"><a href="../index.html">SharePoint</a> / Guide 6</p>
     <h1>SharePoint Server (on-premises) tips</h1>
     <p class="lead">Farm administration from SharePoint 2010 to Subscription Edition: ULS, patching, recovery, performance.</p>
 
@@ -166,12 +168,14 @@ iisreset   # on each web server when finished
 </code></pre>
 <h2 id="12-clean-up-what-test-spcontentdatabase-finds-before-an-upgrade">12. Clean up what Test-SPContentDatabase finds before an upgrade</h2>
 <p>Missing features, web parts and setup files from old custom solutions are the most common upgrade headaches. Run <a href="../scripts/test-spupgradereadiness.html"><code>Test-SPUpgradeReadiness.ps1</code></a> against every database and deal with anything flagged <code>UpgradeBlocking</code> first.</p>
-<h2 id="13-know-your-farm-before-you-touch-it">13. Know your farm before you touch it</h2>
+<h2 id="13-turn-on-the-blob-cache">13. Turn on the BLOB cache</h2>
+<p>Most farms leave the BLOB cache switched off, which means every logo, style sheet and script is read from SQL on every request. Turning it on is one of the cheapest performance wins available. The <a href="blob-cache.html">BLOB cache guide</a> explains the benefits and how to set it up on every server.</p>
+<h2 id="14-know-your-farm-before-you-touch-it">14. Know your farm before you touch it</h2>
 <p>On a new engagement, the first thing I run is an inventory. <a href="../scripts/get-spfarminventory.html"><code>Get-SPFarmInventory.ps1</code></a> gives you servers, web apps, databases, service apps and solutions in a few minutes, all read-only.</p>
 
     <nav class="pager" aria-label="Guides">
-      <a class="prev" href="getting-started.html"><span>Previous guide</span>Getting started</a>
-      <a class="next" href="sharepoint-online-tips.html"><span>Next guide</span>SharePoint Online tips</a>
+      <a class="prev" href="single-sign-on.html"><span>Previous guide</span>Single sign-on and authentication</a>
+      <a class="next" href="security-patches.html"><span>Next guide</span>Security patches</a>
     </nav>
   </article>
 </div>
