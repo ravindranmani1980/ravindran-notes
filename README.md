@@ -19,6 +19,8 @@ notes.ravindran.in/
 ├── about.html
 ├── 404.html
 ├── CNAME                   Custom domain for GitHub Pages (notes.ravindran.in)
+├── sitemap.xml             All published pages, for search engines (generated)
+├── robots.txt              Points search engines at the sitemap
 ├── assets/
 │   ├── site.css            All styles. Colors are at the top.
 │   ├── site.js             Mobile menu, copy buttons, guide contents highlight
@@ -32,6 +34,7 @@ notes.ravindran.in/
 ├── azure/                  Landing page, guides/, scripts/ and environment/ (same layout as sharepoint/)
 ├── aws/                    Landing page, guides/, scripts/ and environment/ (same layout as azure/)
 ├── finops/                 Starter page + empty guides/ and scripts/
+├── _tools/                 build-sitemap.py (not published)
 └── _templates/             Page templates to copy (not published: GitHub
                             Pages skips folders starting with _)
 ```
@@ -77,6 +80,8 @@ Open `index.html` in a browser. All links are relative, so the site works straig
 2. On `aws/index.html`, replace the "Planned" list with the landing layout used by `azure/index.html` and `sharepoint/index.html`, and remove the `noindex` line in the `<head>`.
 3. Add the menu link on every page. Each page has a commented-out line ready to use; a find-and-replace across all `.html` files does it in one go.
 4. On `index.html`, turn the topic's "In progress" entries into links marked Live.
+
+**Sitemap:** after adding, renaming or removing pages, run `python3 _tools/build-sitemap.py` to rebuild `sitemap.xml`. It skips `404.html`, folders starting with `_`, and any page marked `noindex` (such as FinOps until it goes live).
 
 **Code blocks:** use `<pre><code class="language-powershell">...</code></pre>` and escape `<`, `>` and `&` as `&lt;`, `&gt;` and `&amp;`. Highlighting and the Copy button are added automatically.
 
