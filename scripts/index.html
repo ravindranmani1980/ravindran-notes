@@ -10,22 +10,22 @@
 <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/site.css">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="wrap header-row">
-    <a class="brand" href="../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <a class="brand" href="../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
     <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
     <nav id="site-nav" class="site-nav" aria-label="Main">
       <ul>
         <li><a href="../index.html">Home</a></li>
         <li><a href="../sharepoint/index.html">SharePoint</a></li>
         <li><a href="../azure/index.html">Azure</a></li>
-        <!-- Add each topic here when it goes live, for example:
         <li><a href="../aws/index.html">AWS</a></li>
+        <!-- Add each topic here when it goes live, for example:
         <li><a href="../finops/index.html">FinOps</a></li>
         -->
         <li><a href="../scripts/index.html" aria-current="page">Scripts</a></li>
@@ -136,6 +136,48 @@
         <p>Shows which Azure VMs are protected by Azure Backup, and which aren&#x27;t.</p></li>
       <li><a class="script-link" href="../azure/scripts/invoke-azvmpowerschedule.html">Invoke-AzVMPowerSchedule</a>
         <p>Starts or stops (deallocates) Azure VMs that carry a schedule tag. Designed for Azure Automation.</p></li>
+      </ul>
+    </section>
+    </div>
+  </section>
+
+  <section class="topic-scripts" aria-labelledby="t-aws">
+    <h2 id="t-aws"><a href="../aws/index.html">AWS</a></h2>
+    <div class="script-columns">
+    <section class="script-group">
+      <h3>Inventory and clean-up</h3>
+      <ul class="script-list">
+      <li><a class="script-link" href="../aws/scripts/find-awsorphanedresources.html">Find-AwsOrphanedResources</a>
+        <p>Finds orphaned AWS resources that cost money or clutter: unattached EBS volumes, unused Elastic IPs, idle load balancers and more.</p></li>
+      <li><a class="script-link" href="../aws/scripts/get-awsec2inventory.html">Get-AwsEC2Inventory</a>
+        <p>Lists every EC2 instance in every enabled region, with type, state, IPs, volumes, IMDS setting and tags.</p></li>
+      </ul>
+    </section>
+    <section class="script-group">
+      <h3>Governance</h3>
+      <ul class="script-list">
+      <li><a class="script-link" href="../aws/scripts/get-awsiamcredentialreport.html">Get-AwsIamCredentialReport</a>
+        <p>Reports IAM users and the root user from the IAM credential report, and flags the risky ones: no MFA, old or unused access keys.</p></li>
+      <li><a class="script-link" href="../aws/scripts/get-awsuntaggedresources.html">Get-AwsUntaggedResources</a>
+        <p>Lists AWS resources that are missing required tags, or have them spelled with the wrong case.</p></li>
+      </ul>
+    </section>
+    <section class="script-group">
+      <h3>Network and data security</h3>
+      <ul class="script-list">
+      <li><a class="script-link" href="../aws/scripts/get-awssecuritygroupreport.html">Get-AwsSecurityGroupReport</a>
+        <p>Reports security group rules in every region and flags the risky ones, such as SSH or RDP open to the internet.</p></li>
+      <li><a class="script-link" href="../aws/scripts/get-awss3publicaccessreport.html">Get-AwsS3PublicAccessReport</a>
+        <p>Checks every S3 bucket for public access, and reports Block Public Access, policy status, ACLs, encryption and versioning.</p></li>
+      </ul>
+    </section>
+    <section class="script-group">
+      <h3>Operations</h3>
+      <ul class="script-list">
+      <li><a class="script-link" href="../aws/scripts/get-awsbackupcoverage.html">Get-AwsBackupCoverage</a>
+        <p>Shows which EC2 instances, RDS databases, DynamoDB tables and EFS file systems are protected by AWS Backup, and which aren&#x27;t.</p></li>
+      <li><a class="script-link" href="../aws/scripts/invoke-awsec2powerschedule.html">Invoke-AwsEC2PowerSchedule</a>
+        <p>Starts or stops EC2 instances that carry a schedule tag. Run it on a schedule from EC2, Lambda or Systems Manager.</p></li>
       </ul>
     </section>
     </div>
