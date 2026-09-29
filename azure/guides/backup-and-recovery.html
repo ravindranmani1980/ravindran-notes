@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Backup and recovery | Notes | Ravindran Mani</title>
+<meta name="description" content="Azure Backup for VMs, protecting backups from ransomware, restores, and Site Recovery.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html" aria-current="page">Azure</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 8 of 10</p>
+    <ol>
+      <li><a href="#backup-versus-disaster-recovery">Backup versus disaster recovery</a></li>
+      <li><a href="#find-vms-that-arent-protected">Find VMs that aren&#x27;t protected</a></li>
+      <li><a href="#set-up-azure-backup-for-vms">Set up Azure Backup for VMs</a></li>
+      <li><a href="#protect-the-backups-themselves">Protect the backups themselves</a></li>
+      <li><a href="#watch-for-failed-backups">Watch for failed backups</a></li>
+      <li><a href="#restoring">Restoring</a></li>
+      <li><a href="#test-restores-on-a-schedule">Test restores on a schedule</a></li>
+      <li><a href="#beyond-vms">Beyond VMs</a></li>
+      <li><a href="#disaster-recovery-with-azure-site-recovery">Disaster recovery with Azure Site Recovery</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">Azure</a> / Guide 8</p>
+    <h1>Backup and recovery</h1>
+    <p class="lead">Azure Backup for VMs, protecting backups from ransomware, restores, and Site Recovery.</p>
+
+<p>Backups only count if they restore. This guide covers Azure Backup for VMs, the settings that protect backups from ransomware and mistakes, restores, and where Azure Site Recovery fits.</p>
+<h2 id="backup-versus-disaster-recovery">Backup versus disaster recovery</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Azure Backup</th>
+<th>Azure Site Recovery</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Protects against</td>
+<td>Deletion, corruption, ransomware, "I need yesterday's version"</td>
+<td>Losing a whole region or datacenter</td>
+</tr>
+<tr>
+<td>How</td>
+<td>Point-in-time copies kept for days to years</td>
+<td>Continuous replication to another region</td>
+</tr>
+<tr>
+<td>Recovery point</td>
+<td>Last backup (usually daily)</td>
+<td>Minutes</td>
+</tr>
+<tr>
+<td>Recovery time</td>
+<td>Hours (restore a VM or files)</td>
+<td>Minutes to fail over</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Most workloads need backup. Business-critical ones need both.</p>
+<h2 id="find-vms-that-arent-protected">Find VMs that aren't protected</h2>
+<p>Before anything else, check coverage. <a href="../scripts/get-azbackupcoverage.html"><code>Get-AzBackupCoverage.ps1</code></a> lists every VM in every subscription and whether Azure Backup protects it:</p>
+<pre><code class="language-powershell">.\Get-AzBackupCoverage.ps1
+</code></pre>
+<p>New VMs are the usual gap. An Azure Policy such as <strong>Configure backup on virtual machines with a given tag to an existing recovery services vault</strong> closes it automatically.</p>
+<h2 id="set-up-azure-backup-for-vms">Set up Azure Backup for VMs</h2>
+<ol>
+<li>Create a <strong>Recovery Services vault</strong> in the same region as the VMs, in a management subscription or resource group.</li>
+<li>Choose storage redundancy <strong>before</strong> the first backup (it can't be changed afterwards): geo-redundant (GRS) for production, with <strong>cross-region restore</strong> turned on so you can restore in the paired region.</li>
+<li>Create backup <strong>policies</strong>: schedule and retention (for example daily, kept 30 days, plus monthly kept 12 months). Use the <strong>Enhanced</strong> policy type where available; it supports several backups a day and is required for Trusted Launch VMs.</li>
+<li>Enable backup on the VMs:</li>
+</ol>
+<pre><code class="language-powershell">$vault  = Get-AzRecoveryServicesVault -ResourceGroupName rg-notes-test -Name rsv-notes-test
+$policy = Get-AzRecoveryServicesBackupProtectionPolicy -Name 'DefaultPolicy' -VaultId $vault.ID
+
+Enable-AzRecoveryServicesBackupProtection -Policy $policy -Name vm-notes-test-01 `
+    -ResourceGroupName rg-notes-test -VaultId $vault.ID
+</code></pre>
+<p>Take an on-demand backup (for example before a risky change):</p>
+<pre><code class="language-powershell">$container = Get-AzRecoveryServicesBackupContainer -ContainerType AzureVM -FriendlyName vm-notes-test-01 -VaultId $vault.ID
+$item      = Get-AzRecoveryServicesBackupItem -Container $container -WorkloadType AzureVM -VaultId $vault.ID
+Backup-AzRecoveryServicesBackupItem -Item $item -VaultId $vault.ID
+</code></pre>
+<h2 id="protect-the-backups-themselves">Protect the backups themselves</h2>
+<p>Attackers go after backups first. Turn these on:</p>
+<ul>
+<li><strong>Soft delete</strong>: deleted backup data is kept for a period (14 days by default, longer with enhanced soft delete) and can be recovered. Make it "always on" so it can't be switched off.</li>
+<li><strong>Immutable vault</strong>: prevents backup data from being deleted or retention being shortened before it expires. Lock immutability once you're sure of your policies.</li>
+<li><strong>Multi-user authorization</strong> with a <strong>Resource Guard</strong>: critical operations (disabling soft delete, reducing retention) need approval from a second person in a different subscription.</li>
+<li><strong>A delete lock</strong> on the vault's resource group, and tightly limited <strong>Backup Contributor</strong> access.</li>
+</ul>
+<h2 id="watch-for-failed-backups">Watch for failed backups</h2>
+<pre><code class="language-powershell">Get-AzRecoveryServicesBackupJob -VaultId $vault.ID -Status Failed -From (Get-Date).AddDays(-7).ToUniversalTime() |
+    Select-Object WorkloadName, Operation, Status, StartTime, @{n='Error';e={$_.ErrorDetails.ErrorMessage}}
+</code></pre>
+<p>Better still, set up alerts. Azure Backup sends built-in alerts through Azure Monitor; route them to an action group that emails or tickets the team. <strong>Azure Business Continuity Center</strong> (the successor to Backup center) shows backup and Site Recovery status across all vaults in one place.</p>
+<h2 id="restoring">Restoring</h2>
+<p>Azure Backup offers several ways back, depending on what went wrong:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Need</th>
+<th>Restore option</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A few files</td>
+<td><strong>File recovery</strong>: mounts a recovery point as a drive so you can copy files out</td>
+</tr>
+<tr>
+<td>A VM back as it was</td>
+<td><strong>Replace existing</strong> disks</td>
+</tr>
+<tr>
+<td>A copy alongside the original</td>
+<td><strong>Create new VM</strong> from a recovery point</td>
+</tr>
+<tr>
+<td>Full control (new network, different settings)</td>
+<td><strong>Restore disks</strong>, then build a VM from them</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="test-restores-on-a-schedule">Test restores on a schedule</h2>
+<p>Pick one VM per critical application each quarter, restore it into an isolated network, check the application starts and the data is there, then delete the copy. Write down how long it took; that's your real recovery time, not the one in the design document.</p>
+<h2 id="beyond-vms">Beyond VMs</h2>
+<ul>
+<li><strong>Azure Files</strong>: Azure Backup takes share snapshots on a schedule.</li>
+<li><strong>Blob storage</strong>: turn on soft delete, versioning and point-in-time restore, or use Azure Backup for blobs.</li>
+<li><strong>SQL Server in a VM</strong>: use Azure Backup's SQL workload backup for log backups and point-in-time restore, not just VM backups.</li>
+<li><strong>Azure SQL Database and managed databases</strong> have automatic backups built in; set the retention you need, including long-term retention.</li>
+</ul>
+<h2 id="disaster-recovery-with-azure-site-recovery">Disaster recovery with Azure Site Recovery</h2>
+<p>For applications that must survive a regional outage, <strong>Azure Site Recovery</strong> replicates VMs to another region.</p>
+<ul>
+<li>Group VMs that fail over together into <strong>recovery plans</strong>, with scripts for the steps in between (DNS changes, starting services in order).</li>
+<li>Run a <strong>test failover</strong> into an isolated network at least twice a year. It doesn't affect production or replication.</li>
+<li>Remember everything the VMs depend on: domain controllers, DNS, firewalls and connectivity in the recovery region.</li>
+</ul>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="virtual-machines.html"><span>Previous guide</span>Virtual machines</a>
+      <a class="next" href="monitoring-and-alerts.html"><span>Next guide</span>Monitoring and alerts</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Getting started | Notes | Ravindran Mani</title>
+<meta name="description" content="Az PowerShell, signing in, working across subscriptions, and Azure Resource Graph.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html" aria-current="page">Azure</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 1 of 10</p>
+    <ol>
+      <li><a href="#about-the-example-names">About the example names</a></li>
+      <li><a href="#tip-1-pick-your-tool">Tip 1 – Pick your tool</a></li>
+      <li><a href="#tip-2-install-az-powershell-for-your-user">Tip 2 – Install Az PowerShell for your user</a></li>
+      <li><a href="#tip-3-sign-in-and-choose-the-subscription">Tip 3 – Sign in and choose the subscription</a></li>
+      <li><a href="#tip-4-loop-over-every-subscription">Tip 4 – Loop over every subscription</a></li>
+      <li><a href="#tip-5-use-azure-resource-graph-for-reports">Tip 5 – Use Azure Resource Graph for reports</a></li>
+      <li><a href="#tip-6-use-managed-identities-for-automation">Tip 6 – Use managed identities for automation</a></li>
+      <li><a href="#tip-7-always-keep-a-transcript-and-use-whatif">Tip 7 – Always keep a transcript, and use -WhatIf</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">Azure</a> / Guide 1</p>
+    <h1>Getting started</h1>
+    <p class="lead">Az PowerShell, signing in, working across subscriptions, and Azure Resource Graph.</p>
+
+<p>Everything in these Azure notes can be done in the portal, but repeatable work belongs in scripts. This guide sets up the tools, explains how sign-in and subscriptions work in PowerShell, and introduces Azure Resource Graph, which most of the scripts use to report across every subscription in seconds.</p>
+<h2 id="about-the-example-names">About the example names</h2>
+<p>All examples use one test environment. Replace the names with your own.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Microsoft Entra tenant</td>
+<td><code>ravindran.onmicrosoft.com</code></td>
+</tr>
+<tr>
+<td>Subscription</td>
+<td><code>sub-notes-test</code></td>
+</tr>
+<tr>
+<td>Resource group</td>
+<td><code>rg-notes-test</code></td>
+</tr>
+<tr>
+<td>Region</td>
+<td>East US (<code>eastus</code>)</td>
+</tr>
+<tr>
+<td>Virtual machine</td>
+<td><code>vm-notes-test-01</code></td>
+</tr>
+<tr>
+<td>Recovery Services vault</td>
+<td><code>rsv-notes-test</code></td>
+</tr>
+<tr>
+<td>Log Analytics workspace</td>
+<td><code>log-notes-test</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="tip-1-pick-your-tool">Tip 1 – Pick your tool</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Best for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Az PowerShell</strong></td>
+<td>Windows admins, reports to CSV, anything that loops over resources. All scripts on this site use it.</td>
+</tr>
+<tr>
+<td><strong>Azure CLI</strong> (<code>az</code>)</td>
+<td>Quick one-liners, Linux and macOS shells, many Microsoft docs examples.</td>
+</tr>
+<tr>
+<td><strong>Azure Cloud Shell</strong></td>
+<td>Both of the above in the browser, already signed in. Nothing to install.</td>
+</tr>
+<tr>
+<td><strong>Bicep / Terraform</strong></td>
+<td>Creating infrastructure repeatably. Scripts report and fix; templates build.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="tip-2-install-az-powershell-for-your-user">Tip 2 – Install Az PowerShell for your user</h2>
+<pre><code class="language-powershell">Install-Module Az -Scope CurrentUser -Repository PSGallery
+Install-Module Az.ResourceGraph -Scope CurrentUser   # if Search-AzGraph isn't available after installing Az
+Update-Module Az                                     # keep it current; Azure changes monthly
+</code></pre>
+<p>PowerShell 7 is recommended. Az also runs in Windows PowerShell 5.1.</p>
+<h2 id="tip-3-sign-in-and-choose-the-subscription">Tip 3 – Sign in and choose the subscription</h2>
+<pre><code class="language-powershell">Connect-AzAccount -Tenant ravindran.onmicrosoft.com
+Get-AzSubscription | Select-Object Name, Id, State
+Set-AzContext -Subscription 'sub-notes-test'
+Get-AzContext
+</code></pre>
+<p>Every Az command runs against the <strong>current context</strong> (one subscription at a time) unless the command says otherwise. Forgetting which subscription you're in is the most common way to change the wrong environment, so check <code>Get-AzContext</code> before anything that makes changes.</p>
+<p>Microsoft now requires multi-factor authentication for people signing in to Azure, including through PowerShell and the CLI. Scheduled jobs should use a <strong>managed identity</strong> or a <strong>service principal</strong> instead of a user account.</p>
+<h2 id="tip-4-loop-over-every-subscription">Tip 4 – Loop over every subscription</h2>
+<p>Many reports need all subscriptions. The pattern:</p>
+<pre><code class="language-powershell">foreach ($sub in Get-AzSubscription | Where-Object State -eq 'Enabled') {
+    Set-AzContext -Subscription $sub.Id | Out-Null
+    # ... work in this subscription ...
+}
+</code></pre>
+<p>It works, but it's slow with many subscriptions. For read-only reporting, Resource Graph is much faster.</p>
+<h2 id="tip-5-use-azure-resource-graph-for-reports">Tip 5 – Use Azure Resource Graph for reports</h2>
+<p>Resource Graph indexes every resource you can see, across all subscriptions, and answers queries in seconds. Queries use KQL (Kusto Query Language):</p>
+<pre><code class="language-powershell">Search-AzGraph -Query @&quot;
+Resources
+| where type =~ 'microsoft.compute/virtualmachines'
+| summarize VMs = count() by location
+| order by VMs desc
+&quot;@
+</code></pre>
+<p>Things to know:</p>
+<ul>
+<li>Results come back 1,000 rows at a time at most. The scripts on this site page through results automatically.</li>
+<li>Resource Graph shows what exists and how it's configured. It doesn't show metrics or costs.</li>
+<li>You can try queries interactively in the portal under <strong>Resource Graph Explorer</strong>.</li>
+</ul>
+<h2 id="tip-6-use-managed-identities-for-automation">Tip 6 – Use managed identities for automation</h2>
+<p>A script running in Azure Automation, an Azure Function or on an Azure VM can sign in as that resource's <strong>managed identity</strong>, with no passwords or secrets to rotate:</p>
+<pre><code class="language-powershell">Connect-AzAccount -Identity
+</code></pre>
+<p>Grant the identity only the roles it needs (for example <strong>Reader</strong> for reports, <strong>Virtual Machine Contributor</strong> for start/stop), at the narrowest scope that works.</p>
+<h2 id="tip-7-always-keep-a-transcript-and-use-whatif">Tip 7 – Always keep a transcript, and use -WhatIf</h2>
+<p>The same habits as on-premises:</p>
+<pre><code class="language-powershell">Start-Transcript -Path &quot;.\azure_$(Get-Date -Format yyyyMMdd_HHmm).log&quot;
+</code></pre>
+<p>Most Az commands that change things support <code>-WhatIf</code>, and the scripts on this site that make changes do too.</p>
+
+    <nav class="pager" aria-label="Guides">
+      <span></span>
+      <a class="next" href="structure-and-access.html"><span>Next guide</span>Structure and access</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

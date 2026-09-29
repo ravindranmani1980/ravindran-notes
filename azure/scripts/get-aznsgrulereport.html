@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get-AzNsgRuleReport | Notes | Ravindran Mani</title>
+<meta name="description" content="Reports network security group rules in every subscription and flags the risky ones, such as RDP or SSH open to the internet.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html" aria-current="page">Azure</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap">
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">Azure</a> / <a href="../../scripts/index.html">Scripts</a> / Network security</p>
+    <h1 class="script-title">Get-AzNsgRuleReport</h1>
+    <p class="lead">Reports network security group rules in every subscription and flags the risky ones, such as RDP or SSH open to the internet.</p>
+    <dl class="facts">
+      <div><dt>Runs in</dt><dd>Az PowerShell with Az.ResourceGraph</dd></div>
+      <div><dt>Safety</dt><dd><span class="flag flag-read">Read-only</span></dd></div>
+    </dl>
+    <p class="actions"><a class="btn btn-primary" href="Get-AzNsgRuleReport.ps1" download>Download Get-AzNsgRuleReport.ps1</a></p>
+
+    <h2 id="what-it-does">What it does</h2>
+    <p>Uses Azure Resource Graph to read every custom inbound rule in every NSG you can see, and flags:</p>
+<ul><li>High: management ports (RDP, SSH, WinRM) or database ports allowed from the internet</li><li>High: any port allowed from the internet (destination port *)</li><li>Medium: other ports allowed from the internet</li><li>Medium: Any to Any allowed on every port, even inside the network</li><li>Low: wide port ranges (more than -WidePortRange ports) allowed from anywhere</li></ul>
+<p>Each row shows whether the NSG is attached to anything, so you can fix the rules that matter first.</p>
+<p>Read-only: it doesn&#x27;t change any rules.</p>
+
+    <h2 id="parameters">Parameters</h2>
+    <div class="table-wrap">
+      <table class="params">
+          <tr><th scope="row"><code>-SubscriptionId</code><span class="ptype">string[]</span></th><td>Limit the report to these subscription IDs. Default: every subscription you can see.</td></tr>
+          <tr><th scope="row"><code>-RiskyPort</code><span class="ptype">int[]</span></th><td>Ports treated as management or database ports.<span class="pdefault">Default: <code>22, 23, 135, 139, 445, 1433, 1521, 3306, 3389, 5432, 5985, 5986, 6379, 27017</code></span></td></tr>
+          <tr><th scope="row"><code>-WidePortRange</code><span class="ptype">int</span></th><td>A rule allowing more ports than this in one range is flagged as wide. Default 100.</td></tr>
+          <tr><th scope="row"><code>-IncludeAll</code><span class="ptype">switch</span></th><td>Include every custom inbound rule, not only the flagged ones.</td></tr>
+          <tr><th scope="row"><code>-OutputFile</code><span class="ptype">string</span></th><td>CSV output path.<span class="pdefault">Default: <code>Timestamped file in the current folder</code></span></td></tr>
+      </table>
+    </div>
+
+    <h2 id="examples">Examples</h2>
+    <pre><code class="language-powershell">.\Get-AzNsgRuleReport.ps1</code></pre>
+    <pre><code class="language-powershell">.\Get-AzNsgRuleReport.ps1 -IncludeAll -OutputFile .\nsg-rules.csv</code></pre>
+    <pre><code class="language-powershell">.\Get-AzNsgRuleReport.ps1 -RiskyPort 22, 3389, 8080</code></pre>
+
+    <h2 id="notes">Notes</h2>
+    <p>Requires Az.Accounts and Az.ResourceGraph, and Reader access. Only custom rules are checked; the default rules are the same everywhere. &quot;From the internet&quot; means a source of *, Any, Internet, 0.0.0.0/0 or ::/0. A flagged rule on an NSG that isn&#x27;t attached to anything has no effect today, but will the moment someone attaches it.</p>
+
+    <h2 id="source">Full script</h2>
+    <!-- Keep this in sync with Get-AzNsgRuleReport.ps1 in this folder. -->
+    <pre><code class="language-powershell">&lt;#
+.SYNOPSIS
+    Reports network security group rules in every subscription and flags the risky ones, such as RDP or SSH open to the internet.
+
+.DESCRIPTION
+    Uses Azure Resource Graph to read every custom inbound rule in every NSG you can see, and flags:
+    - High: management ports (RDP, SSH, WinRM) or database ports allowed from the internet
+    - High: any port allowed from the internet (destination port *)
+    - Medium: other ports allowed from the internet
+    - Medium: Any to Any allowed on every port, even inside the network
+    - Low: wide port ranges (more than -WidePortRange ports) allowed from anywhere
+    Each row shows whether the NSG is attached to anything, so you can fix the rules that matter first.
+
+    Read-only: it doesn&#x27;t change any rules.
+
+.PARAMETER SubscriptionId
+    Limit the report to these subscription IDs. Default: every subscription you can see.
+
+.PARAMETER RiskyPort
+    Ports treated as management or database ports. Default: 22, 23, 135, 139, 445, 1433, 1521, 3306, 3389, 5432, 5985, 5986, 6379, 27017.
+
+.PARAMETER WidePortRange
+    A rule allowing more ports than this in one range is flagged as wide. Default 100.
+
+.PARAMETER IncludeAll
+    Include every custom inbound rule, not only the flagged ones.
+
+.PARAMETER OutputFile
+    CSV output path.
+
+.EXAMPLE
+    .\Get-AzNsgRuleReport.ps1
+
+.EXAMPLE
+    .\Get-AzNsgRuleReport.ps1 -IncludeAll -OutputFile .\nsg-rules.csv
+
+.EXAMPLE
+    .\Get-AzNsgRuleReport.ps1 -RiskyPort 22, 3389, 8080
+
+.NOTES
+    Requires Az.Accounts and Az.ResourceGraph, and Reader access. Only custom rules are
+    checked; the default rules are the same everywhere. &quot;From the internet&quot; means a source
+    of *, Any, Internet, 0.0.0.0/0 or ::/0. A flagged rule on an NSG that isn&#x27;t attached
+    to anything has no effect today, but will the moment someone attaches it.
+#&gt;
+[CmdletBinding()]
+param(
+    [string[]]$SubscriptionId,
+    [int[]]$RiskyPort = @(22, 23, 135, 139, 445, 1433, 1521, 3306, 3389, 5432, 5985, 5986, 6379, 27017),
+    [ValidateRange(1, 65535)][int]$WidePortRange = 100,
+    [switch]$IncludeAll,
+    [string]$OutputFile = (Join-Path -Path (Get-Location) -ChildPath (&#x27;AzNsgRuleReport_{0:yyyyMMdd_HHmm}.csv&#x27; -f (Get-Date)))
+)
+
+if (-not (Get-Command Search-AzGraph -ErrorAction SilentlyContinue)) {
+    throw &#x27;Search-AzGraph not found. Run: Install-Module Az.ResourceGraph -Scope CurrentUser&#x27;
+}
+if (-not (Get-AzContext)) { throw &#x27;Not signed in. Run Connect-AzAccount first.&#x27; }
+
+function Invoke-GraphQuery {
+    param([Parameter(Mandatory)][string]$Query)
+    $results = New-Object System.Collections.Generic.List[object]
+    $skipToken = $null
+    do {
+        $params = @{ Query = $Query; First = 1000 }
+        if ($SubscriptionId) { $params.Subscription = $SubscriptionId } else { $params.UseTenantScope = $true }
+        if ($skipToken) { $params.SkipToken = $skipToken }
+        $page = Search-AzGraph @params
+        $rows = if ($page.PSObject.Properties[&#x27;Data&#x27;]) { $page.Data } else { $page }
+        foreach ($r in $rows) { $results.Add($r) }
+        $skipToken = $page.SkipToken
+    } while ($skipToken)
+    $results
+}
+
+# Single value and list properties both exist on a rule (sourceAddressPrefix / sourceAddressPrefixes); merge them
+function Get-Values {
+    param($Single, $Multiple)
+    $values = @()
+    if ($Single) { $values += [string]$Single }
+    if ($Multiple) { $values += @($Multiple | ForEach-Object { [string]$_ }) }
+    $values | Where-Object { $_ }
+}
+
+# Returns @(low, high) for &#x27;*&#x27;, &#x27;443&#x27; or &#x27;1000-2000&#x27;
+function Get-PortRange {
+    param([string]$Port)
+    if ($Port -eq &#x27;*&#x27;) { return @(0, 65535) }
+    if ($Port -match &#x27;^(\d+)-(\d+)$&#x27;) { return @([int]$Matches[1], [int]$Matches[2]) }
+    if ($Port -match &#x27;^\d+$&#x27;) { return @([int]$Port, [int]$Port) }
+    return @(-1, -1)
+}
+
+$anySource = @(&#x27;*&#x27;, &#x27;any&#x27;, &#x27;internet&#x27;, &#x27;0.0.0.0/0&#x27;, &#x27;0.0.0.0&#x27;, &#x27;::/0&#x27;)
+
+$subNames = @{}
+foreach ($s in Invoke-GraphQuery &quot;ResourceContainers | where type =~ &#x27;microsoft.resources/subscriptions&#x27; | project subscriptionId, name&quot;) {
+    $subNames[$s.subscriptionId] = $s.name
+}
+
+Write-Host &#x27;Reading network security group rules...&#x27; -ForegroundColor Cyan
+$rules = Invoke-GraphQuery @&quot;
+Resources
+| where type =~ &#x27;microsoft.network/networksecuritygroups&#x27;
+| extend attachedSubnets = coalesce(array_length(properties.subnets), 0),
+         attachedNics = coalesce(array_length(properties.networkInterfaces), 0)
+| mv-expand rule = properties.securityRules
+| where tostring(rule.properties.direction) =~ &#x27;Inbound&#x27;
+| project nsgName = name, resourceGroup, subscriptionId, location, attachedSubnets, attachedNics,
+    ruleName = tostring(rule.name),
+    priority = toint(rule.properties.priority),
+    access = tostring(rule.properties.access),
+    protocol = tostring(rule.properties.protocol),
+    src = rule.properties.sourceAddressPrefix, srcList = rule.properties.sourceAddressPrefixes,
+    srcAsg = rule.properties.sourceApplicationSecurityGroups,
+    dst = rule.properties.destinationAddressPrefix, dstList = rule.properties.destinationAddressPrefixes,
+    dstAsg = rule.properties.destinationApplicationSecurityGroups,
+    port = rule.properties.destinationPortRange, portList = rule.properties.destinationPortRanges,
+    nsgId = id
+&quot;@
+
+$report = New-Object System.Collections.Generic.List[object]
+foreach ($r in $rules) {
+    $sources = @(Get-Values $r.src $r.srcList)
+    if ($r.srcAsg) { $sources += @($r.srcAsg | ForEach-Object { &#x27;ASG:&#x27; + ($_.id -split &#x27;/&#x27;)[-1] }) }
+    $destinations = @(Get-Values $r.dst $r.dstList)
+    if ($r.dstAsg) { $destinations += @($r.dstAsg | ForEach-Object { &#x27;ASG:&#x27; + ($_.id -split &#x27;/&#x27;)[-1] }) }
+    $ports = @(Get-Values $r.port $r.portList)
+
+    $fromInternet = [bool]($sources | Where-Object { $anySource -contains $_.ToLower() })
+    $toAnything = [bool]($destinations | Where-Object { @(&#x27;*&#x27;, &#x27;any&#x27;, &#x27;virtualnetwork&#x27;, &#x27;0.0.0.0/0&#x27;) -contains $_.ToLower() })
+    $allPorts = $ports -contains &#x27;*&#x27;
+
+    $exposed = foreach ($p in $ports) {
+        $range = Get-PortRange $p
+        $RiskyPort | Where-Object { $_ -ge $range[0] -and $_ -le $range[1] }
+    }
+    $exposed = @($exposed | Sort-Object -Unique)
+    $widest = ($ports | ForEach-Object { $x = Get-PortRange $_; $x[1] - $x[0] + 1 } | Measure-Object -Maximum).Maximum
+
+    $severity = &#x27;&#x27;; $finding = &#x27;&#x27;
+    if ($r.access -eq &#x27;Allow&#x27;) {
+        if ($fromInternet -and $allPorts) {
+            $severity = &#x27;High&#x27;; $finding = &#x27;Every port allowed from the internet&#x27;
+        } elseif ($fromInternet -and $exposed.Count) {
+            $severity = &#x27;High&#x27;; $finding = &quot;Management or database port allowed from the internet: $($exposed -join &#x27;, &#x27;)&quot;
+        } elseif ($fromInternet) {
+            $severity = &#x27;Medium&#x27;; $finding = &#x27;Port allowed from the internet (check it should be public)&#x27;
+        } elseif ($allPorts -and ($sources -contains &#x27;*&#x27; -or $sources -contains &#x27;VirtualNetwork&#x27;) -and $toAnything) {
+            $severity = &#x27;Medium&#x27;; $finding = &#x27;Any to any on every port&#x27;
+        } elseif ($widest -gt $WidePortRange -and ($sources -contains &#x27;*&#x27; -or $sources -contains &#x27;VirtualNetwork&#x27;)) {
+            $severity = &#x27;Low&#x27;; $finding = &quot;Wide port range ($widest ports) allowed from anywhere in the network&quot;
+        }
+    }
+    if (-not $severity -and -not $IncludeAll) { continue }
+
+    $attached = if ($r.attachedSubnets -or $r.attachedNics) { &quot;$($r.attachedSubnets) subnet(s), $($r.attachedNics) NIC(s)&quot; } else { &#x27;Not attached&#x27; }
+    $report.Add([pscustomobject]@{
+        Severity      = $severity
+        Finding       = $finding
+        Subscription  = $subNames[$r.subscriptionId]
+        ResourceGroup = $r.resourceGroup
+        Nsg           = $r.nsgName
+        AttachedTo    = $attached
+        Rule          = $r.ruleName
+        Priority      = $r.priority
+        Access        = $r.access
+        Protocol      = $r.protocol
+        Source        = $sources -join &#x27;, &#x27;
+        Destination   = $destinations -join &#x27;, &#x27;
+        Ports         = $ports -join &#x27;, &#x27;
+        NsgId         = $r.nsgId
+    })
+}
+
+$rank = @{ &#x27;High&#x27; = 0; &#x27;Medium&#x27; = 1; &#x27;Low&#x27; = 2; &#x27;&#x27; = 3 }
+$report = $report | Sort-Object @{e = { $rank[$_.Severity] }}, Subscription, Nsg, Priority
+$report | Export-Csv -Path $OutputFile -NoTypeInformation -Encoding UTF8
+$report | Where-Object Severity | Group-Object Severity |
+    Select-Object @{n=&#x27;Severity&#x27;;e={$_.Name}}, Count | Format-Table -AutoSize | Out-Host
+Write-Host &quot;Rules reported: $(@($report).Count). Report: $OutputFile&quot; -ForegroundColor Green
+</code></pre>
+
+    <nav class="pager" aria-label="More scripts">
+      <a class="prev" href="get-aznsgcoverage.html"><span>Previous script</span>Get-AzNsgCoverage</a>
+      <a class="next" href="get-azbackupcoverage.html"><span>Next script</span>Get-AzBackupCoverage</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

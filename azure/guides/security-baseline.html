@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security baseline: identity, Defender and Key Vault | Notes | Ravindran Mani</title>
+<meta name="description" content="MFA and privileged access, managed identities, Defender for Cloud, secure score, Key Vault and the logs you need.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html" aria-current="page">Azure</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 6 of 10</p>
+    <ol>
+      <li><a href="#identity-comes-first">Identity comes first</a></li>
+      <li><a href="#managed-identities-over-secrets">Managed identities over secrets</a></li>
+      <li><a href="#microsoft-defender-for-cloud">Microsoft Defender for Cloud</a></li>
+      <li><a href="#work-the-secure-score">Work the secure score</a></li>
+      <li><a href="#key-vault-done-right">Key Vault done right</a></li>
+      <li><a href="#logs-you-will-need-later">Logs you will need later</a></li>
+      <li><a href="#a-security-baseline-checklist">A security baseline checklist</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">Azure</a> / Guide 6</p>
+    <h1>Security baseline: identity, Defender and Key Vault</h1>
+    <p class="lead">MFA and privileged access, managed identities, Defender for Cloud, secure score, Key Vault and the logs you need.</p>
+
+<p>Network controls limit where an attacker can go. Most Azure incidents, though, start with a signed-in identity: a phished admin, a leaked client secret, an old account nobody disabled. This guide covers the baseline that sits alongside the network: identity, Microsoft Defender for Cloud, Key Vault and the logs you'll need on the day something happens.</p>
+<h2 id="identity-comes-first">Identity comes first</h2>
+<p><strong>MFA is mandatory for Azure now.</strong> Microsoft enforces it in two phases: the Azure portal, Entra admin center and Intune admin center first (from October 2024), then Azure CLI, Azure PowerShell, the mobile app, infrastructure-as-code tools and the REST API for create, update and delete operations (from October 2025, with postponements that ended on 1 July 2026). Managed identities and service principals aren't affected. <strong>User accounts used as service accounts are</strong>, and are the usual thing that breaks: move scheduled scripts to managed identities or service principals with certificates.</p>
+<p>Beyond MFA:</p>
+<ul>
+<li><strong>Conditional Access</strong> (Entra ID P1): require phishing-resistant MFA for admin roles, block legacy authentication, and require a compliant device for the portal. Start policies in report-only mode.</li>
+<li><strong>Two emergency access ("break-glass") accounts:</strong> cloud-only, long random passwords or FIDO2 keys kept offline, excluded from Conditional Access so a bad policy can't lock everyone out, and an alert on every sign-in.</li>
+<li><strong>Privileged Identity Management</strong> (Entra ID P2): nobody holds Owner, User Access Administrator or Global Administrator permanently. They activate it for a few hours, with a reason, and it's logged.</li>
+<li><strong>Review access quarterly.</strong> <a href="../scripts/get-azroleassignmentreport.html"><code>Get-AzRoleAssignmentReport.ps1</code></a> lists every role assignment and flags the risky ones, and <a href="structure-and-access.html">Guide 2</a> covers RBAC design.</li>
+</ul>
+<h2 id="managed-identities-over-secrets">Managed identities over secrets</h2>
+<p>Every client secret in a config file is a password that doesn't expire on its own and can't use MFA. For anything running in Azure, use a <strong>managed identity</strong> instead: Azure creates and rotates the credential, and nothing is stored in code.</p>
+<ul>
+<li><strong>System-assigned</strong> identities live and die with one resource. Use them by default.</li>
+<li><strong>User-assigned</strong> identities are separate resources shared by several resources, for example a scale set, or when the identity needs permissions before the resource exists.</li>
+</ul>
+<p>For things outside Azure (a CI/CD pipeline, a partner's system), use a service principal with <strong>workload identity federation</strong> where the platform supports it (GitHub Actions, Azure DevOps, Kubernetes), a certificate where it doesn't, and a client secret only as a last resort, with a short expiry and an owner.</p>
+<pre><code class="language-powershell"># Service principal secrets and certificates that expire in the next 30 days (Microsoft Graph PowerShell)
+Connect-MgGraph -Scopes 'Application.Read.All'
+$cutoff = (Get-Date).AddDays(30)
+Get-MgApplication -All | ForEach-Object {
+    $app = $_
+    @($app.PasswordCredentials) + @($app.KeyCredentials) | Where-Object { $_ -and $_.EndDateTime -lt $cutoff } |
+        ForEach-Object { [pscustomobject]@{ App = $app.DisplayName; AppId = $app.AppId; Expires = $_.EndDateTime } }
+} | Sort-Object Expires
+</code></pre>
+<h2 id="microsoft-defender-for-cloud">Microsoft Defender for Cloud</h2>
+<p>Defender for Cloud does two jobs: it checks your configuration (posture), and it detects attacks on running workloads (protection). They're licensed separately.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Plan</th><th>Cost</th><th>What you get</th></tr>
+</thead>
+<tbody>
+<tr><td>Foundational CSPM</td><td>Free, on by default</td><td>Secure score, recommendations against the Microsoft cloud security benchmark, asset inventory</td></tr>
+<tr><td>Defender CSPM</td><td>Per billable resource</td><td>Attack path analysis, cloud security explorer, agentless scanning for vulnerabilities and secrets, governance rules</td></tr>
+<tr><td>Defender for Servers Plan 1</td><td>Per server</td><td>Microsoft Defender for Endpoint integration</td></tr>
+<tr><td>Defender for Servers Plan 2</td><td>Per server</td><td>Plan 1 plus vulnerability assessment, just-in-time VM access, file integrity monitoring</td></tr>
+<tr><td>Defender for Storage, SQL, Key Vault, App Service, Containers and others</td><td>Per resource or transaction</td><td>Threat detection for that service (for example malware scanning of uploaded blobs)</td></tr>
+</tbody>
+</table>
+</div>
+<p>A sensible start: Servers Plan 2 and Storage on production subscriptions, Key Vault and SQL where you use them, and Defender CSPM once the free recommendations are under control. Enable plans at subscription level (or with Azure Policy at a management group) so new resources are covered automatically.</p>
+<pre><code class="language-powershell"># Which Defender plans are on in this subscription
+Get-AzSecurityPricing | Select-Object Name, PricingTier, SubPlan | Sort-Object Name
+
+# Turn on Defender for Servers Plan 2
+Set-AzSecurityPricing -Name 'VirtualMachines' -PricingTier 'Standard' -SubPlan 'P2'
+</code></pre>
+<p>Also set <strong>Environment settings &gt; Email notifications</strong> so high-severity alerts go to a monitored mailbox, not only to subscription owners.</p>
+<h2 id="work-the-secure-score">Work the secure score</h2>
+<p>The secure score is a percentage of recommendations you've addressed, weighted by how much each one matters. It's useful as a trend and as a to-do list, less so as a target in itself. Work it like this:</p>
+<ul>
+<li><strong>Fix by control, not by resource.</strong> Controls such as "Enable MFA", "Secure management ports" and "Restrict unauthorised network access" carry the most points and usually map to the NSG and identity work in these guides.</li>
+<li><strong>Use Azure Policy for the fix,</strong> so it stays fixed. Many recommendations offer <strong>Fix</strong> or <strong>Enforce</strong>, which deploys the matching policy (see <a href="tagging-and-policy.html">Guide 3</a>).</li>
+<li><strong>Exempt, don't ignore.</strong> If a recommendation doesn't apply, create an exemption with a reason and an expiry date. The score then reflects real risk.</li>
+<li><strong>Assign owners and due dates</strong> with governance rules (Defender CSPM), or at least in your own tracker.</li>
+</ul>
+<pre><code class="language-powershell"># Unhealthy high-severity recommendations across every subscription, grouped by recommendation
+Search-AzGraph -UseTenantScope -First 1000 -Query @&quot;
+SecurityResources
+| where type == 'microsoft.security/assessments'
+| where properties.status.code == 'Unhealthy' and properties.metadata.severity == 'High'
+| summarize Resources = count() by Recommendation = tostring(properties.displayName)
+| order by Resources desc
+&quot;@
+</code></pre>
+<h2 id="key-vault-done-right">Key Vault done right</h2>
+<p>Secrets, keys and certificates belong in Key Vault, not in app settings, scripts or pipelines. Settings to check on every vault:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Setting</th><th>Why</th></tr>
+</thead>
+<tbody>
+<tr><td>Permission model: <strong>Azure role-based access control</strong></td><td>One access model with the rest of Azure, works with PIM, and separates who manages the vault from who reads secrets. Vault access policies are the legacy model</td></tr>
+<tr><td><strong>Purge protection</strong> on</td><td>Soft delete is always on (7&ndash;90 days); purge protection stops anyone, including an attacker with Owner, from permanently deleting before that period ends. It can't be turned off once on</td></tr>
+<tr><td><strong>Private endpoint</strong> and public access disabled</td><td>Only your networks can reach it (see <a href="network-perimeter.html#private-endpoints-for-paas-services">Guide 5</a>)</td></tr>
+<tr><td><strong>Diagnostic logs</strong> to Log Analytics</td><td>Who read which secret, and when</td></tr>
+<tr><td><strong>Expiry dates and rotation</strong></td><td>Keys and certificates with a rotation policy; alerts before expiry</td></tr>
+</tbody>
+</table>
+</div>
+<p>Use one vault per application per environment. A shared vault means everyone with access to it can read everyone's secrets. Give apps <strong>Key Vault Secrets User</strong> (read only), not <strong>Key Vault Administrator</strong>.</p>
+<pre><code class="language-powershell"># Vaults that miss the baseline
+Search-AzGraph -UseTenantScope -First 1000 -Query @&quot;
+Resources
+| where type =~ 'microsoft.keyvault/vaults'
+| project name, resourceGroup, subscriptionId,
+    rbac = tobool(properties.enableRbacAuthorization),
+    purgeProtection = tobool(properties.enablePurgeProtection),
+    publicAccess = tostring(properties.publicNetworkAccess)
+| where rbac != true or purgeProtection != true or publicAccess !~ 'Disabled'
+&quot;@
+</code></pre>
+<h2 id="logs-you-will-need-later">Logs you will need later</h2>
+<p>Investigations fail most often because the logs were never collected, or were kept for too short a time. Send these to your Log Analytics workspace, and keep at least 90 days (longer if your auditors ask):</p>
+<ul>
+<li><strong>Azure Activity log</strong> from every subscription: who created, changed or deleted what. Assign the built-in policy that configures it at the management group.</li>
+<li><strong>Entra ID sign-in and audit logs</strong> (Entra admin center &gt; Diagnostic settings). The portal only keeps them for 30 days at most.</li>
+<li><strong>Resource logs</strong> for Key Vault, Azure Firewall, Application Gateway WAF and storage accounts that hold sensitive data.</li>
+<li><strong>Virtual network flow logs</strong> for production networks (see <a href="network-security-groups.html#check-what-is-actually-applied">Guide 4</a>).</li>
+<li><strong>Defender for Cloud alerts</strong>, exported continuously to the workspace.</li>
+</ul>
+<p>If you need correlation and automated response on top, Microsoft Sentinel runs on the same workspace. <a href="monitoring-and-alerts.html">Guide 9</a> covers workspaces and alerting.</p>
+<h2 id="a-security-baseline-checklist">A security baseline checklist</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Area</th><th>Baseline</th><th>How to check</th></tr>
+</thead>
+<tbody>
+<tr><td>Identity</td><td>MFA for everyone, two break-glass accounts, no permanent Owner</td><td>Entra sign-in logs; <a href="../scripts/get-azroleassignmentreport.html"><code>Get-AzRoleAssignmentReport</code></a></td></tr>
+<tr><td>Management ports</td><td>No RDP or SSH from the internet</td><td><a href="../scripts/get-aznsgrulereport.html"><code>Get-AzNsgRuleReport</code></a></td></tr>
+<tr><td>Network coverage</td><td>Every workload subnet has an NSG; no public IP without one</td><td><a href="../scripts/get-aznsgcoverage.html"><code>Get-AzNsgCoverage</code></a></td></tr>
+<tr><td>PaaS exposure</td><td>Public network access disabled unless there's a reason</td><td>The Resource Graph query in <a href="network-perimeter.html#private-endpoints-for-paas-services">Guide 5</a></td></tr>
+<tr><td>Secrets</td><td>Managed identities; vaults on RBAC with purge protection</td><td>The Key Vault query above</td></tr>
+<tr><td>Detection</td><td>Defender for Servers and Storage on production</td><td><code>Get-AzSecurityPricing</code></td></tr>
+<tr><td>Logging</td><td>Activity, sign-in and key resource logs in Log Analytics for 90+ days</td><td>Azure Policy compliance</td></tr>
+<tr><td>Backup</td><td>Immutable, soft-deleted backups for production VMs</td><td><a href="backup-and-recovery.html">Guide 8</a>; <a href="../scripts/get-azbackupcoverage.html"><code>Get-AzBackupCoverage</code></a></td></tr>
+</tbody>
+</table>
+</div>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="network-perimeter.html"><span>Previous guide</span>Firewalls, private endpoints and admin access</a>
+      <a class="next" href="virtual-machines.html"><span>Next guide</span>Virtual machines</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

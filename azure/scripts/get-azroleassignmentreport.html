@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get-AzRoleAssignmentReport | Notes | Ravindran Mani</title>
+<meta name="description" content="Reports Azure RBAC role assignments in every subscription and flags the risky ones.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html" aria-current="page">Azure</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap">
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">Azure</a> / <a href="../../scripts/index.html">Scripts</a> / Governance</p>
+    <h1 class="script-title">Get-AzRoleAssignmentReport</h1>
+    <p class="lead">Reports Azure RBAC role assignments in every subscription and flags the risky ones.</p>
+    <dl class="facts">
+      <div><dt>Runs in</dt><dd>Az PowerShell</dd></div>
+      <div><dt>Safety</dt><dd><span class="flag flag-read">Read-only</span></dd></div>
+    </dl>
+    <p class="actions"><a class="btn btn-primary" href="Get-AzRoleAssignmentReport.ps1" download>Download Get-AzRoleAssignmentReport.ps1</a></p>
+
+    <h2 id="what-it-does">What it does</h2>
+    <p>Lists every role assignment visible in each subscription (including resource group and resource scope) and flags:</p>
+<ul><li>Privileged roles: Owner, Contributor, User Access Administrator, Role Based Access Control Administrator</li><li>Guest (external) accounts</li><li>Roles granted directly to users rather than groups</li><li>Assignments whose principal no longer exists (ObjectType Unknown), left behind by deleted accounts</li></ul>
+<p>Read-only. Use it for quarterly access reviews.</p>
+
+    <h2 id="parameters">Parameters</h2>
+    <div class="table-wrap">
+      <table class="params">
+          <tr><th scope="row"><code>-SubscriptionId</code><span class="ptype">string[]</span></th><td>Limit the report to these subscription IDs. Default: every enabled subscription.</td></tr>
+          <tr><th scope="row"><code>-OutputFile</code><span class="ptype">string</span></th><td>CSV output path.<span class="pdefault">Default: <code>Timestamped file in the current folder</code></span></td></tr>
+      </table>
+    </div>
+
+    <h2 id="examples">Examples</h2>
+    <pre><code class="language-powershell">.\Get-AzRoleAssignmentReport.ps1</code></pre>
+    <pre><code class="language-powershell">.\Get-AzRoleAssignmentReport.ps1 -SubscriptionId 00000000-0000-0000-0000-000000000000</code></pre>
+
+    <h2 id="notes">Notes</h2>
+    <p>Requires Az.Accounts and Az.Resources, and Reader access (Microsoft.Authorization/roleAssignments/read). Clean up orphaned assignments with Remove-AzRoleAssignment -ObjectId &lt;id&gt; -RoleDefinitionName &lt;role&gt; -Scope &lt;scope&gt;.</p>
+
+    <h2 id="source">Full script</h2>
+    <!-- Keep this in sync with Get-AzRoleAssignmentReport.ps1 in this folder. -->
+    <pre><code class="language-powershell">&lt;#
+.SYNOPSIS
+    Reports Azure RBAC role assignments in every subscription and flags the risky ones.
+
+.DESCRIPTION
+    Lists every role assignment visible in each subscription (including resource group
+    and resource scope) and flags:
+    - Privileged roles: Owner, Contributor, User Access Administrator, Role Based Access Control Administrator
+    - Guest (external) accounts
+    - Roles granted directly to users rather than groups
+    - Assignments whose principal no longer exists (ObjectType Unknown), left behind by deleted accounts
+
+    Read-only. Use it for quarterly access reviews.
+
+.PARAMETER SubscriptionId
+    Limit the report to these subscription IDs. Default: every enabled subscription.
+
+.PARAMETER OutputFile
+    CSV output path.
+
+.EXAMPLE
+    .\Get-AzRoleAssignmentReport.ps1
+
+.EXAMPLE
+    .\Get-AzRoleAssignmentReport.ps1 -SubscriptionId 00000000-0000-0000-0000-000000000000
+
+.NOTES
+    Requires Az.Accounts and Az.Resources, and Reader access (Microsoft.Authorization/roleAssignments/read).
+    Clean up orphaned assignments with Remove-AzRoleAssignment -ObjectId &lt;id&gt; -RoleDefinitionName &lt;role&gt; -Scope &lt;scope&gt;.
+#&gt;
+[CmdletBinding()]
+param(
+    [string[]]$SubscriptionId,
+    [string]$OutputFile = (Join-Path -Path (Get-Location) -ChildPath (&#x27;AzRoleAssignments_{0:yyyyMMdd_HHmm}.csv&#x27; -f (Get-Date)))
+)
+
+if (-not (Get-AzContext)) { throw &#x27;Not signed in. Run Connect-AzAccount first.&#x27; }
+
+$privileged = @(&#x27;Owner&#x27;, &#x27;Contributor&#x27;, &#x27;User Access Administrator&#x27;, &#x27;Role Based Access Control Administrator&#x27;)
+$subs = @(Get-AzSubscription | Where-Object { $_.State -eq &#x27;Enabled&#x27; })
+if ($SubscriptionId) { $subs = @($subs | Where-Object { $SubscriptionId -contains $_.Id }) }
+
+$report = New-Object System.Collections.Generic.List[object]
+foreach ($sub in $subs) {
+    Write-Host &quot;Reading $($sub.Name)...&quot; -ForegroundColor Cyan
+    Set-AzContext -Subscription $sub.Id | Out-Null
+    foreach ($ra in Get-AzRoleAssignment) {
+        $flags = New-Object System.Collections.Generic.List[string]
+        if ($privileged -contains $ra.RoleDefinitionName) { $flags.Add(&#x27;Privileged role&#x27;) }
+        if ($ra.ObjectType -eq &#x27;Unknown&#x27;) { $flags.Add(&#x27;Principal deleted&#x27;) }
+        if ($ra.SignInName -like &#x27;*#EXT#*&#x27;) { $flags.Add(&#x27;Guest&#x27;) }
+        if ($ra.ObjectType -eq &#x27;User&#x27;) { $flags.Add(&#x27;Direct user assignment&#x27;) }
+
+        $scopeLevel = switch -Regex ($ra.Scope) {
+            &#x27;^/providers/Microsoft.Management/managementGroups/&#x27; { &#x27;Management group (inherited)&#x27;; break }
+            &#x27;^/$&#x27;                                                { &#x27;Root (inherited)&#x27;; break }
+            &#x27;^/subscriptions/[^/]+$&#x27;                             { &#x27;Subscription&#x27;; break }
+            &#x27;^/subscriptions/[^/]+/resourceGroups/[^/]+$&#x27;        { &#x27;Resource group&#x27;; break }
+            default                                              { &#x27;Resource&#x27; }
+        }
+
+        $report.Add([pscustomobject]@{
+            Subscription = $sub.Name
+            ScopeLevel   = $scopeLevel
+            Scope        = $ra.Scope
+            Role         = $ra.RoleDefinitionName
+            Principal    = $ra.DisplayName
+            SignInName   = $ra.SignInName
+            ObjectType   = $ra.ObjectType
+            ObjectId     = $ra.ObjectId
+            Flags        = $flags -join &#x27;; &#x27;
+        })
+    }
+}
+
+$report | Sort-Object Subscription, ScopeLevel, Role | Export-Csv -Path $OutputFile -NoTypeInformation -Encoding UTF8
+
+Write-Host &quot;Assignments: $($report.Count)&quot; -ForegroundColor Cyan
+[pscustomobject]@{
+    PrivilegedRoles         = @($report | Where-Object { $_.Flags -like &#x27;*Privileged role*&#x27; }).Count
+    PrivilegedDirectToUsers = @($report | Where-Object { $_.Flags -like &#x27;*Privileged role*&#x27; -and $_.ObjectType -eq &#x27;User&#x27; }).Count
+    Guests                  = @($report | Where-Object { $_.Flags -like &#x27;*Guest*&#x27; }).Count
+    DeletedPrincipals       = @($report | Where-Object { $_.Flags -like &#x27;*Principal deleted*&#x27; }).Count
+} | Format-List | Out-Host
+Write-Host &quot;Report: $OutputFile&quot; -ForegroundColor Green
+</code></pre>
+
+    <nav class="pager" aria-label="More scripts">
+      <a class="prev" href="get-azvminventory.html"><span>Previous script</span>Get-AzVMInventory</a>
+      <a class="next" href="get-azuntaggedresources.html"><span>Next script</span>Get-AzUntaggedResources</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

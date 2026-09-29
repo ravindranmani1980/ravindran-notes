@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cost hygiene | Notes | Ravindran Mani</title>
+<meta name="description" content="Budgets, the monthly clean-up checklist, reservations and savings plans.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html" aria-current="page">Azure</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 10 of 10</p>
+    <ol>
+      <li><a href="#see-where-the-money-goes">See where the money goes</a></li>
+      <li><a href="#set-budgets-and-alerts">Set budgets and alerts</a></li>
+      <li><a href="#the-monthly-clean-up-checklist">The monthly clean-up checklist</a></li>
+      <li><a href="#pay-less-for-what-you-keep">Pay less for what you keep</a></li>
+      <li><a href="#storage-and-logs">Storage and logs</a></li>
+      <li><a href="#make-it-routine">Make it routine</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">Azure</a> / Guide 10</p>
+    <h1>Cost hygiene</h1>
+    <p class="lead">Budgets, the monthly clean-up checklist, reservations and savings plans.</p>
+
+<p>Most Azure waste comes from a handful of habits: resources nobody deleted, VMs running when nobody uses them, sizes chosen once and never revisited, and paying full price for steady workloads. This guide covers the checks and fixes that pay back quickly. The FinOps topic will cover the wider practice: showback, forecasting and working with finance.</p>
+<h2 id="see-where-the-money-goes">See where the money goes</h2>
+<p><strong>Cost Management + Billing</strong> in the portal is the starting point:</p>
+<ul>
+<li><strong>Cost analysis</strong>: group by service, resource group, or tag (for example <code>CostCenter</code>) to see who spends what.</li>
+<li><strong>Tag inheritance</strong> (Cost Management settings): applies resource group and subscription tags to cost records, so reports by tag are complete.</li>
+<li><strong>Exports</strong>: a daily export to a storage account gives you the detailed data for Power BI or Excel.</li>
+</ul>
+<h2 id="set-budgets-and-alerts">Set budgets and alerts</h2>
+<p>A budget doesn't stop spending, but it tells people before the invoice does. Create one per subscription (or per resource group for big projects) with alerts at 80%, 100% and a <em>forecast</em> of 100%:</p>
+<pre><code class="language-powershell">New-AzConsumptionBudget -Name 'budget-notes-test-monthly' -Amount 2000 -Category Cost `
+    -TimeGrain Monthly -StartDate (Get-Date -Day 1).Date `
+    -ContactEmail 'jane@ravindran.in' -NotificationKey 'Actual80' -NotificationThreshold 80 -NotificationEnabled
+</code></pre>
+<p>Forecast alerts are easiest to add in the portal (Cost Management &gt; Budgets).</p>
+<h2 id="the-monthly-clean-up-checklist">The monthly clean-up checklist</h2>
+<ol>
+<li><strong>Orphaned resources.</strong> Unattached disks, unused public IPs, detached NICs, empty resource groups and old snapshots. <a href="../scripts/find-azorphanedresources.html"><code>Find-AzOrphanedResources.ps1</code></a> lists them across every subscription. Unattached premium disks and Standard SKU public IPs are billed whether they're used or not.</li>
+<li><strong>Stopped but not deallocated VMs.</strong> They're still billed for compute. Check the <code>PowerState</code> column in <a href="../scripts/get-azvminventory.html"><code>Get-AzVMInventory.ps1</code></a>.</li>
+<li><strong>Non-production running 24/7.</strong> Schedule it with <a href="../scripts/invoke-azvmpowerschedule.html"><code>Invoke-AzVMPowerSchedule.ps1</code></a>.</li>
+<li><strong>Azure Advisor cost recommendations.</strong> Right-size or shut down underused VMs, and delete idle resources. Review them monthly; they refresh as usage changes.</li>
+<li><strong>Untagged resources.</strong> Costs without an owner never get reviewed. Run <a href="../scripts/get-azuntaggedresources.html"><code>Get-AzUntaggedResources.ps1</code></a>.</li>
+</ol>
+<h2 id="pay-less-for-what-you-keep">Pay less for what you keep</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Best for</th>
+<th>Commitment</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Reservations</strong></td>
+<td>A specific VM family (or database, storage) running steadily in one region</td>
+<td>1 or 3 years, for that resource type</td>
+</tr>
+<tr>
+<td><strong>Azure savings plan for compute</strong></td>
+<td>Steady compute spend that moves between VM sizes, regions or services</td>
+<td>1 or 3 years, an hourly spend amount</td>
+</tr>
+<tr>
+<td><strong>Azure Hybrid Benefit</strong></td>
+<td>Windows Server and SQL Server licenses you already own with Software Assurance</td>
+<td>Your existing licenses</td>
+</tr>
+<tr>
+<td><strong>Dev/Test pricing</strong></td>
+<td>Non-production subscriptions for Visual Studio subscribers</td>
+<td>Dev/Test subscription offer</td>
+</tr>
+<tr>
+<td><strong>Spot VMs</strong></td>
+<td>Interruptible batch work</td>
+<td>None; can be evicted at short notice</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Microsoft quotes discounts of up to about 72% for reservations and about 65% for savings plans compared with pay-as-you-go, depending on the service and term. The usual approach: right-size first, then cover the steady baseline with reservations or a savings plan, and leave the variable part on pay-as-you-go. Review utilisation monthly in <strong>Reservations</strong> and <strong>Savings plans</strong>.</p>
+<h2 id="storage-and-logs">Storage and logs</h2>
+<ul>
+<li><strong>Blob lifecycle management</strong>: move data to cool, cold and archive tiers automatically after a number of days, and delete it when it's no longer needed.</li>
+<li><strong>Snapshots</strong> are easy to create and forget; set a retention rule.</li>
+<li><strong>Log Analytics</strong>: check what's ingesting the most (see the monitoring guide). Verbose diagnostic logs can cost more than the resources they describe.</li>
+</ul>
+<h2 id="make-it-routine">Make it routine</h2>
+<p>Put a 30-minute cost review in the calendar each month with the people who own the biggest subscriptions. Look at the trend, the top five resources, Advisor recommendations and the orphaned resources report. Small, regular clean-ups beat an annual cost-cutting project.</p>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="monitoring-and-alerts.html"><span>Previous guide</span>Monitoring and alerts</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

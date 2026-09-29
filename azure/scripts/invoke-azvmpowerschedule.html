@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Invoke-AzVMPowerSchedule | Notes | Ravindran Mani</title>
+<meta name="description" content="Starts or stops (deallocates) Azure VMs that carry a schedule tag. Designed for Azure Automation.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html" aria-current="page">Azure</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap">
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">Azure</a> / <a href="../../scripts/index.html">Scripts</a> / Operations</p>
+    <h1 class="script-title">Invoke-AzVMPowerSchedule</h1>
+    <p class="lead">Starts or stops (deallocates) Azure VMs that carry a schedule tag. Designed for Azure Automation.</p>
+    <dl class="facts">
+      <div><dt>Runs in</dt><dd>Az PowerShell (also in Azure Automation)</dd></div>
+      <div><dt>Safety</dt><dd><span class="flag flag-change">Makes changes. Run with -WhatIf first</span></dd></div>
+    </dl>
+    <p class="actions"><a class="btn btn-primary" href="Invoke-AzVMPowerSchedule.ps1" download>Download Invoke-AzVMPowerSchedule.ps1</a></p>
+
+    <h2 id="what-it-does">What it does</h2>
+    <p>Finds VMs with the tag -TagName set to -TagValue (default AutoShutdown = Yes) in the chosen subscriptions and starts or stops them. Stopping deallocates the VM, so it stops being billed for compute. VMs already in the requested state are skipped.</p>
+<p>Typical setup: an Azure Automation account with a system-assigned managed identity that has the Virtual Machine Contributor role on the subscriptions, and two schedules: Stop at 19:00 and Start at 07:00 on weekdays.</p>
+<p>Supports -WhatIf.</p>
+
+    <h2 id="parameters">Parameters</h2>
+    <div class="table-wrap">
+      <table class="params">
+          <tr><th scope="row"><code>-Action</code><span class="ptype">string</span><span class="req">Required</span></th><td>Start or Stop.</td></tr>
+          <tr><th scope="row"><code>-TagName</code><span class="ptype">string</span></th><td>Tag that marks VMs for scheduling. Default AutoShutdown.</td></tr>
+          <tr><th scope="row"><code>-TagValue</code><span class="ptype">string</span></th><td>Tag value that opts a VM in. Default Yes.</td></tr>
+          <tr><th scope="row"><code>-SubscriptionId</code><span class="ptype">string[]</span></th><td>Subscriptions to act on. Default: the current subscription only.</td></tr>
+          <tr><th scope="row"><code>-UseManagedIdentity</code><span class="ptype">switch</span></th><td>Sign in with the managed identity (use this in Azure Automation).</td></tr>
+          <tr><th scope="row"><code>-NoWait</code><span class="ptype">switch</span></th><td>Send the start/stop requests without waiting for each VM to finish.</td></tr>
+      </table>
+    </div>
+
+    <h2 id="examples">Examples</h2>
+    <pre><code class="language-powershell">.\Invoke-AzVMPowerSchedule.ps1 -Action Stop -WhatIf</code></pre>
+    <pre><code class="language-powershell">.\Invoke-AzVMPowerSchedule.ps1 -Action Stop -UseManagedIdentity -SubscriptionId 00000000-0000-0000-0000-000000000000 -NoWait</code></pre>
+
+    <h2 id="notes">Notes</h2>
+    <p>Requires Az.Accounts and Az.Compute. The tag name and value are compared case-insensitively.</p>
+
+    <h2 id="source">Full script</h2>
+    <!-- Keep this in sync with Invoke-AzVMPowerSchedule.ps1 in this folder. -->
+    <pre><code class="language-powershell">&lt;#
+.SYNOPSIS
+    Starts or stops (deallocates) Azure VMs that carry a schedule tag. Designed for Azure Automation.
+
+.DESCRIPTION
+    Finds VMs with the tag -TagName set to -TagValue (default AutoShutdown = Yes) in the
+    chosen subscriptions and starts or stops them. Stopping deallocates the VM, so it
+    stops being billed for compute. VMs already in the requested state are skipped.
+
+    Typical setup: an Azure Automation account with a system-assigned managed identity
+    that has the Virtual Machine Contributor role on the subscriptions, and two
+    schedules: Stop at 19:00 and Start at 07:00 on weekdays.
+
+    Supports -WhatIf.
+
+.PARAMETER Action
+    Start or Stop.
+
+.PARAMETER TagName
+    Tag that marks VMs for scheduling. Default AutoShutdown.
+
+.PARAMETER TagValue
+    Tag value that opts a VM in. Default Yes.
+
+.PARAMETER SubscriptionId
+    Subscriptions to act on. Default: the current subscription only.
+
+.PARAMETER UseManagedIdentity
+    Sign in with the managed identity (use this in Azure Automation).
+
+.PARAMETER NoWait
+    Send the start/stop requests without waiting for each VM to finish.
+
+.EXAMPLE
+    .\Invoke-AzVMPowerSchedule.ps1 -Action Stop -WhatIf
+
+.EXAMPLE
+    .\Invoke-AzVMPowerSchedule.ps1 -Action Stop -UseManagedIdentity -SubscriptionId 00000000-0000-0000-0000-000000000000 -NoWait
+
+.NOTES
+    Requires Az.Accounts and Az.Compute. The tag name and value are compared case-insensitively.
+#&gt;
+[CmdletBinding(SupportsShouldProcess)]
+param(
+    [Parameter(Mandatory)][ValidateSet(&#x27;Start&#x27;, &#x27;Stop&#x27;)][string]$Action,
+    [string]$TagName = &#x27;AutoShutdown&#x27;,
+    [string]$TagValue = &#x27;Yes&#x27;,
+    [string[]]$SubscriptionId,
+    [switch]$UseManagedIdentity,
+    [switch]$NoWait
+)
+
+if ($UseManagedIdentity) {
+    Connect-AzAccount -Identity | Out-Null
+}
+$context = Get-AzContext
+if (-not $context) { throw &#x27;Not signed in. Run Connect-AzAccount, or use -UseManagedIdentity in Azure Automation.&#x27; }
+if (-not $SubscriptionId) { $SubscriptionId = @($context.Subscription.Id) }
+
+$summary = New-Object System.Collections.Generic.List[object]
+
+foreach ($sub in $SubscriptionId) {
+    Set-AzContext -Subscription $sub | Out-Null
+    Write-Output &quot;Subscription $sub&quot;
+
+    $vms = Get-AzVM -Status | Where-Object {
+        $tags = $_.Tags
+        if (-not $tags) { return $false }
+        $key = $tags.Keys | Where-Object { $_ -ieq $TagName } | Select-Object -First 1
+        $key -and ($tags[$key] -ieq $TagValue)
+    }
+
+    foreach ($vm in $vms) {
+        $state = $vm.PowerState   # e.g. &quot;VM running&quot;, &quot;VM deallocated&quot;, &quot;VM stopped&quot;
+        $needed = if ($Action -eq &#x27;Stop&#x27;) { $state -notmatch &#x27;deallocated&#x27; } else { $state -notmatch &#x27;running&#x27; }
+        if (-not $needed) {
+            $summary.Add([pscustomobject]@{ VM = $vm.Name; ResourceGroup = $vm.ResourceGroupName; Before = $state; Result = &#x27;Skipped (already in state)&#x27; })
+            continue
+        }
+        if ($PSCmdlet.ShouldProcess(&quot;$($vm.ResourceGroupName)/$($vm.Name)&quot;, &quot;$Action VM&quot;)) {
+            try {
+                if ($Action -eq &#x27;Stop&#x27;) {
+                    Stop-AzVM -ResourceGroupName $vm.ResourceGroupName -Name $vm.Name -Force -NoWait:$NoWait -ErrorAction Stop | Out-Null
+                }
+                else {
+                    Start-AzVM -ResourceGroupName $vm.ResourceGroupName -Name $vm.Name -NoWait:$NoWait -ErrorAction Stop | Out-Null
+                }
+                $result = if ($NoWait) { &#x27;Requested&#x27; } else { &#x27;Done&#x27; }
+            }
+            catch { $result = &quot;Failed: $($_.Exception.Message)&quot; }
+            $summary.Add([pscustomobject]@{ VM = $vm.Name; ResourceGroup = $vm.ResourceGroupName; Before = $state; Result = $result })
+        }
+    }
+}
+
+# Write-Output (not Write-Host) so the summary appears in Azure Automation job output
+$summary | Format-Table -AutoSize | Out-String | Write-Output
+Write-Output (&quot;{0}: {1} VM(s) acted on, {2} skipped, {3} failed.&quot; -f $Action,
+    @($summary | Where-Object { $_.Result -in &#x27;Done&#x27;, &#x27;Requested&#x27; }).Count,
+    @($summary | Where-Object { $_.Result -like &#x27;Skipped*&#x27; }).Count,
+    @($summary | Where-Object { $_.Result -like &#x27;Failed*&#x27; }).Count)
+</code></pre>
+
+    <nav class="pager" aria-label="More scripts">
+      <a class="prev" href="get-azbackupcoverage.html"><span>Previous script</span>Get-AzBackupCoverage</a>
+      <span></span>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

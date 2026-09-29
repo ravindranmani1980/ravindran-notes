@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Firewalls, private endpoints and admin access | Notes | Ravindran Mani</title>
+<meta name="description" content="Outbound control, Azure Firewall, WAF, DDoS protection, private endpoints, Bastion and just-in-time access.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html" aria-current="page">Azure</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 5 of 10</p>
+    <ol>
+      <li><a href="#what-sits-where">What sits where</a></li>
+      <li><a href="#control-outbound-traffic">Control outbound traffic</a></li>
+      <li><a href="#azure-firewall">Azure Firewall</a></li>
+      <li><a href="#web-application-firewall">Web application firewall</a></li>
+      <li><a href="#ddos-protection">DDoS protection</a></li>
+      <li><a href="#private-endpoints-for-paas-services">Private endpoints for PaaS services</a></li>
+      <li><a href="#admin-access-without-open-ports">Admin access without open ports</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">Azure</a> / Guide 5</p>
+    <h1>Firewalls, private endpoints and admin access</h1>
+    <p class="lead">Outbound control, Azure Firewall, WAF, DDoS protection, private endpoints, Bastion and just-in-time access.</p>
+
+<p>NSGs filter by address and port, and that's all they do. They can't allow <code>*.windowsupdate.com</code> and block the rest of the internet, they don't inspect traffic, and they don't stop a storage account from being reachable from anywhere. This guide covers the layers around them: controlled outbound, Azure Firewall, web application firewalls, DDoS protection, private endpoints, and getting to servers without opening management ports.</p>
+<h2 id="what-sits-where">What sits where</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Control</th><th>Protects against</th><th>Works at</th></tr>
+</thead>
+<tbody>
+<tr><td>NSG and ASG</td><td>Unwanted connections between addresses and ports</td><td>Subnet or NIC (layer 4)</td></tr>
+<tr><td>Azure Firewall</td><td>Uncontrolled outbound, traffic between networks, known-bad destinations</td><td>Hub network, all traffic routed through it</td></tr>
+<tr><td>Web application firewall (WAF)</td><td>Attacks on websites: SQL injection, cross-site scripting, bots</td><td>In front of web apps (Application Gateway or Front Door)</td></tr>
+<tr><td>DDoS protection</td><td>Floods aimed at public IP addresses</td><td>Public IPs</td></tr>
+<tr><td>Private endpoints</td><td>PaaS services reachable from the internet</td><td>The service's own network access</td></tr>
+<tr><td>Bastion and just-in-time access</td><td>Open RDP and SSH</td><td>Admin access to VMs</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="control-outbound-traffic">Control outbound traffic</h2>
+<p>For years, a VM with no public IP could still reach the internet through an address Azure assigned behind the scenes ("default outbound access"). That's going away. For virtual networks created with API versions released after 31 March 2026, subnets are <strong>private by default</strong>: VMs in them can't reach the internet, or Microsoft public endpoints, until you give them an explicit way out. Existing virtual networks don't change, unless you set their subnets to private yourself, which you should plan to do.</p>
+<p>The explicit options:</p>
+<ul>
+<li><strong>NAT gateway</strong> on the subnet: the simplest. Fixed public IPs that partners can allow-list, and no inbound exposure.</li>
+<li><strong>Azure Firewall</strong> via a route table that sends <code>0.0.0.0/0</code> to the firewall's private IP: when you need to control <em>where</em> servers can go, not only that they can.</li>
+<li><strong>Load balancer outbound rules,</strong> when the servers already sit behind a Standard load balancer.</li>
+</ul>
+<p>Don't give servers public IPs just so they can download updates.</p>
+<h2 id="azure-firewall">Azure Firewall</h2>
+<p>Azure Firewall is a managed, stateful firewall that usually sits in a hub virtual network, with spoke networks peered to it and a route table in each spoke sending traffic through it. Its main advantage over NSGs is <strong>application rules</strong> by name: allow <code>*.ubuntu.com</code> and the Windows Update FQDN tag, deny everything else.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>SKU</th><th>Throughput</th><th>Adds</th><th>Fits</th></tr>
+</thead>
+<tbody>
+<tr><td>Basic</td><td>Up to 250 Mbps</td><td>Network and application rules; threat intelligence in alert mode</td><td>Small environments</td></tr>
+<tr><td>Standard</td><td>Up to 30 Gbps</td><td>Threat intelligence that blocks, DNS proxy, web categories</td><td>Most organisations</td></tr>
+<tr><td>Premium</td><td>Up to 100 Gbps</td><td>TLS inspection, intrusion detection and prevention (IDPS), full-URL filtering</td><td>Regulated and sensitive workloads</td></tr>
+</tbody>
+</table>
+</div>
+<p>Practical points:</p>
+<ul>
+<li><strong>Manage rules in a Firewall Policy,</strong> not classic rules on the firewall itself. A parent policy holds the organisation-wide rules; child policies hold each environment's.</li>
+<li><strong>Rules are processed by type:</strong> DNAT first, then network rules, then application rules. A network rule that allows something wins before any application rule sees it.</li>
+<li><strong>Send the firewall's logs to Log Analytics</strong> (resource-specific tables). A denied connection with no log is the hardest problem to troubleshoot.</li>
+<li><strong>It's a significant fixed monthly cost.</strong> One shared firewall in a hub is normal; one per application usually isn't.</li>
+</ul>
+<h2 id="web-application-firewall">Web application firewall</h2>
+<p>Any website on the internet should sit behind a WAF. In Azure that's <strong>Application Gateway WAF</strong> (regional, inside your virtual network) or <strong>Azure Front Door</strong> Premium (global, at Microsoft's edge). Both use the managed rule set, which covers the OWASP top risks, plus bot protection and your own rules.</p>
+<p>Start in <strong>Detection</strong> mode, review what would have been blocked for a week or two, add exclusions for the false positives, then switch to <strong>Prevention</strong>. A WAF left in Detection mode for good only writes logs. Then use an NSG so the web servers only accept traffic from the gateway's subnet (or, for Front Door, from the <code>AzureFrontDoor.Backend</code> service tag plus a check on the <code>X-Azure-FDID</code> header).</p>
+<h2 id="ddos-protection">DDoS protection</h2>
+<p>Every public IP gets <strong>DDoS infrastructure protection</strong> at no cost; it protects Azure's platform, and is tuned for very large attacks. For internet-facing production services, add one of:</p>
+<ul>
+<li><strong>DDoS Network Protection:</strong> a plan linked to virtual networks, covering the public IPs in them, with adaptive tuning, attack alerts and reports, and cost protection. Priced per plan, so it makes sense for many public IPs.</li>
+<li><strong>DDoS IP Protection:</strong> the same core protection, billed per public IP. Cheaper for a handful of addresses.</li>
+</ul>
+<h2 id="private-endpoints-for-paas-services">Private endpoints for PaaS services</h2>
+<p>Storage accounts, Key Vaults, SQL databases and most other PaaS services have a public endpoint by default. NSGs don't help, because the service isn't in your network. Two ways to close it:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th></th><th>Service endpoint</th><th>Private endpoint</th></tr>
+</thead>
+<tbody>
+<tr><td>What it is</td><td>Lets a subnet reach the service's public endpoint over the Azure backbone; the service firewall then allows only that subnet</td><td>Gives the service a private IP address inside your subnet</td></tr>
+<tr><td>Reachable from on-premises</td><td>No</td><td>Yes, over VPN or ExpressRoute</td></tr>
+<tr><td>Public endpoint</td><td>Still exists, restricted by the service firewall</td><td>Can be turned off completely</td></tr>
+<tr><td>Cost</td><td>Free</td><td>Per endpoint per hour, plus data processed</td></tr>
+<tr><td>Use for</td><td>Test and low-risk services</td><td>Production and anything holding sensitive data</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>DNS is where private endpoints go wrong.</strong> The service's normal name (for example <code>stnotestest.blob.core.windows.net</code>) has to resolve to the private IP. Link the matching private DNS zone (<code>privatelink.blob.core.windows.net</code>) to the virtual networks that use it, and forward on-premises DNS to Azure (a Private DNS Resolver). If the name still resolves to a public address, the traffic goes the public way, or fails once public access is turned off.</p>
+<p>Once the private endpoint works, set <strong>Public network access</strong> to <strong>Disabled</strong> on the service. To find what's still open:</p>
+<pre><code class="language-powershell"># PaaS resources that still accept traffic from public networks, across every subscription
+Search-AzGraph -UseTenantScope -First 1000 -Query @&quot;
+Resources
+| where type in~ ('microsoft.storage/storageaccounts', 'microsoft.keyvault/vaults', 'microsoft.sql/servers',
+                  'microsoft.documentdb/databaseaccounts', 'microsoft.web/sites')
+| extend publicAccess = tostring(properties.publicNetworkAccess)
+| where publicAccess !~ 'Disabled'
+| project name, type, resourceGroup, subscriptionId, publicAccess = iff(publicAccess == '', 'Enabled (default)', publicAccess)
+| order by type asc, name asc
+&quot;@
+</code></pre>
+<p>"Enabled" isn't automatically wrong (a public website has to be public), but every row should have a reason.</p>
+<h2 id="admin-access-without-open-ports">Admin access without open ports</h2>
+<p>RDP and SSH should never be open to the internet. Two ways to manage servers without it:</p>
+<p><strong>Azure Bastion</strong> brokers RDP and SSH sessions over HTTPS, from the portal or your own client. VMs need no public IP and no inbound rule from the internet: allow 3389 and 22 from the Bastion subnet only. It needs its own subnet called <code>AzureBastionSubnet</code>, /26 or larger.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>SKU</th><th>Good for</th><th>Notable</th></tr>
+</thead>
+<tbody>
+<tr><td>Developer</td><td>Dev and test</td><td>Free, shared, one connection at a time, no peered networks. Not for production</td></tr>
+<tr><td>Basic</td><td>Small environments</td><td>Portal connections only</td></tr>
+<tr><td>Standard</td><td>Most production use</td><td>Native RDP and SSH clients, connect by IP address, shareable links, scaling</td></tr>
+<tr><td>Premium</td><td>Regulated environments</td><td>Session recording and private-only deployment (no public IP on Bastion itself)</td></tr>
+</tbody>
+</table>
+</div>
+<p>One Bastion in the hub can reach VMs in peered spokes (all SKUs except Developer).</p>
+<p><strong>Just-in-time (JIT) VM access</strong>, part of Microsoft Defender for Servers Plan 2, keeps management ports closed with an NSG deny rule and opens them for a named person, from their IP address, for a set time, when they request it. Every request is logged. Use it for the cases Bastion doesn't cover, such as a vendor tool that needs a direct connection.</p>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="network-security-groups.html"><span>Previous guide</span>Network security groups and ASGs</a>
+      <a class="next" href="security-baseline.html"><span>Next guide</span>Security baseline: identity, Defender and Key Vault</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

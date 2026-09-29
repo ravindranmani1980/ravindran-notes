@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get-AzBackupCoverage | Notes | Ravindran Mani</title>
+<meta name="description" content="Shows which Azure VMs are protected by Azure Backup, and which aren&#x27;t.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html" aria-current="page">Azure</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap">
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">Azure</a> / <a href="../../scripts/index.html">Scripts</a> / Operations</p>
+    <h1 class="script-title">Get-AzBackupCoverage</h1>
+    <p class="lead">Shows which Azure VMs are protected by Azure Backup, and which aren&#x27;t.</p>
+    <dl class="facts">
+      <div><dt>Runs in</dt><dd>Az PowerShell with Az.ResourceGraph</dd></div>
+      <div><dt>Safety</dt><dd><span class="flag flag-read">Read-only</span></dd></div>
+    </dl>
+    <p class="actions"><a class="btn btn-primary" href="Get-AzBackupCoverage.ps1" download>Download Get-AzBackupCoverage.ps1</a></p>
+
+    <h2 id="what-it-does">What it does</h2>
+    <p>Uses Azure Resource Graph to list every VM in every subscription you can see, and matches it against the VMs protected in Recovery Services vaults. For protected VMs it shows the vault, the backup policy and the last backup status. Read-only.</p>
+<p>New VMs are the usual gap. Run this weekly, or use an Azure Policy that configures backup automatically for VMs with a given tag.</p>
+
+    <h2 id="parameters">Parameters</h2>
+    <div class="table-wrap">
+      <table class="params">
+          <tr><th scope="row"><code>-SubscriptionId</code><span class="ptype">string[]</span></th><td>Limit the check to these subscription IDs. Default: every subscription you can see.</td></tr>
+          <tr><th scope="row"><code>-UnprotectedOnly</code><span class="ptype">switch</span></th><td>Only list VMs without backup.</td></tr>
+          <tr><th scope="row"><code>-OutputFile</code><span class="ptype">string</span></th><td>CSV output path.<span class="pdefault">Default: <code>Timestamped file in the current folder</code></span></td></tr>
+      </table>
+    </div>
+
+    <h2 id="examples">Examples</h2>
+    <pre><code class="language-powershell">.\Get-AzBackupCoverage.ps1</code></pre>
+    <pre><code class="language-powershell">.\Get-AzBackupCoverage.ps1 -UnprotectedOnly</code></pre>
+
+    <h2 id="notes">Notes</h2>
+    <p>Requires Az.Accounts and Az.ResourceGraph, and Reader access to the VMs and vaults. Covers Azure Backup in Recovery Services vaults (the standard VM backup).</p>
+
+    <h2 id="source">Full script</h2>
+    <!-- Keep this in sync with Get-AzBackupCoverage.ps1 in this folder. -->
+    <pre><code class="language-powershell">&lt;#
+.SYNOPSIS
+    Shows which Azure VMs are protected by Azure Backup, and which aren&#x27;t.
+
+.DESCRIPTION
+    Uses Azure Resource Graph to list every VM in every subscription you can see, and
+    matches it against the VMs protected in Recovery Services vaults. For protected VMs
+    it shows the vault, the backup policy and the last backup status. Read-only.
+
+    New VMs are the usual gap. Run this weekly, or use an Azure Policy that configures
+    backup automatically for VMs with a given tag.
+
+.PARAMETER SubscriptionId
+    Limit the check to these subscription IDs. Default: every subscription you can see.
+
+.PARAMETER UnprotectedOnly
+    Only list VMs without backup.
+
+.PARAMETER OutputFile
+    CSV output path.
+
+.EXAMPLE
+    .\Get-AzBackupCoverage.ps1
+
+.EXAMPLE
+    .\Get-AzBackupCoverage.ps1 -UnprotectedOnly
+
+.NOTES
+    Requires Az.Accounts and Az.ResourceGraph, and Reader access to the VMs and vaults.
+    Covers Azure Backup in Recovery Services vaults (the standard VM backup).
+#&gt;
+[CmdletBinding()]
+param(
+    [string[]]$SubscriptionId,
+    [switch]$UnprotectedOnly,
+    [string]$OutputFile = (Join-Path -Path (Get-Location) -ChildPath (&#x27;AzBackupCoverage_{0:yyyyMMdd_HHmm}.csv&#x27; -f (Get-Date)))
+)
+
+if (-not (Get-Command Search-AzGraph -ErrorAction SilentlyContinue)) {
+    throw &#x27;Search-AzGraph not found. Run: Install-Module Az.ResourceGraph -Scope CurrentUser&#x27;
+}
+if (-not (Get-AzContext)) { throw &#x27;Not signed in. Run Connect-AzAccount first.&#x27; }
+
+function Invoke-GraphQuery {
+    param([Parameter(Mandatory)][string]$Query)
+    $results = New-Object System.Collections.Generic.List[object]
+    $skipToken = $null
+    do {
+        $params = @{ Query = $Query; First = 1000 }
+        if ($SubscriptionId) { $params.Subscription = $SubscriptionId } else { $params.UseTenantScope = $true }
+        if ($skipToken) { $params.SkipToken = $skipToken }
+        $page = Search-AzGraph @params
+        $rows = if ($page.PSObject.Properties[&#x27;Data&#x27;]) { $page.Data } else { $page }
+        foreach ($r in $rows) { $results.Add($r) }
+        $skipToken = $page.SkipToken
+    } while ($skipToken)
+    $results
+}
+
+$subNames = @{}
+foreach ($s in Invoke-GraphQuery &quot;ResourceContainers | where type =~ &#x27;microsoft.resources/subscriptions&#x27; | project subscriptionId, name&quot;) {
+    $subNames[$s.subscriptionId] = $s.name
+}
+
+Write-Host &#x27;Reading VMs and backup items...&#x27; -ForegroundColor Cyan
+$vms = Invoke-GraphQuery @&quot;
+Resources
+| where type =~ &#x27;microsoft.compute/virtualmachines&#x27;
+| project id = tolower(id), name, resourceGroup, subscriptionId, location, tags
+&quot;@
+
+$protected = @{}
+$items = Invoke-GraphQuery @&quot;
+RecoveryServicesResources
+| where type =~ &#x27;microsoft.recoveryservices/vaults/backupfabrics/protectioncontainers/protecteditems&#x27;
+| where tostring(properties.backupManagementType) =~ &#x27;AzureIaasVM&#x27;
+| project vmId       = tolower(coalesce(tostring(properties.sourceResourceId), tostring(properties.dataSourceInfo.resourceID))),
+          vault      = tostring(split(id, &#x27;/&#x27;)[8]),
+          policy     = tostring(properties.policyName),
+          lastStatus = tostring(properties.lastBackupStatus),
+          lastBackup = tostring(properties.lastBackupTime),
+          state      = tostring(properties.protectionState)
+&quot;@
+foreach ($i in $items) { if ($i.vmId) { $protected[$i.vmId] = $i } }
+
+$report = foreach ($vm in $vms) {
+    $b = $protected[$vm.id]
+    if ($UnprotectedOnly -and $b) { continue }
+    $owner = if ($vm.tags -and $vm.tags.PSObject.Properties[&#x27;Owner&#x27;]) { $vm.tags.Owner } else { &#x27;&#x27; }
+    [pscustomobject]@{
+        Subscription    = $subNames[$vm.subscriptionId]
+        ResourceGroup   = $vm.resourceGroup
+        VM              = $vm.name
+        Location        = $vm.location
+        Protected       = [bool]$b
+        Vault           = if ($b) { $b.vault } else { &#x27;&#x27; }
+        Policy          = if ($b) { $b.policy } else { &#x27;&#x27; }
+        ProtectionState = if ($b) { $b.state } else { &#x27;&#x27; }
+        LastBackup      = if ($b) { $b.lastBackup } else { &#x27;&#x27; }
+        LastStatus      = if ($b) { $b.lastStatus } else { &#x27;&#x27; }
+        Owner           = $owner
+    }
+}
+
+$report | Sort-Object Protected, Subscription, ResourceGroup, VM | Export-Csv -Path $OutputFile -NoTypeInformation -Encoding UTF8
+
+$all = @($vms).Count
+if (-not $UnprotectedOnly) {
+    $ok = @($report | Where-Object Protected).Count
+    $pct = if ($all) { [math]::Round(($ok / $all) * 100, 1) } else { 100 }
+    Write-Host &quot;VMs: $all   Protected: $ok ($pct%)   Not protected: $($all - $ok)&quot; -ForegroundColor Cyan
+    $check = @($report | Where-Object { $_.Protected -and $_.LastStatus -and $_.LastStatus -notmatch &#x27;Healthy|Completed|Succeeded&#x27; })
+    if ($check.Count) { Write-Warning &quot;$($check.Count) protected VM(s) have a last backup status that needs checking.&quot; }
+}
+else {
+    Write-Host &quot;VMs without backup: $(@($report).Count) of $all&quot; -ForegroundColor Cyan
+}
+Write-Host &quot;Report: $OutputFile&quot; -ForegroundColor Green
+</code></pre>
+
+    <nav class="pager" aria-label="More scripts">
+      <a class="prev" href="get-aznsgrulereport.html"><span>Previous script</span>Get-AzNsgRuleReport</a>
+      <a class="next" href="invoke-azvmpowerschedule.html"><span>Next script</span>Invoke-AzVMPowerSchedule</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

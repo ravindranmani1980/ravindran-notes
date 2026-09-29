@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Virtual machines | Notes | Ravindran Mani</title>
+<meta name="description" content="Sizing, disks, availability, patching, monitoring agents and saving money on VMs.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html" aria-current="page">Azure</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 7 of 10</p>
+    <ol>
+      <li><a href="#know-what-you-have">Know what you have</a></li>
+      <li><a href="#size-it-right">Size it right</a></li>
+      <li><a href="#disks">Disks</a></li>
+      <li><a href="#availability">Availability</a></li>
+      <li><a href="#patching-with-azure-update-manager">Patching with Azure Update Manager</a></li>
+      <li><a href="#monitoring-agents">Monitoring agents</a></li>
+      <li><a href="#save-money-on-vms">Save money on VMs</a></li>
+      <li><a href="#troubleshooting-without-rdp-or-ssh">Troubleshooting without RDP or SSH</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">Azure</a> / Guide 7</p>
+    <h1>Virtual machines</h1>
+    <p class="lead">Sizing, disks, availability, patching, monitoring agents and saving money on VMs.</p>
+
+<p>Virtual machines are usually the biggest line on an Azure bill and the biggest source of operational work. This guide covers sizing, disks, availability, patching, monitoring and the day-to-day tasks that keep a VM estate healthy and lean.</p>
+<h2 id="know-what-you-have">Know what you have</h2>
+<p>Start with an inventory. <a href="../scripts/get-azvminventory.html"><code>Get-AzVMInventory.ps1</code></a> lists every VM in every subscription with its size, power state, OS, disks, private IPs, zone, Azure Hybrid Benefit setting and tags:</p>
+<pre><code class="language-powershell">.\Get-AzVMInventory.ps1
+</code></pre>
+<p>Look for VMs that are stopped but not <strong>deallocated</strong> (still billed for compute), VMs without an <code>Owner</code> tag, and old or oversized VM sizes.</p>
+<h2 id="size-it-right">Size it right</h2>
+<ul>
+<li><strong>Use Azure Advisor's right-sizing recommendations</strong> as a starting point. They're based on actual CPU and memory use.</li>
+<li><strong>Prefer current VM generations</strong> (for example v5 and later). Newer generations usually give more performance for the same price or less.</li>
+<li><strong>B-series (burstable)</strong> VMs suit servers that are mostly idle with occasional spikes: jump boxes, small utility servers, test machines.</li>
+<li><strong>Resize in a maintenance window</strong>: changing size restarts the VM, and some sizes need the VM deallocated first.</li>
+</ul>
+<h2 id="disks">Disks</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Use for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Standard HDD</td>
+<td>Backups, rarely used data</td>
+</tr>
+<tr>
+<td>Standard SSD</td>
+<td>Light workloads, dev and test, web servers</td>
+</tr>
+<tr>
+<td>Premium SSD</td>
+<td>Production servers and databases</td>
+</tr>
+<tr>
+<td>Premium SSD v2 / Ultra Disk</td>
+<td>High-performance databases where you tune IOPS and throughput separately</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Tips:</p>
+<ul>
+<li><strong>Delete disks and NICs with the VM.</strong> When creating a VM, set the OS disk, data disks and network interface to <strong>delete with VM</strong>. Otherwise they're left behind, still billed, when the VM is deleted. <a href="../scripts/find-azorphanedresources.html"><code>Find-AzOrphanedResources.ps1</code></a> finds the ones already left behind.</li>
+<li><strong>Don't keep data on the temporary disk</strong> (usually <code>D:</code> on Windows). It's wiped on redeploy, resize and some host maintenance.</li>
+</ul>
+<h2 id="availability">Availability</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Setup</th>
+<th>Protects against</th>
+<th>Microsoft SLA (VM connectivity)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Single VM with Premium SSD or Ultra disks</td>
+<td>Nothing beyond the host</td>
+<td>99.9%</td>
+</tr>
+<tr>
+<td>Two or more VMs in an <strong>availability set</strong></td>
+<td>Host and rack failures in one datacenter</td>
+<td>99.95%</td>
+</tr>
+<tr>
+<td>Two or more VMs across <strong>availability zones</strong></td>
+<td>Loss of a whole datacenter in the region</td>
+<td>99.99%</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>A single VM isn't highly available, whatever the SLA says. For anything that matters, run at least two instances across zones behind a load balancer, and protect data with backups (see the backup guide).</p>
+<h2 id="patching-with-azure-update-manager">Patching with Azure Update Manager</h2>
+<p><strong>Azure Update Manager</strong> is the current way to patch Windows and Linux VMs in Azure (and Arc-enabled servers on-premises). It replaced Automation Update Management, which was retired in 2024.</p>
+<ol>
+<li>Turn on <strong>periodic assessment</strong> so you always know which updates are missing.</li>
+<li>Create <strong>maintenance configurations</strong> with schedules, for example "Test VMs Tuesday 22:00" and "Production VMs Saturday 02:00".</li>
+<li>Assign VMs to them by subscription, resource group or tag (for example <code>PatchGroup=Prod-Sat</code>).</li>
+<li>Patch test first, then production a few days later.</li>
+</ol>
+<h2 id="monitoring-agents">Monitoring agents</h2>
+<p>Use the <strong>Azure Monitor Agent</strong> with <strong>data collection rules</strong> to send performance data and event logs to Log Analytics. The older Log Analytics agent (MMA/OMS) was retired in 2024; migrate any VMs still using it. <strong>VM insights</strong> gives ready-made performance charts and a map of connections. The monitoring guide covers queries and alerts.</p>
+<h2 id="save-money-on-vms">Save money on VMs</h2>
+<ul>
+<li><strong>Deallocate, don't just shut down.</strong> Shutting down from inside Windows leaves the VM "Stopped" but still allocated and billed. Stopping from the portal or with <code>Stop-AzVM</code> deallocates it.</li>
+<li><strong>Schedule non-production VMs.</strong> Tag dev and test VMs and let <a href="../scripts/invoke-azvmpowerschedule.html"><code>Invoke-AzVMPowerSchedule.ps1</code></a> stop them in the evening and start them in the morning, from Azure Automation with a managed identity. Running 12 hours on weekdays instead of 24/7 cuts their compute cost by roughly two-thirds.</li>
+<li><strong>Use Azure Hybrid Benefit</strong> if you have Windows Server or SQL Server licenses with Software Assurance:</li>
+</ul>
+<p><code>powershell
+  $vm = Get-AzVM -ResourceGroupName rg-notes-test -Name vm-notes-test-01
+  $vm.LicenseType = 'Windows_Server'
+  Update-AzVM -ResourceGroupName rg-notes-test -VM $vm</code></p>
+<ul>
+<li><strong>Commit for steady workloads</strong> with reservations or a savings plan (see the cost guide).</li>
+</ul>
+<h2 id="troubleshooting-without-rdp-or-ssh">Troubleshooting without RDP or SSH</h2>
+<p>When you can't sign in to a VM:</p>
+<ul>
+<li><strong>Boot diagnostics</strong> shows a screenshot of the console and the serial log.</li>
+<li><strong>Serial console</strong> gives a text console even when networking is broken.</li>
+<li><strong>Run Command</strong> runs a script inside the VM through the Azure agent:</li>
+</ul>
+<p><code>powershell
+  Invoke-AzVMRunCommand -ResourceGroupName rg-notes-test -VMName vm-notes-test-01 `
+      -CommandId 'RunPowerShellScript' -ScriptString 'Get-Service W3SVC; Get-NetFirewallProfile | Select Name, Enabled'</code></p>
+<ul>
+<li><strong>Redeploy</strong> moves the VM to a new host, which fixes some host-level problems (the temporary disk is wiped).</li>
+</ul>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="security-baseline.html"><span>Previous guide</span>Security baseline: identity, Defender and Key Vault</a>
+      <a class="next" href="backup-and-recovery.html"><span>Next guide</span>Backup and recovery</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

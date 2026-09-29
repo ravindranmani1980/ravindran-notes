@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get-AzVMInventory | Notes | Ravindran Mani</title>
+<meta name="description" content="Lists every Azure VM in every subscription you can see, with size, power state, disks, IPs and tags.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html" aria-current="page">Azure</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap">
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">Azure</a> / <a href="../../scripts/index.html">Scripts</a> / Inventory and clean-up</p>
+    <h1 class="script-title">Get-AzVMInventory</h1>
+    <p class="lead">Lists every Azure VM in every subscription you can see, with size, power state, disks, IPs and tags.</p>
+    <dl class="facts">
+      <div><dt>Runs in</dt><dd>Az PowerShell with Az.ResourceGraph</dd></div>
+      <div><dt>Safety</dt><dd><span class="flag flag-read">Read-only</span></dd></div>
+    </dl>
+    <p class="actions"><a class="btn btn-primary" href="Get-AzVMInventory.ps1" download>Download Get-AzVMInventory.ps1</a></p>
+
+    <h2 id="what-it-does">What it does</h2>
+    <p>Uses Azure Resource Graph, so it covers all subscriptions in seconds. For each VM it reports the subscription, resource group, location, zone, size, OS, power state, OS disk type, number of data disks, private IP addresses, Azure Hybrid Benefit license type and tags. Read-only.</p>
+<p>Watch the PowerState column: &quot;stopped&quot; (not &quot;deallocated&quot;) means the VM is shut down but still billed for compute.</p>
+
+    <h2 id="parameters">Parameters</h2>
+    <div class="table-wrap">
+      <table class="params">
+          <tr><th scope="row"><code>-SubscriptionId</code><span class="ptype">string[]</span></th><td>Limit the report to these subscription IDs. Default: every subscription you can see.</td></tr>
+          <tr><th scope="row"><code>-OutputFile</code><span class="ptype">string</span></th><td>CSV output path.<span class="pdefault">Default: <code>Timestamped file in the current folder</code></span></td></tr>
+      </table>
+    </div>
+
+    <h2 id="examples">Examples</h2>
+    <pre><code class="language-powershell">.\Get-AzVMInventory.ps1</code></pre>
+    <pre><code class="language-powershell">.\Get-AzVMInventory.ps1 -SubscriptionId 00000000-0000-0000-0000-000000000000</code></pre>
+
+    <h2 id="notes">Notes</h2>
+    <p>Requires Az.Accounts and Az.ResourceGraph, and Reader access. Sign in first with Connect-AzAccount.</p>
+
+    <h2 id="source">Full script</h2>
+    <!-- Keep this in sync with Get-AzVMInventory.ps1 in this folder. -->
+    <pre><code class="language-powershell">&lt;#
+.SYNOPSIS
+    Lists every Azure VM in every subscription you can see, with size, power state, disks, IPs and tags.
+
+.DESCRIPTION
+    Uses Azure Resource Graph, so it covers all subscriptions in seconds. For each VM
+    it reports the subscription, resource group, location, zone, size, OS, power state,
+    OS disk type, number of data disks, private IP addresses, Azure Hybrid Benefit
+    license type and tags. Read-only.
+
+    Watch the PowerState column: &quot;stopped&quot; (not &quot;deallocated&quot;) means the VM is shut
+    down but still billed for compute.
+
+.PARAMETER SubscriptionId
+    Limit the report to these subscription IDs. Default: every subscription you can see.
+
+.PARAMETER OutputFile
+    CSV output path.
+
+.EXAMPLE
+    .\Get-AzVMInventory.ps1
+
+.EXAMPLE
+    .\Get-AzVMInventory.ps1 -SubscriptionId 00000000-0000-0000-0000-000000000000
+
+.NOTES
+    Requires Az.Accounts and Az.ResourceGraph, and Reader access. Sign in first with Connect-AzAccount.
+#&gt;
+[CmdletBinding()]
+param(
+    [string[]]$SubscriptionId,
+    [string]$OutputFile = (Join-Path -Path (Get-Location) -ChildPath (&#x27;AzVMInventory_{0:yyyyMMdd_HHmm}.csv&#x27; -f (Get-Date)))
+)
+
+if (-not (Get-Command Search-AzGraph -ErrorAction SilentlyContinue)) {
+    throw &#x27;Search-AzGraph not found. Run: Install-Module Az.ResourceGraph -Scope CurrentUser&#x27;
+}
+if (-not (Get-AzContext)) { throw &#x27;Not signed in. Run Connect-AzAccount first.&#x27; }
+
+function Invoke-GraphQuery {
+    param([Parameter(Mandatory)][string]$Query)
+    $results = New-Object System.Collections.Generic.List[object]
+    $skipToken = $null
+    do {
+        $params = @{ Query = $Query; First = 1000 }
+        if ($SubscriptionId) { $params.Subscription = $SubscriptionId } else { $params.UseTenantScope = $true }
+        if ($skipToken) { $params.SkipToken = $skipToken }
+        $page = Search-AzGraph @params
+        $rows = if ($page.PSObject.Properties[&#x27;Data&#x27;]) { $page.Data } else { $page }
+        foreach ($r in $rows) { $results.Add($r) }
+        $skipToken = $page.SkipToken
+    } while ($skipToken)
+    $results
+}
+
+$subNames = @{}
+foreach ($s in Invoke-GraphQuery &quot;ResourceContainers | where type =~ &#x27;microsoft.resources/subscriptions&#x27; | project subscriptionId, name&quot;) {
+    $subNames[$s.subscriptionId] = $s.name
+}
+
+Write-Host &#x27;Reading virtual machines...&#x27; -ForegroundColor Cyan
+$vms = Invoke-GraphQuery @&quot;
+Resources
+| where type =~ &#x27;microsoft.compute/virtualmachines&#x27;
+| project id, name, resourceGroup, subscriptionId, location, tags,
+    zone        = tostring(zones[0]),
+    size        = tostring(properties.hardwareProfile.vmSize),
+    osType      = tostring(properties.storageProfile.osDisk.osType),
+    osDiskType  = tostring(properties.storageProfile.osDisk.managedDisk.storageAccountType),
+    dataDisks   = array_length(properties.storageProfile.dataDisks),
+    powerState  = tostring(properties.extended.instanceView.powerState.code),
+    licenseType = tostring(properties.licenseType),
+    imageRef    = strcat(tostring(properties.storageProfile.imageReference.offer), &#x27; &#x27;, tostring(properties.storageProfile.imageReference.sku))
+&quot;@
+
+# Private IPs come from the network interfaces attached to each VM
+$ipByVm = @{}
+$nics = Invoke-GraphQuery @&quot;
+Resources
+| where type =~ &#x27;microsoft.network/networkinterfaces&#x27;
+| where isnotnull(properties.virtualMachine)
+| mv-expand ipconfig = properties.ipConfigurations
+| project vmId = tolower(tostring(properties.virtualMachine.id)), ip = tostring(ipconfig.properties.privateIPAddress)
+&quot;@
+foreach ($n in $nics) {
+    if (-not $ipByVm.ContainsKey($n.vmId)) { $ipByVm[$n.vmId] = New-Object System.Collections.Generic.List[string] }
+    if ($n.ip) { $ipByVm[$n.vmId].Add($n.ip) }
+}
+
+$report = foreach ($vm in $vms) {
+    $tagText = if ($vm.tags) { ($vm.tags.PSObject.Properties | ForEach-Object { &quot;$($_.Name)=$($_.Value)&quot; }) -join &#x27;; &#x27; } else { &#x27;&#x27; }
+    $key = $vm.id.ToLower()
+    [pscustomobject]@{
+        Subscription  = $subNames[$vm.subscriptionId]
+        ResourceGroup = $vm.resourceGroup
+        Name          = $vm.name
+        Location      = $vm.location
+        Zone          = $vm.zone
+        Size          = $vm.size
+        OS            = $vm.osType
+        Image         = &quot;$($vm.imageRef)&quot;.Trim()
+        PowerState    = ($vm.powerState -replace &#x27;^PowerState/&#x27;, &#x27;&#x27;)
+        OsDiskType    = $vm.osDiskType
+        DataDisks     = [int]$vm.dataDisks
+        PrivateIPs    = if ($ipByVm.ContainsKey($key)) { $ipByVm[$key] -join &#x27;, &#x27; } else { &#x27;&#x27; }
+        HybridBenefit = if ($vm.licenseType) { $vm.licenseType } else { &#x27;None&#x27; }
+        Tags          = $tagText
+    }
+}
+
+$report | Sort-Object Subscription, ResourceGroup, Name | Export-Csv -Path $OutputFile -NoTypeInformation -Encoding UTF8
+
+Write-Host &quot;VMs: $(@($report).Count)&quot; -ForegroundColor Cyan
+$report | Group-Object PowerState | Select-Object @{n=&#x27;PowerState&#x27;;e={$_.Name}}, Count | Format-Table -AutoSize | Out-Host
+$stopped = @($report | Where-Object PowerState -eq &#x27;stopped&#x27;)
+if ($stopped.Count) { Write-Warning &quot;$($stopped.Count) VM(s) are stopped but NOT deallocated, so still billed for compute.&quot; }
+Write-Host &quot;Report: $OutputFile&quot; -ForegroundColor Green
+</code></pre>
+
+    <nav class="pager" aria-label="More scripts">
+      <a class="prev" href="find-azorphanedresources.html"><span>Previous script</span>Find-AzOrphanedResources</a>
+      <a class="next" href="get-azroleassignmentreport.html"><span>Next script</span>Get-AzRoleAssignmentReport</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

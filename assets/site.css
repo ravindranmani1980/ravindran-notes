@@ -349,3 +349,9 @@ div.topic-row .tname { color: var(--muted); }
   .releases .year { font-size: 1.1rem; }
   .releases .rel { font-size: 0.8rem; }
 }
+
+/* Five-step strip (Azure hierarchy) */
+.releases.releases-5 { grid-template-columns: repeat(5, minmax(9rem, 1fr)); }
+@media (max-width: 760px) {
+  .releases.releases-5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Find-AzOrphanedResources | Notes | Ravindran Mani</title>
+<meta name="description" content="Finds orphaned Azure resources that cost money or clutter: unattached disks, unused public IPs and more.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html" aria-current="page">Azure</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap">
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">Azure</a> / <a href="../../scripts/index.html">Scripts</a> / Inventory and clean-up</p>
+    <h1 class="script-title">Find-AzOrphanedResources</h1>
+    <p class="lead">Finds orphaned Azure resources that cost money or clutter: unattached disks, unused public IPs and more.</p>
+    <dl class="facts">
+      <div><dt>Runs in</dt><dd>Az PowerShell with Az.ResourceGraph</dd></div>
+      <div><dt>Safety</dt><dd><span class="flag flag-read">Read-only</span></dd></div>
+    </dl>
+    <p class="actions"><a class="btn btn-primary" href="Find-AzOrphanedResources.ps1" download>Download Find-AzOrphanedResources.ps1</a></p>
+
+    <h2 id="what-it-does">What it does</h2>
+    <p>Uses Azure Resource Graph to check every subscription you can see for:</p>
+<ul><li>Managed disks that aren&#x27;t attached to any VM</li><li>Public IP addresses not associated with anything</li><li>Network interfaces not attached to a VM or private endpoint</li><li>Network security groups not associated with any subnet or NIC</li><li>Snapshots older than -SnapshotAgeDays</li><li>Empty resource groups</li></ul>
+<p>Read-only: it doesn&#x27;t delete anything. Review the list with the resource owners, then delete what&#x27;s no longer needed.</p>
+
+    <h2 id="parameters">Parameters</h2>
+    <div class="table-wrap">
+      <table class="params">
+          <tr><th scope="row"><code>-SubscriptionId</code><span class="ptype">string[]</span></th><td>Limit the check to these subscription IDs. Default: every subscription you can see.</td></tr>
+          <tr><th scope="row"><code>-SnapshotAgeDays</code><span class="ptype">int</span></th><td>Report snapshots older than this many days. Default 90.</td></tr>
+          <tr><th scope="row"><code>-OutputFile</code><span class="ptype">string</span></th><td>CSV output path.<span class="pdefault">Default: <code>Timestamped file in the current folder</code></span></td></tr>
+      </table>
+    </div>
+
+    <h2 id="examples">Examples</h2>
+    <pre><code class="language-powershell">.\Find-AzOrphanedResources.ps1</code></pre>
+    <pre><code class="language-powershell">.\Find-AzOrphanedResources.ps1 -SnapshotAgeDays 30 -OutputFile .\orphans.csv</code></pre>
+
+    <h2 id="notes">Notes</h2>
+    <p>Requires Az.Accounts and Az.ResourceGraph, and Reader access. Some &quot;orphans&quot; are intentional (a disk kept after a VM was deleted, a reserved public IP): check the tags and ask the owner before deleting.</p>
+
+    <h2 id="source">Full script</h2>
+    <!-- Keep this in sync with Find-AzOrphanedResources.ps1 in this folder. -->
+    <pre><code class="language-powershell">&lt;#
+.SYNOPSIS
+    Finds orphaned Azure resources that cost money or clutter: unattached disks, unused public IPs and more.
+
+.DESCRIPTION
+    Uses Azure Resource Graph to check every subscription you can see for:
+    - Managed disks that aren&#x27;t attached to any VM
+    - Public IP addresses not associated with anything
+    - Network interfaces not attached to a VM or private endpoint
+    - Network security groups not associated with any subnet or NIC
+    - Snapshots older than -SnapshotAgeDays
+    - Empty resource groups
+
+    Read-only: it doesn&#x27;t delete anything. Review the list with the resource owners,
+    then delete what&#x27;s no longer needed.
+
+.PARAMETER SubscriptionId
+    Limit the check to these subscription IDs. Default: every subscription you can see.
+
+.PARAMETER SnapshotAgeDays
+    Report snapshots older than this many days. Default 90.
+
+.PARAMETER OutputFile
+    CSV output path.
+
+.EXAMPLE
+    .\Find-AzOrphanedResources.ps1
+
+.EXAMPLE
+    .\Find-AzOrphanedResources.ps1 -SnapshotAgeDays 30 -OutputFile .\orphans.csv
+
+.NOTES
+    Requires Az.Accounts and Az.ResourceGraph, and Reader access. Some &quot;orphans&quot; are
+    intentional (a disk kept after a VM was deleted, a reserved public IP): check the
+    tags and ask the owner before deleting.
+#&gt;
+[CmdletBinding()]
+param(
+    [string[]]$SubscriptionId,
+    [ValidateRange(1, 3650)][int]$SnapshotAgeDays = 90,
+    [string]$OutputFile = (Join-Path -Path (Get-Location) -ChildPath (&#x27;AzOrphanedResources_{0:yyyyMMdd_HHmm}.csv&#x27; -f (Get-Date)))
+)
+
+if (-not (Get-Command Search-AzGraph -ErrorAction SilentlyContinue)) {
+    throw &#x27;Search-AzGraph not found. Run: Install-Module Az.ResourceGraph -Scope CurrentUser&#x27;
+}
+if (-not (Get-AzContext)) { throw &#x27;Not signed in. Run Connect-AzAccount first.&#x27; }
+
+function Invoke-GraphQuery {
+    param([Parameter(Mandatory)][string]$Query)
+    $results = New-Object System.Collections.Generic.List[object]
+    $skipToken = $null
+    do {
+        $params = @{ Query = $Query; First = 1000 }
+        if ($SubscriptionId) { $params.Subscription = $SubscriptionId } else { $params.UseTenantScope = $true }
+        if ($skipToken) { $params.SkipToken = $skipToken }
+        $page = Search-AzGraph @params
+        $rows = if ($page.PSObject.Properties[&#x27;Data&#x27;]) { $page.Data } else { $page }
+        foreach ($r in $rows) { $results.Add($r) }
+        $skipToken = $page.SkipToken
+    } while ($skipToken)
+    $results
+}
+
+$subNames = @{}
+foreach ($s in Invoke-GraphQuery &quot;ResourceContainers | where type =~ &#x27;microsoft.resources/subscriptions&#x27; | project subscriptionId, name&quot;) {
+    $subNames[$s.subscriptionId] = $s.name
+}
+
+# Each check returns id, name, resourceGroup, subscriptionId, location, tags, detail
+$checks = [ordered]@{
+    &#x27;Unattached disk&#x27; = @&quot;
+Resources
+| where type =~ &#x27;microsoft.compute/disks&#x27;
+| where tostring(properties.diskState) =~ &#x27;Unattached&#x27;
+| project id, name, resourceGroup, subscriptionId, location, tags,
+    detail = strcat(tostring(sku.name), &#x27;, &#x27;, tostring(properties.diskSizeGB), &#x27; GB, created &#x27;, format_datetime(todatetime(properties.timeCreated), &#x27;yyyy-MM-dd&#x27;))
+&quot;@
+    &#x27;Unused public IP&#x27; = @&quot;
+Resources
+| where type =~ &#x27;microsoft.network/publicipaddresses&#x27;
+| where isnull(properties.ipConfiguration) and isnull(properties.natGateway)
+| project id, name, resourceGroup, subscriptionId, location, tags,
+    detail = strcat(tostring(sku.name), &#x27; SKU, &#x27;, tostring(properties.publicIPAllocationMethod), &#x27;, &#x27;, tostring(properties.ipAddress))
+&quot;@
+    &#x27;Detached network interface&#x27; = @&quot;
+Resources
+| where type =~ &#x27;microsoft.network/networkinterfaces&#x27;
+| where isnull(properties.virtualMachine) and isnull(properties.privateEndpoint) and isnull(properties.privateLinkService)
+| project id, name, resourceGroup, subscriptionId, location, tags,
+    detail = tostring(properties.ipConfigurations[0].properties.privateIPAddress)
+&quot;@
+    &#x27;Unassociated NSG&#x27; = @&quot;
+Resources
+| where type =~ &#x27;microsoft.network/networksecuritygroups&#x27;
+| where coalesce(array_length(properties.networkInterfaces), 0) == 0 and coalesce(array_length(properties.subnets), 0) == 0
+| project id, name, resourceGroup, subscriptionId, location, tags, detail = &#x27;&#x27;
+&quot;@
+    &#x27;Old snapshot&#x27; = @&quot;
+Resources
+| where type =~ &#x27;microsoft.compute/snapshots&#x27;
+| extend created = todatetime(properties.timeCreated)
+| where created &lt; ago($($SnapshotAgeDays)d)
+| project id, name, resourceGroup, subscriptionId, location, tags,
+    detail = strcat(tostring(properties.diskSizeGB), &#x27; GB, created &#x27;, format_datetime(created, &#x27;yyyy-MM-dd&#x27;))
+&quot;@
+    &#x27;Empty resource group&#x27; = @&quot;
+ResourceContainers
+| where type =~ &#x27;microsoft.resources/subscriptions/resourcegroups&#x27;
+| extend rgKey = tolower(strcat(subscriptionId, &#x27;/&#x27;, name))
+| join kind=leftouter (
+    Resources
+    | extend rgKey = tolower(strcat(subscriptionId, &#x27;/&#x27;, resourceGroup))
+    | summarize resourceCount = count() by rgKey
+  ) on rgKey
+| where isnull(resourceCount)
+| project id, name, resourceGroup = name, subscriptionId, location, tags, detail = &#x27;No resources&#x27;
+&quot;@
+}
+
+$report = New-Object System.Collections.Generic.List[object]
+foreach ($check in $checks.GetEnumerator()) {
+    Write-Host &quot;Checking: $($check.Key)...&quot; -ForegroundColor Cyan
+    foreach ($r in Invoke-GraphQuery $check.Value) {
+        $owner = if ($r.tags -and $r.tags.PSObject.Properties[&#x27;Owner&#x27;]) { $r.tags.Owner } else { &#x27;&#x27; }
+        $report.Add([pscustomobject]@{
+            Finding       = $check.Key
+            Subscription  = $subNames[$r.subscriptionId]
+            ResourceGroup = $r.resourceGroup
+            Name          = $r.name
+            Location      = $r.location
+            Detail        = $r.detail
+            Owner         = $owner
+            ResourceId    = $r.id
+        })
+    }
+}
+
+$report | Sort-Object Finding, Subscription, ResourceGroup | Export-Csv -Path $OutputFile -NoTypeInformation -Encoding UTF8
+$report | Group-Object Finding | Select-Object @{n=&#x27;Finding&#x27;;e={$_.Name}}, Count | Format-Table -AutoSize | Out-Host
+Write-Host &quot;Findings: $($report.Count). Report: $OutputFile&quot; -ForegroundColor Green
+</code></pre>
+
+    <nav class="pager" aria-label="More scripts">
+      <span></span>
+      <a class="next" href="get-azvminventory.html"><span>Next script</span>Get-AzVMInventory</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

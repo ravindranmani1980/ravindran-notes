@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Structure and access | Notes | Ravindran Mani</title>
+<meta name="description" content="Management groups, subscriptions, resource groups, naming, RBAC and resource locks.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html" aria-current="page">Azure</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 2 of 10</p>
+    <ol>
+      <li><a href="#the-hierarchy">The hierarchy</a></li>
+      <li><a href="#a-practical-layout">A practical layout</a></li>
+      <li><a href="#naming-conventions">Naming conventions</a></li>
+      <li><a href="#access-with-azure-rbac">Access with Azure RBAC</a></li>
+      <li><a href="#protect-important-resources-with-locks">Protect important resources with locks</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">Azure</a> / Guide 2</p>
+    <h1>Structure and access</h1>
+    <p class="lead">Management groups, subscriptions, resource groups, naming, RBAC and resource locks.</p>
+
+<p>The way subscriptions, resource groups and permissions are laid out decides how easy Azure is to govern, secure and pay for. It's much easier to get right at the start than to fix after a few hundred resources.</p>
+<h2 id="the-hierarchy">The hierarchy</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Level</th>
+<th>What it's for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Microsoft Entra tenant</strong></td>
+<td>Identity: users, groups, apps. One per organisation, usually.</td>
+</tr>
+<tr>
+<td><strong>Management groups</strong></td>
+<td>Apply policy and access to many subscriptions at once. Up to six levels deep below the root.</td>
+</tr>
+<tr>
+<td><strong>Subscriptions</strong></td>
+<td>The billing boundary and a limits (quota) boundary. Good for separating environments and workloads.</td>
+</tr>
+<tr>
+<td><strong>Resource groups</strong></td>
+<td>Resources that share a lifecycle: deployed, managed and deleted together.</td>
+</tr>
+<tr>
+<td><strong>Resources</strong></td>
+<td>VMs, storage accounts, databases and everything else.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Anything assigned at a higher level (a policy, a role, a budget) applies to everything underneath.</p>
+<h2 id="a-practical-layout">A practical layout</h2>
+<p>Microsoft's Cloud Adoption Framework "landing zone" design is a good default, even for smaller estates:</p>
+<pre><code>Tenant Root Group
+└── mg-ravindran
+    ├── mg-platform          shared services run by IT
+    │   ├── sub-identity         domain controllers, identity services
+    │   ├── sub-management       monitoring, automation, backup
+    │   └── sub-connectivity     hub network, firewall, VPN / ExpressRoute
+    ├── mg-landingzones      application workloads
+    │   ├── mg-corp              internal apps, connected to the hub
+    │   └── mg-online            internet-facing apps
+    └── mg-sandbox           experiments, strict budgets, no connection to production
+</code></pre>
+<p>Guidelines that hold up in practice:</p>
+<ul>
+<li><strong>Separate production and non-production subscriptions.</strong> Different policies, different access, clear cost split.</li>
+<li><strong>One resource group per application per environment</strong>, for example <code>rg-payroll-prod</code> and <code>rg-payroll-test</code>.</li>
+<li><strong>Don't design around the org chart.</strong> Teams reorganise; workloads and environments don't change as often.</li>
+</ul>
+<h2 id="naming-conventions">Naming conventions</h2>
+<p>Pick a convention and enforce it. The Cloud Adoption Framework pattern is widely used:</p>
+<pre><code>&lt;resource type&gt;-&lt;workload&gt;-&lt;environment&gt;-&lt;region&gt;-&lt;instance&gt;
+rg-notes-test-eastus-001
+vm-notes-test-01
+</code></pre>
+<p>Common abbreviations: <code>rg</code> resource group, <code>vm</code> virtual machine, <code>vnet</code> virtual network, <code>snet</code> subnet, <code>nsg</code> network security group, <code>nic</code> network interface, <code>pip</code> public IP, <code>kv</code> key vault, <code>rsv</code> Recovery Services vault, <code>log</code> Log Analytics workspace, <code>st</code> storage account.</p>
+<p>Watch the limits: storage account names are 3–24 lowercase letters and numbers only (no dashes), and a Windows VM's computer name is limited to 15 characters.</p>
+<h2 id="access-with-azure-rbac">Access with Azure RBAC</h2>
+<p>Azure role-based access control (RBAC) grants a <strong>role</strong> to a <strong>principal</strong> (user, group, service principal or managed identity) at a <strong>scope</strong> (management group, subscription, resource group or resource).</p>
+<p>Rules that prevent most access problems:</p>
+<ol>
+<li><strong>Assign roles to groups, not individual users.</strong> Access follows group membership, and reviews are simpler.</li>
+<li><strong>Use the least privileged role.</strong> Reader, Virtual Machine Contributor or Backup Operator are often enough; Owner and Contributor rarely are.</li>
+<li><strong>Assign at the narrowest scope that works</strong>, usually the resource group.</li>
+<li><strong>Make high-privilege roles just-in-time</strong> with Privileged Identity Management (PIM), so people activate Owner or Contributor for a few hours when needed instead of holding it permanently.</li>
+<li><strong>Review regularly.</strong> <a href="../scripts/get-azroleassignmentreport.html"><code>Get-AzRoleAssignmentReport.ps1</code></a> flags privileged roles, guest accounts, direct user assignments and assignments left behind by deleted accounts.</li>
+</ol>
+<pre><code class="language-powershell"># Who has what on a resource group
+Get-AzRoleAssignment -ResourceGroupName rg-notes-test |
+    Select-Object DisplayName, SignInName, RoleDefinitionName, ObjectType
+
+# Grant a group a role at resource group scope
+$group = Get-AzADGroup -DisplayName 'Notes Test Operators'
+New-AzRoleAssignment -ObjectId $group.Id -RoleDefinitionName 'Virtual Machine Contributor' -ResourceGroupName rg-notes-test
+</code></pre>
+<p>The old "classic administrator" roles (Co-Administrator and Service Administrator) have been retired; use Azure RBAC roles only.</p>
+<h2 id="protect-important-resources-with-locks">Protect important resources with locks</h2>
+<p>A <strong>CanNotDelete</strong> lock stops anyone (even Owners) from deleting a resource or resource group until the lock is removed. It's cheap insurance for things like the hub network, Recovery Services vaults and production databases.</p>
+<pre><code class="language-powershell">New-AzResourceLock -LockName 'do-not-delete' -LockLevel CanNotDelete -ResourceGroupName rg-notes-test -Force
+Get-AzResourceLock -ResourceGroupName rg-notes-test
+</code></pre>
+<p>Be careful with <strong>ReadOnly</strong> locks: they block more than people expect, including some operations that only read data, such as listing storage account keys.</p>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="getting-started.html"><span>Previous guide</span>Getting started</a>
+      <a class="next" href="tagging-and-policy.html"><span>Next guide</span>Tagging and governance with Azure Policy</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagging and governance with Azure Policy | Notes | Ravindran Mani</title>
+<meta name="description" content="A tag strategy finance can use, and Azure Policy to enforce it.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html" aria-current="page">Azure</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 3 of 10</p>
+    <ol>
+      <li><a href="#a-tag-strategy-that-finance-can-use">A tag strategy that finance can use</a></li>
+      <li><a href="#azure-policy-in-one-minute">Azure Policy in one minute</a></li>
+      <li><a href="#built-in-tag-policies-to-use">Built-in tag policies to use</a></li>
+      <li><a href="#check-compliance-and-fix-existing-resources">Check compliance and fix existing resources</a></li>
+      <li><a href="#tags-in-cost-reports">Tags in cost reports</a></li>
+      <li><a href="#other-policies-worth-assigning-early">Other policies worth assigning early</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">Azure</a> / Guide 3</p>
+    <h1>Tagging and governance with Azure Policy</h1>
+    <p class="lead">A tag strategy finance can use, and Azure Policy to enforce it.</p>
+
+<p>Tags answer the questions that come up every month: who owns this, what does it belong to, and who pays for it. Azure Policy makes sure the answers are there, and keeps configuration within the rules without relying on everyone remembering them.</p>
+<h2 id="a-tag-strategy-that-finance-can-use">A tag strategy that finance can use</h2>
+<p>Keep the set small and required. A good starting point:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Tag</th>
+<th>Example</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Owner</code></td>
+<td><code>jane@ravindran.in</code></td>
+<td>Who to ask before changing or deleting it</td>
+</tr>
+<tr>
+<td><code>CostCenter</code></td>
+<td><code>CC-1042</code></td>
+<td>Who pays; used for showback and chargeback</td>
+</tr>
+<tr>
+<td><code>Environment</code></td>
+<td><code>Production</code>, <code>Test</code>, <code>Dev</code></td>
+<td>Different rules, schedules and priorities</td>
+</tr>
+<tr>
+<td><code>Application</code></td>
+<td><code>Payroll</code></td>
+<td>Groups resources across resource groups</td>
+</tr>
+<tr>
+<td><code>DataClassification</code></td>
+<td><code>Confidential</code></td>
+<td>Drives security controls</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Rules worth writing down:</p>
+<ul>
+<li><strong>Agree on the exact names and allowed values.</strong> <code>Environment=Prod</code>, <code>env=production</code> and <code>Environment=PROD</code> are three different answers in a cost report. Tag names are case-insensitive, but values are case-sensitive.</li>
+<li><strong>Tags don't inherit by default.</strong> A tag on a resource group isn't automatically on the resources in it. Use policy (below) to copy it down.</li>
+<li><strong>Limits:</strong> up to 50 tags per resource, resource group or subscription; names up to 512 characters (128 for storage accounts) and values up to 256.</li>
+<li><strong>Don't put secrets or personal data in tags.</strong> Many people and tools can read them.</li>
+</ul>
+<h2 id="azure-policy-in-one-minute">Azure Policy in one minute</h2>
+<p>A <strong>policy definition</strong> is a rule (for example "resources must have a CostCenter tag"). An <strong>initiative</strong> groups definitions. An <strong>assignment</strong> applies a definition or initiative at a scope: a management group, subscription or resource group. Each rule has an <strong>effect</strong>:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Effect</th>
+<th>What happens</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Audit</code></td>
+<td>Allows the change, reports it as non-compliant</td>
+</tr>
+<tr>
+<td><code>Deny</code></td>
+<td>Blocks the change</td>
+</tr>
+<tr>
+<td><code>Modify</code></td>
+<td>Adds or changes properties such as tags, automatically</td>
+</tr>
+<tr>
+<td><code>DeployIfNotExists</code></td>
+<td>Deploys something that's missing (for example diagnostics settings)</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Start new rules with <strong>Audit</strong> to see the impact, then switch to <strong>Deny</strong> or <strong>Modify</strong> once the estate is clean.</p>
+<h2 id="built-in-tag-policies-to-use">Built-in tag policies to use</h2>
+<p>Search for these in <strong>Policy &gt; Definitions</strong>:</p>
+<ul>
+<li><strong>Require a tag on resource groups</strong>: every new resource group must have the tag.</li>
+<li><strong>Inherit a tag from the resource group if missing</strong> (<code>Modify</code>): copies the resource group's tag onto resources that don't have it.</li>
+<li><strong>Inherit a tag from the subscription if missing</strong> (<code>Modify</code>): the same, from the subscription.</li>
+<li><strong>Require a tag and its value on resources</strong>: for tags with a fixed value in a scope.</li>
+</ul>
+<p>A combination that works well: <em>require</em> <code>CostCenter</code>, <code>Owner</code> and <code>Environment</code> on resource groups, and <em>inherit</em> them onto resources. People then only have to tag the resource group.</p>
+<p><strong>Assign it in the portal the first time.</strong> <code>Modify</code> and <code>DeployIfNotExists</code> policies need a managed identity with permission to make the change, and the portal creates the identity and its role assignment for you (<strong>Policy &gt; Assignments &gt; Assign policy</strong>, then tick <strong>Create a remediation task</strong> for existing resources).</p>
+<h2 id="check-compliance-and-fix-existing-resources">Check compliance and fix existing resources</h2>
+<pre><code class="language-powershell"># Compliance summary for the current subscription
+Get-AzPolicyStateSummary | Select-Object -ExpandProperty PolicyAssignments |
+    Select-Object PolicyAssignmentId, @{n='NonCompliant';e={$_.Results.NonCompliantResources}}
+
+# Non-compliant resources for one assignment
+Get-AzPolicyState -Filter &quot;ComplianceState eq 'NonCompliant' and PolicyAssignmentName eq 'inherit-costcenter'&quot; |
+    Select-Object ResourceId, PolicyDefinitionName
+
+# Apply a Modify policy to resources that existed before it was assigned
+$assignment = Get-AzPolicyAssignment -Name 'inherit-costcenter'
+Start-AzPolicyRemediation -Name &quot;remediate-costcenter-$(Get-Date -Format yyyyMMdd)&quot; `
+    -PolicyAssignmentId $assignment.Id -ResourceDiscoveryMode ReEvaluateCompliance
+</code></pre>
+<p>For a direct list of what's missing which tags, across every subscription, run <a href="../scripts/get-azuntaggedresources.html"><code>Get-AzUntaggedResources.ps1</code></a>.</p>
+<h2 id="tags-in-cost-reports">Tags in cost reports</h2>
+<p><strong>Cost Management</strong> can apply resource group and subscription tags to usage records, even when the resources themselves aren't tagged (Cost Management &gt; Settings &gt; <strong>Tag inheritance</strong>). Turn it on so cost reports by tag are complete from day one. It doesn't change the tags on the resources; policy does that.</p>
+<h2 id="other-policies-worth-assigning-early">Other policies worth assigning early</h2>
+<ul>
+<li><strong>Allowed locations</strong>: keep resources in the regions you've approved (data residency and support).</li>
+<li><strong>Allowed virtual machine size SKUs</strong>: stops accidental very large VMs in non-production.</li>
+<li><strong>Not allowed resource types</strong>: block services you don't support.</li>
+<li><strong>Configure diagnostic settings</strong> to send logs to your Log Analytics workspace.</li>
+<li>The <strong>Microsoft cloud security benchmark</strong> initiative, which Microsoft Defender for Cloud assigns, for a security baseline.</li>
+</ul>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="structure-and-access.html"><span>Previous guide</span>Structure and access</a>
+      <a class="next" href="network-security-groups.html"><span>Next guide</span>Network security groups and ASGs</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

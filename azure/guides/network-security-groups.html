@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Network security groups and ASGs | Notes | Ravindran Mani</title>
+<meta name="description" content="NSG rules and priorities, subnet or NIC, service tags, application security groups, and checking what&#x27;s actually applied.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html" aria-current="page">Azure</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 4 of 10</p>
+    <ol>
+      <li><a href="#how-an-nsg-decides">How an NSG decides</a></li>
+      <li><a href="#subnet-or-network-interface">Subnet or network interface?</a></li>
+      <li><a href="#service-tags-instead-of-ip-lists">Service tags instead of IP lists</a></li>
+      <li><a href="#application-security-groups">Application security groups</a></li>
+      <li><a href="#rules-that-cause-trouble">Rules that cause trouble</a></li>
+      <li><a href="#a-numbering-and-naming-convention">A numbering and naming convention</a></li>
+      <li><a href="#check-what-is-actually-applied">Check what is actually applied</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">Azure</a> / Guide 4</p>
+    <h1>Network security groups and ASGs</h1>
+    <p class="lead">NSG rules and priorities, subnet or NIC, service tags, application security groups, and checking what&#x27;s actually applied.</p>
+
+<p>Network security groups (NSGs) are the firewall every Azure virtual network already has. They're free, they're on by default in most deployments, and they're where most exposure problems start: one rule that allows RDP from anywhere, added "just for today" and never removed. Application security groups (ASGs) keep those rules readable as the estate grows.</p>
+<h2 id="how-an-nsg-decides">How an NSG decides</h2>
+<p>An NSG is a list of rules. Each rule matches on five things (source, source port, destination, destination port and protocol) and either allows or denies. What matters day to day:</p>
+<ul>
+<li><strong>Priority decides.</strong> Rules are processed from the lowest number (100) to the highest (4096), and processing stops at the first match. A deny at 200 beats an allow at 300.</li>
+<li><strong>NSGs are stateful.</strong> If an inbound connection is allowed, the reply is allowed automatically. You don't write return rules.</li>
+<li><strong>Changes affect new connections only.</strong> Removing a rule doesn't cut off a session that's already open.</li>
+<li><strong>The default rules can't be deleted,</strong> only overridden with a lower-numbered rule of your own.</li>
+</ul>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Default rule</th><th>Priority</th><th>What it does</th></tr>
+</thead>
+<tbody>
+<tr><td><code>AllowVNetInBound</code></td><td>65000</td><td>Allows everything from the virtual network, peered networks and connected on-premises ranges</td></tr>
+<tr><td><code>AllowAzureLoadBalancerInBound</code></td><td>65001</td><td>Allows load balancer health probes</td></tr>
+<tr><td><code>DenyAllInbound</code></td><td>65500</td><td>Denies everything else inbound</td></tr>
+<tr><td><code>AllowVnetOutBound</code></td><td>65000</td><td>Allows everything to the virtual network</td></tr>
+<tr><td><code>AllowInternetOutBound</code></td><td>65001</td><td>Allows everything to the internet</td></tr>
+<tr><td><code>DenyAllOutBound</code></td><td>65500</td><td>Denies everything else outbound</td></tr>
+</tbody>
+</table>
+</div>
+<p>Two things surprise people. First, <code>AllowVNetInBound</code> means every VM in the network (and every peered network, and on-premises over VPN) can reach every other VM on every port unless you say otherwise. Second, <code>AllowInternetOutBound</code> means everything can call out to the internet. Both are reasonable defaults for getting started; neither is a security posture.</p>
+<h2 id="subnet-or-network-interface">Subnet or network interface?</h2>
+<p>An NSG can be associated with a subnet, a network interface (NIC), or both. When both are set, traffic has to be allowed by both:</p>
+<ul>
+<li><strong>Inbound:</strong> the subnet NSG is checked first, then the NIC NSG.</li>
+<li><strong>Outbound:</strong> the NIC NSG is checked first, then the subnet NSG.</li>
+</ul>
+<p>Put NSGs on <strong>subnets</strong>, one per subnet, and avoid NIC-level NSGs unless there's a specific exception. Two layers of rules that both have to agree is the most common reason a "correct" rule doesn't work. Use ASGs (below) for per-server differences instead.</p>
+<p>A few subnets are special:</p>
+<ul>
+<li><code>GatewaySubnet</code> (VPN and ExpressRoute gateways): don't associate an NSG.</li>
+<li><code>AzureFirewallSubnet</code>: NSGs aren't supported; the firewall does the filtering.</li>
+<li><code>AzureBastionSubnet</code>: an NSG is optional, but if you add one it must carry the specific rules Bastion needs (HTTPS in from the internet and <code>GatewayManager</code>, and the data-plane and outbound rules). Missing rules break the deployment.</li>
+<li>Platform-managed services such as Azure SQL Managed Instance and some App Service integrations add their own rules. Check the service's documentation before tightening a subnet it's delegated to.</li>
+</ul>
+<h2 id="service-tags-instead-of-ip-lists">Service tags instead of IP lists</h2>
+<p>A <strong>service tag</strong> is a Microsoft-maintained group of IP ranges. Use them instead of typing addresses: Microsoft updates the ranges, and the rule still says what it means.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Tag</th><th>Means</th></tr>
+</thead>
+<tbody>
+<tr><td><code>Internet</code></td><td>Any address outside the virtual network that isn't Azure-internal</td></tr>
+<tr><td><code>VirtualNetwork</code></td><td>The virtual network, peered networks and connected on-premises ranges</td></tr>
+<tr><td><code>AzureLoadBalancer</code></td><td>Health probe source. Keep it allowed if you add your own deny-all rule</td></tr>
+<tr><td><code>Storage</code>, <code>Sql</code>, <code>AzureKeyVault</code>, <code>AzureMonitor</code></td><td>Those services' public endpoints. Add a region to narrow them, for example <code>Storage.EastUS</code></td></tr>
+<tr><td><code>GatewayManager</code></td><td>Azure's management traffic for gateways and Bastion</td></tr>
+</tbody>
+</table>
+</div>
+<p>An <strong>augmented rule</strong> takes several ports or several IP ranges in one rule (<code>80,443</code>, or three office ranges). Fewer rules, easier review. A single rule can't mix several service tags, though; that needs one rule per tag.</p>
+<pre><code class="language-powershell"># Which address ranges are behind a tag right now
+$tags = Get-AzNetworkServiceTag -Location eastus
+($tags.Values | Where-Object Name -eq 'Storage.EastUS').Properties.AddressPrefixes
+</code></pre>
+<h2 id="application-security-groups">Application security groups</h2>
+<p>An ASG is a label you put on a server's network interface: <code>asg-web</code>, <code>asg-app</code>, <code>asg-db</code>. NSG rules then refer to the label instead of IP addresses:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Priority</th><th>Source</th><th>Destination</th><th>Port</th><th>Action</th></tr>
+</thead>
+<tbody>
+<tr><td>100</td><td><code>Internet</code></td><td><code>asg-web</code></td><td>443</td><td>Allow</td></tr>
+<tr><td>200</td><td><code>asg-web</code></td><td><code>asg-app</code></td><td>8443</td><td>Allow</td></tr>
+<tr><td>300</td><td><code>asg-app</code></td><td><code>asg-db</code></td><td>1433</td><td>Allow</td></tr>
+<tr><td>4000</td><td><code>VirtualNetwork</code></td><td><code>VirtualNetwork</code></td><td>Any</td><td>Deny</td></tr>
+</tbody>
+</table>
+</div>
+<p>Add a fourth web server and it only needs the <code>asg-web</code> label: no rule changes, no IP address to look up. The rules also read like the architecture diagram, which makes access reviews quick.</p>
+<p>What to know before you design around them:</p>
+<ul>
+<li><strong>One virtual network per ASG.</strong> All network interfaces in an ASG must be in the same virtual network as the first one added. A rule that uses an ASG as both source and destination needs both ASGs in the same virtual network.</li>
+<li><strong>A NIC can be in several ASGs</strong> (up to 20 per IP configuration), so a server can be both <code>asg-web</code> and <code>asg-monitored</code>.</li>
+<li><strong>ASGs only work inside the network.</strong> For traffic from on-premises or the internet, the other side of the rule is still an IP range or a service tag.</li>
+<li><strong>The deny rule at 4000 matters.</strong> Without it, <code>AllowVNetInBound</code> lets every server reach every other server and the ASG rules add nothing. Add the deny once the allow rules are proven.</li>
+</ul>
+<pre><code class="language-powershell">$rg = 'rg-notes-test'; $loc = 'eastus'
+
+# The labels
+$asgWeb = New-AzApplicationSecurityGroup -ResourceGroupName $rg -Name 'asg-web' -Location $loc
+$asgApp = New-AzApplicationSecurityGroup -ResourceGroupName $rg -Name 'asg-app' -Location $loc
+
+# Rules that use them
+$rules = @(
+    New-AzNetworkSecurityRuleConfig -Name 'Allow-Internet-Web-443' -Priority 100 -Direction Inbound -Access Allow `
+        -Protocol Tcp -SourceAddressPrefix Internet -SourcePortRange * `
+        -DestinationApplicationSecurityGroup $asgWeb -DestinationPortRange 443
+    New-AzNetworkSecurityRuleConfig -Name 'Allow-Web-App-8443' -Priority 200 -Direction Inbound -Access Allow `
+        -Protocol Tcp -SourceApplicationSecurityGroup $asgWeb -SourcePortRange * `
+        -DestinationApplicationSecurityGroup $asgApp -DestinationPortRange 8443
+)
+$nsg = New-AzNetworkSecurityGroup -ResourceGroupName $rg -Location $loc -Name 'nsg-notes-test-web' -SecurityRules $rules
+
+# Associate the NSG with the subnet
+$vnet = Get-AzVirtualNetwork -ResourceGroupName $rg -Name 'vnet-notes-test'
+$subnet = Get-AzVirtualNetworkSubnetConfig -VirtualNetwork $vnet -Name 'snet-web'
+$subnet.NetworkSecurityGroup = $nsg
+$vnet | Set-AzVirtualNetwork | Out-Null
+
+# Put a server's NIC in asg-web
+$nic = Get-AzNetworkInterface -ResourceGroupName $rg -Name 'vm-notes-test-01-nic'
+$nic.IpConfigurations[0].ApplicationSecurityGroups = @($asgWeb)
+$nic | Set-AzNetworkInterface | Out-Null
+</code></pre>
+<h2 id="rules-that-cause-trouble">Rules that cause trouble</h2>
+<p>These are the findings that come up in almost every review. <a href="../scripts/get-aznsgrulereport.html"><code>Get-AzNsgRuleReport.ps1</code></a> looks for all of them across every subscription.</p>
+<ul>
+<li><strong>RDP (3389) or SSH (22) open to <code>Internet</code>, <code>Any</code> or <code>0.0.0.0/0</code>.</strong> Internet-facing management ports are scanned within minutes of being opened. Use Bastion or just-in-time access instead (see <a href="network-perimeter.html#admin-access-without-open-ports">Guide 5</a>).</li>
+<li><strong>Database and remote-management ports open to the internet:</strong> 1433, 3306, 5432, 5985/5986 (WinRM) and similar.</li>
+<li><strong>Allow Any to Any on any port.</strong> Often added while troubleshooting. It turns the NSG off.</li>
+<li><strong>Port ranges wider than needed,</strong> such as <code>1-65535</code> or <code>3000-4000</code>, which quietly include 3389.</li>
+<li><strong>Your own deny-all rule without an allow for <code>AzureLoadBalancer</code> above it.</strong> Load balancer health probes fail and the backend drops out of the pool.</li>
+<li><strong>Rules for servers that no longer exist,</strong> and NSGs attached to nothing. <a href="../scripts/find-azorphanedresources.html"><code>Find-AzOrphanedResources.ps1</code></a> lists unattached NSGs.</li>
+</ul>
+<h2 id="a-numbering-and-naming-convention">A numbering and naming convention</h2>
+<p>Agree on priority bands before there are a hundred rules, and leave gaps so a new rule fits without renumbering:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Priorities</th><th>Used for</th></tr>
+</thead>
+<tbody>
+<tr><td>100&ndash;999</td><td>Explicit denies that must always win (for example block a known bad range)</td></tr>
+<tr><td>1000&ndash;2999</td><td>Application allows, in steps of 10</td></tr>
+<tr><td>3000&ndash;3999</td><td>Shared services: monitoring, backup, domain controllers, Bastion</td></tr>
+<tr><td>4000&ndash;4096</td><td>The catch-all denies that replace the permissive defaults</td></tr>
+</tbody>
+</table>
+</div>
+<p>Name rules <code>Action-Source-Destination-Port</code>, for example <code>Allow-Web-App-8443</code>, and use the rule's description for the change or ticket number. Name NSGs after what they protect: <code>nsg-&lt;workload&gt;-&lt;subnet&gt;</code>.</p>
+<h2 id="check-what-is-actually-applied">Check what is actually applied</h2>
+<p>When a connection fails, don't read the rules and guess. Ask Azure:</p>
+<pre><code class="language-powershell"># Every rule that applies to a NIC, subnet and NIC NSGs combined (the VM must be running)
+Get-AzEffectiveNetworkSecurityGroup -ResourceGroupName 'rg-notes-test' -NetworkInterfaceName 'vm-notes-test-01-nic' |
+    Select-Object -ExpandProperty EffectiveSecurityRules |
+    Select-Object Name, Direction, Priority, Access, Protocol, SourceAddressPrefix, DestinationPortRange
+
+# Would this connection be allowed, and by which rule? (Network Watcher IP flow verify)
+$vm = Get-AzVM -ResourceGroupName 'rg-notes-test' -Name 'vm-notes-test-01'
+Test-AzNetworkWatcherIPFlow -Location eastus -TargetVirtualMachineId $vm.Id -Direction Inbound -Protocol TCP `
+    -LocalIPAddress 10.10.1.4 -LocalPort 3389 -RemoteIPAddress 203.0.113.10 -RemotePort 50000
+</code></pre>
+<p>IP flow verify returns <code>Allow</code> or <code>Deny</code> and the name of the rule that decided, which ends most "is it the NSG?" conversations in a minute.</p>
+<p>For a record of what actually flowed, turn on <strong>virtual network flow logs</strong> in Network Watcher and send them to a storage account, with <strong>traffic analytics</strong> into your Log Analytics workspace. They replace NSG flow logs: new NSG flow logs can no longer be created, and existing ones retire on 30 September 2027, so migrate any you still have. One flow log per virtual network covers every subnet and NIC in it.</p>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="tagging-and-policy.html"><span>Previous guide</span>Tagging and governance with Azure Policy</a>
+      <a class="next" href="network-perimeter.html"><span>Next guide</span>Firewalls, private endpoints and admin access</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

@@ -7,7 +7,7 @@ The site is plain HTML and CSS. There is no build step: what's in this repositor
 | Topic | Status |
 |---|---|
 | SharePoint | Live: 14 guides, 18 scripts (2005–2024) |
-| Azure | In progress (not linked yet) |
+| Azure | Live: 10 guides, 8 scripts |
 | AWS | In progress (not linked yet) |
 | FinOps | In progress (not linked yet) |
 
@@ -29,7 +29,7 @@ notes.ravindran.in/
 │   ├── index.html          Topic page: timeline, guides, scripts, test URLs
 │   ├── guides/             One page per guide
 │   └── scripts/            One page per script, with the .ps1 next to it
-├── azure/                  Starter page + empty guides/ and scripts/
+├── azure/                  Landing page, guides/, scripts/ and environment/ (same layout as sharepoint/)
 ├── aws/                    Starter page + empty guides/ and scripts/
 ├── finops/                 Starter page + empty guides/ and scripts/
 └── _templates/             Page templates to copy (not published: GitHub
@@ -71,10 +71,10 @@ Open `index.html` in a browser. All links are relative, so the site works straig
 
 **A script:** put the `.ps1` in `<topic>/scripts/`, copy `_templates/script.html` next to it, and fill it in. Add it to `<topic>/index.html` and to `scripts/index.html`. If it's about cost, also list it in the FinOps section. When you change a script, update both the `.ps1` and the code on its page.
 
-**Taking a topic live (for example Azure):**
+**Taking a topic live (for example AWS):**
 
 1. Add at least two or three guides or scripts.
-2. On `azure/index.html`, replace the "Planned" list with guide and script lists (copy the layout from `sharepoint/index.html`), and remove the `noindex` line in the `<head>`.
+2. On `aws/index.html`, replace the "Planned" list with the landing layout used by `azure/index.html` and `sharepoint/index.html`, and remove the `noindex` line in the `<head>`.
 3. Add the menu link on every page. Each page has a commented-out line ready to use; a find-and-replace across all `.html` files does it in one go.
 4. On `index.html`, turn the topic's "In progress" entries into links marked Live.
 
@@ -89,7 +89,9 @@ Each topic uses fixed example names so readers always know what to replace.
 | SharePoint | `https://sharepoint.ravindran.in` | SharePoint Server test farm |
 | SharePoint | `https://sharepointonline.ravindran.in` | SharePoint Online test tenant |
 | SharePoint | `https://sharepointonline-admin.ravindran.in` | SharePoint Online admin center |
-| Azure (suggested) | `sub-notes-test`, `rg-notes-test` | Test subscription and resource group |
+| Azure | `ravindran.onmicrosoft.com`, `sub-notes-test`, `rg-notes-test`, `eastus` | Test tenant, subscription, resource group, region |
+| Azure | `vm-notes-test-01`, `rsv-notes-test`, `log-notes-test` | Test VM, Recovery Services vault, Log Analytics workspace |
+| Azure | `vnet-notes-test`, `snet-web`, `nsg-notes-test-web`, `asg-web`, `kv-notes-test` | Virtual network, subnet, NSG, application security group, Key Vault |
 | AWS (suggested) | `notes-test` account alias, `us-east-1` | Test account and default region |
 
 ## License

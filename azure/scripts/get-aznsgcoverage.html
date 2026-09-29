@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get-AzNsgCoverage | Notes | Ravindran Mani</title>
+<meta name="description" content="Finds gaps in network security group coverage: subnets and network interfaces with no NSG, and unused application security groups.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html" aria-current="page">Azure</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap">
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">Azure</a> / <a href="../../scripts/index.html">Scripts</a> / Network security</p>
+    <h1 class="script-title">Get-AzNsgCoverage</h1>
+    <p class="lead">Finds gaps in network security group coverage: subnets and network interfaces with no NSG, and unused application security groups.</p>
+    <dl class="facts">
+      <div><dt>Runs in</dt><dd>Az PowerShell with Az.ResourceGraph</dd></div>
+      <div><dt>Safety</dt><dd><span class="flag flag-read">Read-only</span></dd></div>
+    </dl>
+    <p class="actions"><a class="btn btn-primary" href="Get-AzNsgCoverage.ps1" download>Download Get-AzNsgCoverage.ps1</a></p>
+
+    <h2 id="what-it-does">What it does</h2>
+    <p>Uses Azure Resource Graph to check every subscription you can see for:</p>
+<ul><li>High: network interfaces with a public IP and no NSG on either the NIC or its subnet</li><li>Medium: subnets with no NSG (subnets that don&#x27;t support one, such as GatewaySubnet, are skipped)</li><li>Medium: VM network interfaces with no NSG on either the NIC or its subnet</li><li>Low: network interfaces with an NSG on both the NIC and the subnet (two layers to keep in step)</li><li>Low: application security groups with no members, or not used in any NSG rule</li></ul>
+<p>Read-only: it doesn&#x27;t change anything.</p>
+
+    <h2 id="parameters">Parameters</h2>
+    <div class="table-wrap">
+      <table class="params">
+          <tr><th scope="row"><code>-SubscriptionId</code><span class="ptype">string[]</span></th><td>Limit the check to these subscription IDs. Default: every subscription you can see.</td></tr>
+          <tr><th scope="row"><code>-SkipDualNsg</code><span class="ptype">switch</span></th><td>Don&#x27;t report network interfaces that have an NSG on both the NIC and the subnet.</td></tr>
+          <tr><th scope="row"><code>-OutputFile</code><span class="ptype">string</span></th><td>CSV output path.<span class="pdefault">Default: <code>Timestamped file in the current folder</code></span></td></tr>
+      </table>
+    </div>
+
+    <h2 id="examples">Examples</h2>
+    <pre><code class="language-powershell">.\Get-AzNsgCoverage.ps1</code></pre>
+    <pre><code class="language-powershell">.\Get-AzNsgCoverage.ps1 -SubscriptionId 00000000-0000-0000-0000-000000000000 -SkipDualNsg</code></pre>
+
+    <h2 id="notes">Notes</h2>
+    <p>Requires Az.Accounts and Az.ResourceGraph, and Reader access. A subnet with no NSG isn&#x27;t always wrong (a subnet delegated to a service that manages its own filtering), but each one should have a reason. Pair it with Get-AzNsgRuleReport.ps1, which checks what the NSGs actually allow.</p>
+
+    <h2 id="source">Full script</h2>
+    <!-- Keep this in sync with Get-AzNsgCoverage.ps1 in this folder. -->
+    <pre><code class="language-powershell">&lt;#
+.SYNOPSIS
+    Finds gaps in network security group coverage: subnets and network interfaces with no NSG, and unused application security groups.
+
+.DESCRIPTION
+    Uses Azure Resource Graph to check every subscription you can see for:
+    - High: network interfaces with a public IP and no NSG on either the NIC or its subnet
+    - Medium: subnets with no NSG (subnets that don&#x27;t support one, such as GatewaySubnet, are skipped)
+    - Medium: VM network interfaces with no NSG on either the NIC or its subnet
+    - Low: network interfaces with an NSG on both the NIC and the subnet (two layers to keep in step)
+    - Low: application security groups with no members, or not used in any NSG rule
+
+    Read-only: it doesn&#x27;t change anything.
+
+.PARAMETER SubscriptionId
+    Limit the check to these subscription IDs. Default: every subscription you can see.
+
+.PARAMETER SkipDualNsg
+    Don&#x27;t report network interfaces that have an NSG on both the NIC and the subnet.
+
+.PARAMETER OutputFile
+    CSV output path.
+
+.EXAMPLE
+    .\Get-AzNsgCoverage.ps1
+
+.EXAMPLE
+    .\Get-AzNsgCoverage.ps1 -SubscriptionId 00000000-0000-0000-0000-000000000000 -SkipDualNsg
+
+.NOTES
+    Requires Az.Accounts and Az.ResourceGraph, and Reader access. A subnet with no NSG
+    isn&#x27;t always wrong (a subnet delegated to a service that manages its own filtering),
+    but each one should have a reason. Pair it with Get-AzNsgRuleReport.ps1, which checks
+    what the NSGs actually allow.
+#&gt;
+[CmdletBinding()]
+param(
+    [string[]]$SubscriptionId,
+    [switch]$SkipDualNsg,
+    [string]$OutputFile = (Join-Path -Path (Get-Location) -ChildPath (&#x27;AzNsgCoverage_{0:yyyyMMdd_HHmm}.csv&#x27; -f (Get-Date)))
+)
+
+if (-not (Get-Command Search-AzGraph -ErrorAction SilentlyContinue)) {
+    throw &#x27;Search-AzGraph not found. Run: Install-Module Az.ResourceGraph -Scope CurrentUser&#x27;
+}
+if (-not (Get-AzContext)) { throw &#x27;Not signed in. Run Connect-AzAccount first.&#x27; }
+
+function Invoke-GraphQuery {
+    param([Parameter(Mandatory)][string]$Query)
+    $results = New-Object System.Collections.Generic.List[object]
+    $skipToken = $null
+    do {
+        $params = @{ Query = $Query; First = 1000 }
+        if ($SubscriptionId) { $params.Subscription = $SubscriptionId } else { $params.UseTenantScope = $true }
+        if ($skipToken) { $params.SkipToken = $skipToken }
+        $page = Search-AzGraph @params
+        $rows = if ($page.PSObject.Properties[&#x27;Data&#x27;]) { $page.Data } else { $page }
+        foreach ($r in $rows) { $results.Add($r) }
+        $skipToken = $page.SkipToken
+    } while ($skipToken)
+    $results
+}
+
+# Subnets that don&#x27;t take an NSG, or where the service manages the filtering
+$exemptSubnets = @(&#x27;GatewaySubnet&#x27;, &#x27;AzureFirewallSubnet&#x27;, &#x27;AzureFirewallManagementSubnet&#x27;, &#x27;RouteServerSubnet&#x27;)
+
+$subNames = @{}
+foreach ($s in Invoke-GraphQuery &quot;ResourceContainers | where type =~ &#x27;microsoft.resources/subscriptions&#x27; | project subscriptionId, name&quot;) {
+    $subNames[$s.subscriptionId] = $s.name
+}
+
+$report = New-Object System.Collections.Generic.List[object]
+function Add-Finding {
+    param($Severity, $Finding, $SubId, $ResourceGroup, $Name, $Detail, $ResourceId)
+    $report.Add([pscustomobject]@{
+        Severity      = $Severity
+        Finding       = $Finding
+        Subscription  = $subNames[$SubId]
+        ResourceGroup = $ResourceGroup
+        Name          = $Name
+        Detail        = $Detail
+        ResourceId    = $ResourceId
+    })
+}
+
+Write-Host &#x27;Reading subnets...&#x27; -ForegroundColor Cyan
+$subnets = Invoke-GraphQuery @&quot;
+Resources
+| where type =~ &#x27;microsoft.network/virtualnetworks&#x27;
+| mv-expand subnet = properties.subnets
+| project vnetName = name, resourceGroup, subscriptionId,
+    subnetId = tolower(tostring(subnet.id)),
+    subnetName = tostring(subnet.name),
+    prefix = tostring(coalesce(subnet.properties.addressPrefix, subnet.properties.addressPrefixes[0])),
+    nsgId = tostring(subnet.properties.networkSecurityGroup.id),
+    delegation = tostring(subnet.properties.delegations[0].properties.serviceName),
+    ipConfigs = coalesce(array_length(subnet.properties.ipConfigurations), 0)
+&quot;@
+$subnetNsg = @{}
+foreach ($s in $subnets) {
+    if (-not $s.subnetId) { continue }
+    $subnetNsg[$s.subnetId] = $s.nsgId
+    if ($s.nsgId -or $exemptSubnets -contains $s.subnetName) { continue }
+    $detail = &quot;$($s.vnetName) / $($s.prefix), $($s.ipConfigs) IP configuration(s)&quot;
+    if ($s.delegation) { $detail += &quot;, delegated to $($s.delegation)&quot; }
+    if ($s.subnetName -eq &#x27;AzureBastionSubnet&#x27;) {
+        Add-Finding &#x27;Low&#x27; &#x27;Bastion subnet with no NSG (optional, but recommended)&#x27; $s.subscriptionId $s.resourceGroup $s.subnetName $detail $s.subnetId
+    } else {
+        Add-Finding &#x27;Medium&#x27; &#x27;Subnet with no NSG&#x27; $s.subscriptionId $s.resourceGroup $s.subnetName $detail $s.subnetId
+    }
+}
+
+Write-Host &#x27;Reading network interfaces...&#x27; -ForegroundColor Cyan
+$nics = Invoke-GraphQuery @&quot;
+Resources
+| where type =~ &#x27;microsoft.network/networkinterfaces&#x27;
+| project id, name, resourceGroup, subscriptionId,
+    nsgId = tostring(properties.networkSecurityGroup.id),
+    vmId = tostring(properties.virtualMachine.id),
+    ipConfigs = properties.ipConfigurations
+&quot;@
+$asgMembers = @{}
+foreach ($n in $nics) {
+    $hasPublicIp = $false
+    $subnetHasNsg = $false
+    foreach ($ic in @($n.ipConfigs)) {
+        if (-not $ic) { continue }
+        if ($ic.properties.publicIPAddress.id) { $hasPublicIp = $true }
+        $sid = ([string]$ic.properties.subnet.id).ToLower()
+        if ($sid -and $subnetNsg[$sid]) { $subnetHasNsg = $true }
+        foreach ($asg in @($ic.properties.applicationSecurityGroups)) {
+            if ($asg.id) { $asgMembers[([string]$asg.id).ToLower()] = $true }
+        }
+    }
+    $vmName = if ($n.vmId) { ($n.vmId -split &#x27;/&#x27;)[-1] } else { &#x27;&#x27; }
+    $detail = if ($vmName) { &quot;VM $vmName&quot; } else { &#x27;Not attached to a VM&#x27; }
+
+    if (-not $n.nsgId -and -not $subnetHasNsg) {
+        if ($hasPublicIp) {
+            Add-Finding &#x27;High&#x27; &#x27;Public IP with no NSG on the NIC or subnet&#x27; $n.subscriptionId $n.resourceGroup $n.name $detail $n.id
+        } elseif ($n.vmId) {
+            Add-Finding &#x27;Medium&#x27; &#x27;VM network interface with no NSG on the NIC or subnet&#x27; $n.subscriptionId $n.resourceGroup $n.name $detail $n.id
+        }
+    } elseif ($n.nsgId -and $subnetHasNsg -and -not $SkipDualNsg) {
+        Add-Finding &#x27;Low&#x27; &#x27;NSG on both the NIC and the subnet&#x27; $n.subscriptionId $n.resourceGroup $n.name &quot;$detail; NIC NSG $(($n.nsgId -split &#x27;/&#x27;)[-1])&quot; $n.id
+    }
+}
+
+Write-Host &#x27;Reading application security groups...&#x27; -ForegroundColor Cyan
+$asgUsed = @{}
+$asgRefs = Invoke-GraphQuery @&quot;
+Resources
+| where type =~ &#x27;microsoft.network/networksecuritygroups&#x27;
+| mv-expand rule = properties.securityRules
+| mv-expand asg = array_concat(coalesce(rule.properties.sourceApplicationSecurityGroups, dynamic([])),
+                               coalesce(rule.properties.destinationApplicationSecurityGroups, dynamic([])))
+| where isnotempty(asg.id)
+| distinct asgId = tolower(tostring(asg.id))
+&quot;@
+foreach ($a in $asgRefs) { $asgUsed[$a.asgId] = $true }
+
+$asgs = Invoke-GraphQuery &quot;Resources | where type =~ &#x27;microsoft.network/applicationsecuritygroups&#x27; | project id, name, resourceGroup, subscriptionId&quot;
+foreach ($a in $asgs) {
+    $key = ([string]$a.id).ToLower()
+    $problems = @()
+    if (-not $asgMembers[$key]) { $problems += &#x27;no members&#x27; }
+    if (-not $asgUsed[$key]) { $problems += &#x27;not used in any NSG rule&#x27; }
+    if ($problems) {
+        Add-Finding &#x27;Low&#x27; &#x27;Unused application security group&#x27; $a.subscriptionId $a.resourceGroup $a.name ($problems -join &#x27;, &#x27;) $a.id
+    }
+}
+
+$rank = @{ &#x27;High&#x27; = 0; &#x27;Medium&#x27; = 1; &#x27;Low&#x27; = 2 }
+$report = $report | Sort-Object @{e = { $rank[$_.Severity] }}, Finding, Subscription, ResourceGroup, Name
+$report | Export-Csv -Path $OutputFile -NoTypeInformation -Encoding UTF8
+$report | Group-Object Severity, Finding |
+    Select-Object @{n=&#x27;Finding&#x27;;e={$_.Name}}, Count | Format-Table -AutoSize | Out-Host
+Write-Host &quot;Findings: $(@($report).Count). Report: $OutputFile&quot; -ForegroundColor Green
+</code></pre>
+
+    <nav class="pager" aria-label="More scripts">
+      <a class="prev" href="get-azuntaggedresources.html"><span>Previous script</span>Get-AzUntaggedResources</a>
+      <a class="next" href="get-aznsgrulereport.html"><span>Next script</span>Get-AzNsgRuleReport</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monitoring and alerts | Notes | Ravindran Mani</title>
+<meta name="description" content="Azure Monitor building blocks, KQL queries worth keeping, and alerts people act on.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html" aria-current="page">Azure</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 9 of 10</p>
+    <ol>
+      <li><a href="#the-building-blocks">The building blocks</a></li>
+      <li><a href="#set-up-the-foundation">Set up the foundation</a></li>
+      <li><a href="#kql-queries-worth-keeping">KQL queries worth keeping</a></li>
+      <li><a href="#alerts-people-act-on">Alerts people act on</a></li>
+      <li><a href="#keep-an-eye-on-logging-costs">Keep an eye on logging costs</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">Azure</a> / Guide 9</p>
+    <h1>Monitoring and alerts</h1>
+    <p class="lead">Azure Monitor building blocks, KQL queries worth keeping, and alerts people act on.</p>
+
+<p>Good monitoring tells the right people about real problems quickly, and stays quiet the rest of the time. This guide covers the building blocks of Azure Monitor, a few KQL queries worth keeping, and how to set up alerts people actually act on.</p>
+<h2 id="the-building-blocks">The building blocks</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Piece</th>
+<th>What it is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Metrics</strong></td>
+<td>Numbers collected every minute (CPU, disk IOPS, requests). Fast, kept 93 days, free for platform metrics.</td>
+</tr>
+<tr>
+<td><strong>Logs</strong></td>
+<td>Detailed records in a <strong>Log Analytics workspace</strong>, queried with KQL.</td>
+</tr>
+<tr>
+<td><strong>Activity log</strong></td>
+<td>Who did what to which resource (create, change, delete), per subscription.</td>
+</tr>
+<tr>
+<td><strong>Azure Monitor Agent</strong></td>
+<td>Collects guest OS data (performance counters, event logs, syslog) from VMs, configured with <strong>data collection rules</strong>.</td>
+</tr>
+<tr>
+<td><strong>Alerts</strong></td>
+<td>Rules on metrics, logs or the activity log that fire <strong>action groups</strong>.</td>
+</tr>
+<tr>
+<td><strong>Action groups</strong></td>
+<td>Who or what to notify: email, SMS, Teams via webhook, ITSM, Logic Apps, Automation runbooks.</td>
+</tr>
+<tr>
+<td><strong>Service Health</strong></td>
+<td>Azure's own incidents and planned maintenance affecting your services and regions.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="set-up-the-foundation">Set up the foundation</h2>
+<ol>
+<li><strong>One central Log Analytics workspace</strong> per environment (for example <code>log-notes-test</code>), in the management subscription. Fewer workspaces make queries and access simpler.</li>
+<li><strong>Send the activity log</strong> of every subscription to it (Activity log &gt; Export activity logs &gt; diagnostic setting). The activity log is kept only 90 days otherwise.</li>
+<li><strong>Enable VM insights</strong> on VMs; it deploys the Azure Monitor Agent and a data collection rule.</li>
+<li><strong>Send resource diagnostic logs</strong> (Key Vault, firewalls, App Services, SQL) with an Azure Policy "configure diagnostic settings" assignment, so new resources are covered automatically.</li>
+</ol>
+<h2 id="kql-queries-worth-keeping">KQL queries worth keeping</h2>
+<p><strong>VMs that stopped reporting:</strong></p>
+<pre><code class="language-none">Heartbeat
+| summarize LastHeartbeat = max(TimeGenerated) by Computer
+| where LastHeartbeat &lt; ago(15m)
+| order by LastHeartbeat asc
+</code></pre>
+<p><strong>CPU over the last day (VM insights):</strong></p>
+<pre><code class="language-none">InsightsMetrics
+| where TimeGenerated &gt; ago(1d)
+| where Namespace == &quot;Processor&quot; and Name == &quot;UtilizationPercentage&quot;
+| summarize AvgCPU = avg(Val), MaxCPU = max(Val) by Computer
+| order by AvgCPU desc
+</code></pre>
+<p><strong>Disks running out of space (VM insights):</strong></p>
+<pre><code class="language-none">InsightsMetrics
+| where TimeGenerated &gt; ago(30m)
+| where Namespace == &quot;LogicalDisk&quot; and Name == &quot;FreeSpacePercentage&quot;
+| extend Disk = tostring(parse_json(Tags)[&quot;vm.azm.ms/mountId&quot;])
+| summarize FreePercent = min(Val) by Computer, Disk
+| where FreePercent &lt; 15
+</code></pre>
+<p><strong>Who deleted what (activity log):</strong></p>
+<pre><code class="language-none">AzureActivity
+| where TimeGenerated &gt; ago(7d)
+| where OperationNameValue endswith &quot;/DELETE&quot; and ActivityStatusValue in~ (&quot;Success&quot;, &quot;Succeeded&quot;)
+| project TimeGenerated, Caller, OperationNameValue, ResourceGroup, _ResourceId
+| order by TimeGenerated desc
+</code></pre>
+<p>Run them in the workspace's <strong>Logs</strong> page, or from PowerShell:</p>
+<pre><code class="language-powershell">$ws = Get-AzOperationalInsightsWorkspace -ResourceGroupName rg-notes-test -Name log-notes-test
+(Invoke-AzOperationalInsightsQuery -WorkspaceId $ws.CustomerId -Query 'Heartbeat | summarize max(TimeGenerated) by Computer').Results
+</code></pre>
+<h2 id="alerts-people-act-on">Alerts people act on</h2>
+<ul>
+<li><strong>Alert on symptoms users feel</strong>, not on every counter: service unavailable, errors rising, response time up, disk nearly full, backup failed.</li>
+<li><strong>Every alert needs an owner and an action.</strong> If nobody would do anything when it fires, delete it.</li>
+<li><strong>Use severities consistently</strong>: Sev 0–1 wakes someone up; Sev 2–3 creates a ticket; Sev 4 is informational.</li>
+<li><strong>Suppress during maintenance</strong> with <strong>alert processing rules</strong> (for example during the Saturday patch window), rather than disabling alerts and forgetting to turn them back on.</li>
+<li><strong>Always create Service Health alerts</strong> for the services and regions you use. They're free and tell you when the problem is Azure's, not yours.</li>
+<li><strong>Use metric alerts where you can.</strong> They're faster and cheaper than log search alerts.</li>
+</ul>
+<h2 id="keep-an-eye-on-logging-costs">Keep an eye on logging costs</h2>
+<p>Log Analytics is charged by data ingested. It can quietly become one of the bigger monitoring costs:</p>
+<ul>
+<li>Check what's sending the most data: <code>Usage | where TimeGenerated &gt; ago(30d) | summarize GB = sum(Quantity) / 1000 by DataType | order by GB desc</code>.</li>
+<li>Collect only the performance counters and event logs you use; data collection rules make this easy.</li>
+<li>Use a <strong>commitment tier</strong> once ingestion is steady and large enough, and set retention per table to what you actually need.</li>
+<li>A <strong>daily cap</strong> stops runaway costs, but when it's hit you lose data until the next day, so use it as a safety net with an alert, not as a budget.</li>
+</ul>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="backup-and-recovery.html"><span>Previous guide</span>Backup and recovery</a>
+      <a class="next" href="cost-hygiene.html"><span>Next guide</span>Cost hygiene</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>
