@@ -1,6 +1,6 @@
 # notes.ravindran.in
 
-Field notes and PowerShell scripts on cloud and IT operations by [Ravindran Mani](https://ravindran.in).
+Field notes and PowerShell scripts on cloud and IT operations by [Ravindran Mani](https://ravindran.in). Hands-on AWS examples live separately at [aws.ravindran.in](https://aws.ravindran.in).
 
 The site is plain HTML and CSS. There is no build step: what's in this repository is exactly what GitHub Pages serves.
 
@@ -8,7 +8,7 @@ The site is plain HTML and CSS. There is no build step: what's in this repositor
 |---|---|
 | SharePoint | Live: 14 guides, 18 scripts (2005–2024) |
 | Azure | Live: 10 guides, 8 scripts |
-| AWS | In progress (not linked yet) |
+| AWS | Live: 10 guides, 8 scripts |
 | FinOps | In progress (not linked yet) |
 
 ## Folder structure
@@ -30,7 +30,7 @@ notes.ravindran.in/
 │   ├── guides/             One page per guide
 │   └── scripts/            One page per script, with the .ps1 next to it
 ├── azure/                  Landing page, guides/, scripts/ and environment/ (same layout as sharepoint/)
-├── aws/                    Starter page + empty guides/ and scripts/
+├── aws/                    Landing page, guides/, scripts/ and environment/ (same layout as azure/)
 ├── finops/                 Starter page + empty guides/ and scripts/
 └── _templates/             Page templates to copy (not published: GitHub
                             Pages skips folders starting with _)
@@ -92,7 +92,9 @@ Each topic uses fixed example names so readers always know what to replace.
 | Azure | `ravindran.onmicrosoft.com`, `sub-notes-test`, `rg-notes-test`, `eastus` | Test tenant, subscription, resource group, region |
 | Azure | `vm-notes-test-01`, `rsv-notes-test`, `log-notes-test` | Test VM, Recovery Services vault, Log Analytics workspace |
 | Azure | `vnet-notes-test`, `snet-web`, `nsg-notes-test-web`, `asg-web`, `kv-notes-test` | Virtual network, subnet, NSG, application security group, Key Vault |
-| AWS (suggested) | `notes-test` account alias, `us-east-1` | Test account and default region |
+| AWS | `111122223333` (alias `notes-test`), profile `notes-test`, `us-east-1` | Test account, PowerShell/CLI profile, region |
+| AWS | `vpc-notes-test`, `sg-web`, `ec2-notes-test-01`, `bv-notes-test` | VPC, security group, EC2 instance, backup vault |
+| AWS | `aws.ravindran.in` | Route 53 hosted zone in examples; also the hands-on examples site |
 
 ## License
 

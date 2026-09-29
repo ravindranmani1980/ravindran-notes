@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Find-AwsOrphanedResources | Notes | Ravindran Mani</title>
+<meta name="description" content="Finds orphaned AWS resources that cost money or clutter: unattached EBS volumes, unused Elastic IPs, idle load balancers and more.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html" aria-current="page">AWS</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap">
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">AWS</a> / <a href="../../scripts/index.html">Scripts</a> / Inventory and clean-up</p>
+    <h1 class="script-title">Find-AwsOrphanedResources</h1>
+    <p class="lead">Finds orphaned AWS resources that cost money or clutter: unattached EBS volumes, unused Elastic IPs, idle load balancers and more.</p>
+    <dl class="facts">
+      <div><dt>Runs in</dt><dd>AWS Tools for PowerShell (AWS.Tools modules)</dd></div>
+      <div><dt>Safety</dt><dd><span class="flag flag-read">Read-only</span></dd></div>
+    </dl>
+    <p class="actions"><a class="btn btn-primary" href="Find-AwsOrphanedResources.ps1" download>Download Find-AwsOrphanedResources.ps1</a></p>
+
+    <h2 id="what-it-does">What it does</h2>
+    <p>Checks every enabled region in each account for:</p>
+<ul><li>EBS volumes that aren&#x27;t attached to any instance</li><li>Elastic IP addresses not associated with anything</li><li>EBS snapshots older than -SnapshotAgeDays (and whether an AMI you own still uses them)</li><li>Application and Network Load Balancers with no registered targets</li><li>EC2 instances stopped for more than -StoppedDays days</li><li>Security groups not attached to any network interface (default groups excluded)</li></ul>
+<p>Read-only: it doesn&#x27;t delete anything. Review the list with the resource owners, then delete what&#x27;s no longer needed.</p>
+
+    <h2 id="parameters">Parameters</h2>
+    <div class="table-wrap">
+      <table class="params">
+          <tr><th scope="row"><code>-ProfileName</code><span class="ptype">string[]</span></th><td>AWS profiles to check, one per account. Default: the current credentials.</td></tr>
+          <tr><th scope="row"><code>-Region</code><span class="ptype">string[]</span></th><td>Regions to check. Default: every region enabled in the account.</td></tr>
+          <tr><th scope="row"><code>-SnapshotAgeDays</code><span class="ptype">int</span></th><td>Report snapshots older than this many days. Default 90.</td></tr>
+          <tr><th scope="row"><code>-StoppedDays</code><span class="ptype">int</span></th><td>Report instances stopped for longer than this many days. Default 30.</td></tr>
+          <tr><th scope="row"><code>-HomeRegion</code><span class="ptype">string</span></th><td>Region used for account-level calls (STS, listing regions). Default us-east-1.</td></tr>
+          <tr><th scope="row"><code>-OutputFile</code><span class="ptype">string</span></th><td>CSV output path.<span class="pdefault">Default: <code>Timestamped file in the current folder</code></span></td></tr>
+      </table>
+    </div>
+
+    <h2 id="examples">Examples</h2>
+    <pre><code class="language-powershell">.\Find-AwsOrphanedResources.ps1</code></pre>
+    <pre><code class="language-powershell">.\Find-AwsOrphanedResources.ps1 -ProfileName notes-test -Region us-east-1 -SnapshotAgeDays 30 -OutputFile .\orphans.csv</code></pre>
+
+    <h2 id="notes">Notes</h2>
+    <p>Requires AWS.Tools.EC2, AWS.Tools.ElasticLoadBalancingV2 and AWS.Tools.SecurityToken, and read access. Some &quot;orphans&quot; are intentional (a volume kept after an instance was terminated, a reserved Elastic IP, a snapshot kept for compliance): check the tags and ask the owner before deleting.</p>
+
+    <h2 id="source">Full script</h2>
+    <!-- Keep this in sync with Find-AwsOrphanedResources.ps1 in this folder. -->
+    <pre><code class="language-powershell">&lt;#
+.SYNOPSIS
+    Finds orphaned AWS resources that cost money or clutter: unattached EBS volumes, unused Elastic IPs, idle load balancers and more.
+
+.DESCRIPTION
+    Checks every enabled region in each account for:
+    - EBS volumes that aren&#x27;t attached to any instance
+    - Elastic IP addresses not associated with anything
+    - EBS snapshots older than -SnapshotAgeDays (and whether an AMI you own still uses them)
+    - Application and Network Load Balancers with no registered targets
+    - EC2 instances stopped for more than -StoppedDays days
+    - Security groups not attached to any network interface (default groups excluded)
+
+    Read-only: it doesn&#x27;t delete anything. Review the list with the resource owners,
+    then delete what&#x27;s no longer needed.
+
+.PARAMETER ProfileName
+    AWS profiles to check, one per account. Default: the current credentials.
+
+.PARAMETER Region
+    Regions to check. Default: every region enabled in the account.
+
+.PARAMETER SnapshotAgeDays
+    Report snapshots older than this many days. Default 90.
+
+.PARAMETER StoppedDays
+    Report instances stopped for longer than this many days. Default 30.
+
+.PARAMETER HomeRegion
+    Region used for account-level calls (STS, listing regions). Default us-east-1.
+
+.PARAMETER OutputFile
+    CSV output path.
+
+.EXAMPLE
+    .\Find-AwsOrphanedResources.ps1
+
+.EXAMPLE
+    .\Find-AwsOrphanedResources.ps1 -ProfileName notes-test -Region us-east-1 -SnapshotAgeDays 30 -OutputFile .\orphans.csv
+
+.NOTES
+    Requires AWS.Tools.EC2, AWS.Tools.ElasticLoadBalancingV2 and AWS.Tools.SecurityToken, and
+    read access. Some &quot;orphans&quot; are intentional (a volume kept after an instance was
+    terminated, a reserved Elastic IP, a snapshot kept for compliance): check the tags and
+    ask the owner before deleting.
+#&gt;
+[CmdletBinding()]
+param(
+    [string[]]$ProfileName,
+    [string[]]$Region,
+    [ValidateRange(1, 3650)][int]$SnapshotAgeDays = 90,
+    [ValidateRange(1, 3650)][int]$StoppedDays = 30,
+    [string]$HomeRegion = &#x27;us-east-1&#x27;,
+    [string]$OutputFile = (Join-Path -Path (Get-Location) -ChildPath (&#x27;AwsOrphanedResources_{0:yyyyMMdd_HHmm}.csv&#x27; -f (Get-Date)))
+)
+
+foreach ($m in &#x27;AWS.Tools.EC2&#x27;, &#x27;AWS.Tools.ElasticLoadBalancingV2&#x27;, &#x27;AWS.Tools.SecurityToken&#x27;) {
+    if (-not (Get-Module -ListAvailable -Name $m)) { throw &quot;$m not found. Run: Install-AWSToolsModule AWS.Tools.EC2, AWS.Tools.ElasticLoadBalancingV2, AWS.Tools.SecurityToken&quot; }
+    Import-Module $m -ErrorAction Stop
+}
+
+function Get-TagValue {
+    param($Tags, [string]$Key)
+    ($Tags | Where-Object { $_.Key -eq $Key } | Select-Object -First 1).Value
+}
+
+$report = New-Object System.Collections.Generic.List[object]
+function Add-Finding {
+    param($Finding, $Account, $Region, $Id, $Name, $Detail, $Tags)
+    $report.Add([pscustomobject]@{
+        Finding = $Finding; Account = $Account; Region = $Region; Id = $Id; Name = $Name
+        Detail = $Detail; Owner = (Get-TagValue $Tags &#x27;Owner&#x27;)
+    })
+}
+
+$snapshotCutoff = (Get-Date).AddDays(-$SnapshotAgeDays)
+$stoppedCutoff = (Get-Date).AddDays(-$StoppedDays)
+$targets = if ($ProfileName) { $ProfileName } else { @(&#x27;&#x27;) }
+
+foreach ($p in $targets) {
+    $cred = @{}
+    if ($p) { $cred.ProfileName = $p }
+    $account = (Get-STSCallerIdentity @cred -Region $HomeRegion).Account
+    $regions = if ($Region) { $Region } else { @((Get-EC2Region @cred -Region $HomeRegion).RegionName) }
+
+    foreach ($r in $regions) {
+        Write-Host &quot;Account $account, region $r...&quot; -ForegroundColor Cyan
+        $c = @{ Region = $r } + $cred
+        try {
+            $volumes = @(Get-EC2Volume @c -ErrorAction Stop) | Where-Object { $_ }
+        } catch {
+            Write-Warning &quot;Skipping $r in $account`: $($_.Exception.Message)&quot;
+            continue
+        }
+
+        # Unattached EBS volumes
+        foreach ($v in $volumes | Where-Object { [string]$_.State -eq &#x27;available&#x27; }) {
+            Add-Finding &#x27;Unattached EBS volume&#x27; $account $r $v.VolumeId (Get-TagValue $v.Tags &#x27;Name&#x27;) `
+                (&#x27;{0}, {1} GB, created {2:yyyy-MM-dd}&#x27; -f $v.VolumeType, $v.Size, $v.CreateTime) $v.Tags
+        }
+
+        # Unassociated Elastic IPs
+        foreach ($a in @(Get-EC2Address @c) | Where-Object { $_ -and -not $_.AssociationId }) {
+            Add-Finding &#x27;Unused Elastic IP&#x27; $account $r $a.AllocationId (Get-TagValue $a.Tags &#x27;Name&#x27;) $a.PublicIp $a.Tags
+        }
+
+        # Old snapshots, and whether an AMI you own still uses them
+        $amiSnapshots = @{}
+        foreach ($img in @(Get-EC2Image @c -Owner self) | Where-Object { $_ }) {
+            foreach ($bdm in @($img.BlockDeviceMappings)) {
+                if ($bdm -and $bdm.Ebs -and $bdm.Ebs.SnapshotId) { $amiSnapshots[$bdm.Ebs.SnapshotId] = $img.ImageId }
+            }
+        }
+        foreach ($s in @(Get-EC2Snapshot @c -OwnerId self) | Where-Object { $_ -and $_.StartTime -lt $snapshotCutoff }) {
+            $detail = &#x27;{0} GB, created {1:yyyy-MM-dd}&#x27; -f $s.VolumeSize, $s.StartTime
+            if ($amiSnapshots[$s.SnapshotId]) { $detail += &quot;, used by $($amiSnapshots[$s.SnapshotId])&quot; }
+            if ([string]$s.StorageTier -eq &#x27;archive&#x27;) { $detail += &#x27;, archive tier&#x27; }
+            Add-Finding &#x27;Old snapshot&#x27; $account $r $s.SnapshotId (Get-TagValue $s.Tags &#x27;Name&#x27;) $detail $s.Tags
+        }
+
+        # Load balancers with no registered targets
+        foreach ($lb in @(Get-ELB2LoadBalancer @c) | Where-Object { $_ -and [string]$_.Type -ne &#x27;gateway&#x27; }) {
+            $targetCount = 0
+            foreach ($tg in @(Get-ELB2TargetGroup @c -LoadBalancerArn $lb.LoadBalancerArn) | Where-Object { $_ }) {
+                $targetCount += @(Get-ELB2TargetHealth @c -TargetGroupArn $tg.TargetGroupArn | Where-Object { $_ }).Count
+            }
+            if ($targetCount -eq 0) {
+                Add-Finding &#x27;Load balancer with no targets&#x27; $account $r $lb.LoadBalancerName $lb.DNSName `
+                    (&#x27;{0}, {1}, created {2:yyyy-MM-dd}&#x27; -f $lb.Type, $lb.Scheme, $lb.CreatedTime) $null
+            }
+        }
+
+        # Instances stopped for a long time (the stop date is in StateTransitionReason)
+        $stopped = @((Get-EC2Instance @c -Filter @{ Name = &#x27;instance-state-name&#x27;; Values = &#x27;stopped&#x27; }).Instances) | Where-Object { $_ }
+        foreach ($i in $stopped) {
+            if ($i.StateTransitionReason -match &#x27;\((\d{4}-\d{2}-\d{2}) &#x27;) {
+                $since = [datetime]::ParseExact($Matches[1], &#x27;yyyy-MM-dd&#x27;, $null)
+                if ($since -lt $stoppedCutoff) {
+                    $gb = (@($volumes | Where-Object { $_.Attachments.InstanceId -contains $i.InstanceId }) | Measure-Object -Property Size -Sum).Sum
+                    Add-Finding &#x27;Long-stopped instance&#x27; $account $r $i.InstanceId (Get-TagValue $i.Tags &#x27;Name&#x27;) `
+                        (&#x27;{0}, stopped since {1:yyyy-MM-dd}, {2} GB of EBS&#x27; -f $i.InstanceType, $since, [int]$gb) $i.Tags
+                }
+            }
+        }
+
+        # Security groups not attached to any network interface
+        $inUse = @{}
+        foreach ($eni in @(Get-EC2NetworkInterface @c) | Where-Object { $_ }) {
+            foreach ($g in @($eni.Groups)) { if ($g) { $inUse[$g.GroupId] = $true } }
+        }
+        foreach ($sg in @(Get-EC2SecurityGroup @c) | Where-Object { $_ -and $_.GroupName -ne &#x27;default&#x27; -and -not $inUse[$_.GroupId] }) {
+            Add-Finding &#x27;Unused security group&#x27; $account $r $sg.GroupId $sg.GroupName &quot;$($sg.VpcId): $($sg.Description)&quot; $sg.Tags
+        }
+    }
+}
+
+$report | Sort-Object Finding, Account, Region | Export-Csv -Path $OutputFile -NoTypeInformation -Encoding UTF8
+$report | Group-Object Finding | Select-Object @{n=&#x27;Finding&#x27;;e={$_.Name}}, Count | Format-Table -AutoSize | Out-Host
+Write-Host &quot;Findings: $($report.Count). Report: $OutputFile&quot; -ForegroundColor Green
+</code></pre>
+
+    <nav class="pager" aria-label="More scripts">
+      <span></span>
+      <a class="next" href="get-awsec2inventory.html"><span>Next script</span>Get-AwsEC2Inventory</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monitoring and alerts | AWS | Notes | Ravindran Mani</title>
+<meta name="description" content="CloudWatch building blocks, Logs Insights queries worth keeping, and alarms people act on.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html" aria-current="page">AWS</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 9 of 10</p>
+    <ol>
+      <li><a href="#the-building-blocks">The building blocks</a></li>
+      <li><a href="#set-up-the-foundation">Set up the foundation</a></li>
+      <li><a href="#logs-insights-queries-worth-keeping">Logs Insights queries worth keeping</a></li>
+      <li><a href="#alarms-people-act-on">Alarms people act on</a></li>
+      <li><a href="#keep-an-eye-on-monitoring-costs">Keep an eye on monitoring costs</a></li>
+      <li><a href="#examples-to-try">Examples to try</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">AWS</a> / Guide 9</p>
+    <h1>Monitoring and alerts</h1>
+    <p class="lead">CloudWatch building blocks, Logs Insights queries worth keeping, and alarms people act on.</p>
+
+<p>Monitoring in AWS is mostly <strong>Amazon CloudWatch</strong>, with EventBridge for events and SNS for notifications. The goal isn't more dashboards; it's a small number of alerts that people trust and act on, and logs that are there when you need them.</p>
+<h2 id="the-building-blocks">The building blocks</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Piece</th><th>What it does</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>CloudWatch metrics</strong></td><td>Numbers over time. Most services publish them for free (EC2 every 5 minutes, or every minute with detailed monitoring)</td></tr>
+<tr><td><strong>CloudWatch Logs</strong></td><td>Log groups from the agent, Lambda, VPC flow logs, CloudTrail and more. Queried with Logs Insights</td></tr>
+<tr><td><strong>CloudWatch alarms</strong></td><td>Watch a metric or a combination of alarms and notify or act when a threshold is crossed</td></tr>
+<tr><td><strong>Amazon EventBridge</strong></td><td>Reacts to events: a GuardDuty finding, an instance stopping, a backup failing, an AWS Health notice</td></tr>
+<tr><td><strong>Amazon SNS</strong></td><td>Delivers notifications to email, SMS, chat (through Amazon Q Developer in chat applications) or an HTTPS endpoint for your ticketing system</td></tr>
+<tr><td><strong>AWS Health</strong></td><td>AWS's own problems and scheduled maintenance that affect your resources</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="set-up-the-foundation">Set up the foundation</h2>
+<ul>
+<li><strong>One SNS topic per audience and severity,</strong> for example <code>notes-test-alerts</code> for the operations team and <code>notes-test-critical</code> for on-call. Alarms point at topics, never at individual email addresses.</li>
+<li><strong>The CloudWatch agent on every instance,</strong> installed and configured through Systems Manager (<a href="ec2.html#monitoring-agents">Guide 7</a>), for memory, disk space and the logs you troubleshoot with.</li>
+<li><strong>Set retention on every log group.</strong> The default is <em>never expire</em>, which is how log storage becomes a noticeable line on the bill. 30 days for application logs is a common starting point, with anything you need longer exported to S3.</li>
+<li><strong>Cross-account observability:</strong> link workload accounts to a central monitoring account, so one set of dashboards and queries covers everything.</li>
+</ul>
+<pre><code class="language-powershell"># Log groups with no retention set, largest first
+Get-CWLLogGroup | Where-Object { -not $_.RetentionInDays } | Sort-Object StoredBytes -Descending |
+    Select-Object LogGroupName, @{n='StoredGB';e={ [math]::Round($_.StoredBytes / 1GB, 2) }}
+
+# Set 30 days on one of them
+Write-CWLRetentionPolicy -LogGroupName '/notes-test/app' -RetentionInDays 30
+</code></pre>
+<h2 id="logs-insights-queries-worth-keeping">Logs Insights queries worth keeping</h2>
+<p>Save these as <strong>saved queries</strong> in CloudWatch Logs Insights so the whole team has them.</p>
+<p><strong>Errors in an application log, per 5 minutes:</strong></p>
+<pre><code>fields @timestamp, @message
+| filter @message like /(?i)(error|exception|fatal)/
+| stats count(*) as errors by bin(5m)
+| sort errors desc
+</code></pre>
+<p><strong>Rejected connections in VPC flow logs, by source and port</strong> (who is knocking on closed doors):</p>
+<pre><code>fields srcAddr, dstPort
+| filter action = &quot;REJECT&quot;
+| stats count(*) as attempts by srcAddr, dstPort
+| sort attempts desc
+| limit 25
+</code></pre>
+<p><strong>Console sign-ins without MFA, from CloudTrail in CloudWatch Logs:</strong></p>
+<pre><code>fields @timestamp, userIdentity.arn, sourceIPAddress
+| filter eventName = &quot;ConsoleLogin&quot; and additionalEventData.MFAUsed != &quot;Yes&quot;
+| sort @timestamp desc
+</code></pre>
+<p><strong>Who changed security groups today:</strong></p>
+<pre><code>fields @timestamp, eventName, userIdentity.arn, requestParameters.groupId
+| filter eventSource = &quot;ec2.amazonaws.com&quot; and eventName like /SecurityGroup(Ingress|Egress)/
+| sort @timestamp desc
+</code></pre>
+<p><strong>Slowest Lambda invocations:</strong></p>
+<pre><code>filter @type = &quot;REPORT&quot;
+| stats max(@duration) as maxMs, avg(@duration) as avgMs, count(*) as calls by bin(1h)
+</code></pre>
+<h2 id="alarms-people-act-on">Alarms people act on</h2>
+<p>An alert that fires every day gets ignored, and then the real one does too. A few rules:</p>
+<ul>
+<li><strong>Alert on symptoms users feel,</strong> not every metric: load balancer 5xx errors and response time, failed health checks, queue age, not CPU at 80% on one instance of ten.</li>
+<li><strong>Require several data points.</strong> "3 out of 5 minutes over threshold" stops single spikes from waking people up.</li>
+<li><strong>Use composite alarms</strong> to page only when related alarms fire together (high latency <em>and</em> errors), and anomaly detection for metrics with a daily pattern.</li>
+<li><strong>Every alarm has an owner and a runbook link</strong> in its description.</li>
+</ul>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Alarm</th><th>Metric</th><th>Typical threshold</th></tr>
+</thead>
+<tbody>
+<tr><td>Instance or system check failed</td><td><code>StatusCheckFailed_System</code> and <code>StatusCheckFailed_Instance</code> (EC2)</td><td>&ge; 1 for 2 of 2 minutes; add the <em>recover</em> action to the system check</td></tr>
+<tr><td>Disk nearly full</td><td><code>disk_used_percent</code> (agent)</td><td>&gt; 85% for 15 minutes</td></tr>
+<tr><td>Memory pressure</td><td><code>mem_used_percent</code> (agent)</td><td>&gt; 90% for 15 minutes</td></tr>
+<tr><td>Website errors</td><td><code>HTTPCode_Target_5XX_Count</code> (ALB)</td><td>Above normal for 3 of 5 minutes</td></tr>
+<tr><td>Unhealthy targets</td><td><code>UnHealthyHostCount</code> (ALB target group)</td><td>&ge; 1 for 5 minutes</td></tr>
+<tr><td>Database storage</td><td><code>FreeStorageSpace</code> (RDS)</td><td>&lt; 10% of allocated</td></tr>
+</tbody>
+</table>
+</div>
+<pre><code class="language-powershell"># Alarm when an instance fails its status checks, and recover it automatically
+Write-CWMetricAlarm -AlarmName 'ec2-notes-test-01-status-check' -Namespace 'AWS/EC2' -MetricName 'StatusCheckFailed_System' `
+    -Dimension (New-Object Amazon.CloudWatch.Model.Dimension -Property @{ Name = 'InstanceId'; Value = 'i-0123456789abcdef0' }) -Statistic Maximum -Period 60 `
+    -EvaluationPeriod 2 -DatapointsToAlarm 2 -Threshold 1 -ComparisonOperator GreaterThanOrEqualToThreshold `
+    -AlarmAction 'arn:aws:automate:us-east-1:ec2:recover', 'arn:aws:sns:us-east-1:111122223333:notes-test-alerts'
+
+# Alarms currently firing
+Get-CWAlarm -StateValue ALARM | Select-Object AlarmName, StateUpdatedTimestamp, StateReason
+</code></pre>
+<p>For events rather than metrics, use EventBridge rules to the same SNS topics: GuardDuty findings of severity 7 and above, Security Hub critical findings, AWS Backup job failures, AWS Health events for your accounts, and root user sign-ins.</p>
+<h2 id="keep-an-eye-on-monitoring-costs">Keep an eye on monitoring costs</h2>
+<ul>
+<li><strong>Log ingestion is the big one.</strong> Check which log groups ingest the most (the <code>IncomingBytes</code> metric per log group) and cut debug logging in production.</li>
+<li><strong>Use the Infrequent Access log class</strong> for logs you keep for audits but rarely query: cheaper ingestion, fewer features.</li>
+<li><strong>Send VPC flow logs and CloudTrail to S3</strong> for long-term storage and query them with Athena; send only what you actively troubleshoot to CloudWatch Logs.</li>
+<li><strong>Custom metrics and detailed monitoring</strong> are charged per metric. Collect what you alarm or graph on, not everything the agent can produce.</li>
+</ul>
+<h2 id="examples-to-try">Examples to try</h2>
+<p>From <a href="https://aws.ravindran.in">aws.ravindran.in</a>: <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/cloudwatch">CloudWatch</a> and <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/cloudwatch/logs">CloudWatch Logs</a>, <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/cloudtrail/cloudwatch">CloudTrail to CloudWatch</a>, <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/sns">SNS</a> and <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/s3/event-notifications">S3 event notifications</a>.</p>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="backup-and-recovery.html"><span>Previous guide</span>Backup and recovery</a>
+      <a class="next" href="cost-hygiene.html"><span>Next guide</span>Cost hygiene</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

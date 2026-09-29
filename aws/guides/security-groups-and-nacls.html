@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security groups and network ACLs | AWS | Notes | Ravindran Mani</title>
+<meta name="description" content="How security groups and NACLs decide, referencing groups instead of IP addresses, risky rules, and checking what&#x27;s allowed.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html" aria-current="page">AWS</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 4 of 10</p>
+    <ol>
+      <li><a href="#security-groups-and-nacls-compared">Security groups and NACLs compared</a></li>
+      <li><a href="#how-security-groups-decide">How security groups decide</a></li>
+      <li><a href="#reference-security-groups-not-ip-addresses">Reference security groups, not IP addresses</a></li>
+      <li><a href="#network-acls-as-a-second-layer">Network ACLs as a second layer</a></li>
+      <li><a href="#rules-that-cause-trouble">Rules that cause trouble</a></li>
+      <li><a href="#a-naming-and-description-convention">A naming and description convention</a></li>
+      <li><a href="#check-what-is-actually-allowed">Check what is actually allowed</a></li>
+      <li><a href="#examples-to-try">Examples to try</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">AWS</a> / Guide 4</p>
+    <h1>Security groups and network ACLs</h1>
+    <p class="lead">How security groups and NACLs decide, referencing groups instead of IP addresses, risky rules, and checking what&#x27;s allowed.</p>
+
+<p>AWS has two network filters inside a VPC. <strong>Security groups</strong> sit on each network interface and do almost all of the work. <strong>Network ACLs</strong> sit on subnets and are a coarse second layer. Most exposure problems come from one security group rule that allows SSH or RDP from <code>0.0.0.0/0</code>, added "just for today" and never removed.</p>
+<h2 id="security-groups-and-nacls-compared">Security groups and NACLs compared</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th></th><th>Security group</th><th>Network ACL</th></tr>
+</thead>
+<tbody>
+<tr><td>Applies to</td><td>Network interfaces (instances, load balancers, RDS, Lambda in a VPC...)</td><td>Every resource in the subnets it's associated with</td></tr>
+<tr><td>Rules</td><td>Allow only</td><td>Allow and deny</td></tr>
+<tr><td>Evaluation</td><td>All rules together: if any rule allows, traffic is allowed</td><td>In number order; first match wins</td></tr>
+<tr><td>State</td><td>Stateful: replies are allowed automatically</td><td>Stateless: return traffic needs its own rule</td></tr>
+<tr><td>Default</td><td>New group: no inbound, all outbound</td><td>Default NACL: allow everything both ways</td></tr>
+<tr><td>Can reference</td><td>CIDRs, prefix lists and <strong>other security groups</strong></td><td>CIDRs only</td></tr>
+<tr><td>Quotas (default)</td><td>60 inbound and 60 outbound rules; 5 groups per interface</td><td>20 rules each way</td></tr>
+</tbody>
+</table>
+</div>
+<p>Compared with Azure: a security group is closer to an NSG on a NIC combined with an application security group, and there's no priority number to manage. A NACL is closer to an NSG on a subnet, but stateless.</p>
+<h2 id="how-security-groups-decide">How security groups decide</h2>
+<ul>
+<li><strong>There are no deny rules.</strong> Anything not allowed is denied. To block one address inside an allowed range, you need a NACL (or AWS Network Firewall).</li>
+<li><strong>Rules add up.</strong> An interface can have several security groups; the effective rules are the union of all of them. A permissive group attached "temporarily" overrides every careful one.</li>
+<li><strong>Changes apply immediately</strong> to new connections. Existing tracked connections usually continue until they close.</li>
+<li><strong>Outbound is open by default.</strong> New security groups allow all outbound traffic. Tighten it for sensitive tiers such as databases, which rarely need to start connections to anything.</li>
+<li><strong>The default security group</strong> in each VPC allows all traffic between its members. Don't use it: remove its rules (CIS benchmark item) and create named groups instead.</li>
+</ul>
+<h2 id="reference-security-groups-not-ip-addresses">Reference security groups, not IP addresses</h2>
+<p>A security group rule can use another security group as its source. That's the AWS equivalent of Azure's application security groups, and it's the most useful habit to build:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Group</th><th>Inbound rule</th><th>Source</th></tr>
+</thead>
+<tbody>
+<tr><td><code>sg-alb</code></td><td>TCP 443</td><td><code>0.0.0.0/0</code> (or CloudFront's managed prefix list)</td></tr>
+<tr><td><code>sg-web</code></td><td>TCP 8443</td><td><code>sg-alb</code></td></tr>
+<tr><td><code>sg-app</code></td><td>TCP 8080</td><td><code>sg-web</code></td></tr>
+<tr><td><code>sg-db</code></td><td>TCP 5432</td><td><code>sg-app</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Scale the web tier from two instances to twenty and no rule changes: anything with <code>sg-web</code> attached is allowed. Only the load balancer faces the internet; the instances don't need public IPs at all. Referencing works across peered VPCs in the same region and across VPCs attached to a Transit Gateway (when security group referencing is turned on for the attachment).</p>
+<p>For groups of addresses outside AWS (office ranges, a partner), use a <strong>customer-managed prefix list</strong>: one list, referenced from many groups, updated in one place. AWS also publishes <strong>managed prefix lists</strong> for S3, DynamoDB and CloudFront origins.</p>
+<pre><code class="language-powershell">$vpcId = (Get-EC2Vpc -Filter @{ Name = 'tag:Name'; Values = 'vpc-notes-test' }).VpcId
+
+# The groups
+$web = New-EC2SecurityGroup -VpcId $vpcId -GroupName 'sg-web' -Description 'Web tier'
+$app = New-EC2SecurityGroup -VpcId $vpcId -GroupName 'sg-app' -Description 'App tier'
+
+# sg-app accepts 8080 only from members of sg-web
+$fromWeb = New-Object Amazon.EC2.Model.UserIdGroupPair -Property @{ GroupId = $web }
+$rule = New-Object Amazon.EC2.Model.IpPermission -Property @{
+    IpProtocol = 'tcp'; FromPort = 8080; ToPort = 8080; UserIdGroupPairs = @($fromWeb) }
+Grant-EC2SecurityGroupIngress -GroupId $app -IpPermission $rule
+
+# Attach sg-web to an instance's network interface (replaces the list, so include any it should keep)
+$instance = (Get-EC2Instance -Filter @{ Name = 'tag:Name'; Values = 'ec2-notes-test-01' }).Instances[0]
+Edit-EC2InstanceAttribute -InstanceId $instance.InstanceId -Group @($web)
+</code></pre>
+<h2 id="network-acls-as-a-second-layer">Network ACLs as a second layer</h2>
+<p>Most VPCs run fine with the default allow-all NACL and good security groups. Use custom NACLs where a coarse, subnet-wide rule helps:</p>
+<ul>
+<li><strong>Blocking</strong> a specific address range quickly during an incident (security groups can't deny).</li>
+<li><strong>Separating tiers</strong> as a backstop: the data subnets only accept traffic from the app subnets, whatever the security groups say.</li>
+</ul>
+<p>Because NACLs are stateless, every allow needs a matching rule for the reply, usually the <strong>ephemeral ports 1024&ndash;65535</strong>. Forgetting the outbound ephemeral rule is the classic cause of "the security group is right but it still doesn't work". Number rules in steps of 10 or 100 so you can insert one later.</p>
+<h2 id="rules-that-cause-trouble">Rules that cause trouble</h2>
+<p>These are the findings that come up in almost every review. <a href="../scripts/get-awssecuritygroupreport.html"><code>Get-AwsSecurityGroupReport.ps1</code></a> looks for all of them across every region.</p>
+<ul>
+<li><strong>SSH (22) or RDP (3389) open to <code>0.0.0.0/0</code> or <code>::/0</code>.</strong> Use Systems Manager Session Manager instead, which needs no inbound port at all (see <a href="network-perimeter.html#admin-access-without-open-ports">Guide 5</a>).</li>
+<li><strong>Database and remote-management ports open to the internet:</strong> 1433, 3306, 5432, 6379, 27017, 5985/5986 (WinRM) and similar.</li>
+<li><strong>All traffic (protocol <code>-1</code>) from anywhere.</strong> Usually added while troubleshooting. It turns the group off.</li>
+<li><strong>Forgotten IPv6.</strong> A rule tightened for <code>0.0.0.0/0</code> with a twin still open for <code>::/0</code>.</li>
+<li><strong>Wide port ranges,</strong> such as <code>0-65535</code> or <code>3000-4000</code>, which quietly include 3389.</li>
+<li><strong>Unused groups</strong> that nobody dares delete. <a href="../scripts/find-awsorphanedresources.html"><code>Find-AwsOrphanedResources.ps1</code></a> lists groups not attached to any interface.</li>
+</ul>
+<p>AWS Config's managed rules <code>restricted-ssh</code>, <code>restricted-common-ports</code> and <code>vpc-default-security-group-closed</code>, and the matching Security Hub controls, catch these continuously.</p>
+<h2 id="a-naming-and-description-convention">A naming and description convention</h2>
+<ul>
+<li><strong>Name groups by role, not by instance:</strong> <code>sg-&lt;app&gt;-&lt;tier&gt;</code>, for example <code>sg-payroll-web</code>. A group named after one server ends up attached to ten.</li>
+<li><strong>Fill in the rule description</strong> on every rule (who asked, which ticket). It's the only place to record why a rule exists, and it shows in the console and in reports.</li>
+<li><strong>Manage groups in CloudFormation or Terraform.</strong> Drift detection then shows rules added by hand.</li>
+</ul>
+<h2 id="check-what-is-actually-allowed">Check what is actually allowed</h2>
+<p>When a connection fails, don't read the rules and guess. Ask AWS:</p>
+<ul>
+<li><strong>Reachability Analyzer</strong> (VPC console) traces the path between two resources, through security groups, NACLs, route tables and gateways, and names the component that blocks it.</li>
+<li><strong>Network Access Analyzer</strong> finds unintended paths, for example "anything reachable from the internet gateway on port 22".</li>
+<li><strong>VPC flow logs</strong> record accepted and rejected connections for a VPC, subnet or interface. Send them to CloudWatch Logs for troubleshooting or to S3 for long-term, cheaper storage.</li>
+</ul>
+<pre><code class="language-powershell"># Security groups on an instance, and their inbound rules
+$instance.SecurityGroups | ForEach-Object { Get-EC2SecurityGroup -GroupId $_.GroupId } | ForEach-Object {
+    $g = $_
+    $g.IpPermissions | Select-Object @{n='Group';e={$g.GroupName}}, IpProtocol, FromPort, ToPort,
+        @{n='From';e={ (@($_.Ipv4Ranges.CidrIp) + @($_.Ipv6Ranges.CidrIpv6) + @($_.UserIdGroupPairs.GroupId)) -join ', ' }}
+}
+
+# Turn on flow logs for the VPC, to CloudWatch Logs
+New-EC2FlowLog -ResourceId $vpcId -ResourceType VPC -TrafficType ALL -LogDestinationType cloud-watch-logs `
+    -LogGroupName '/vpc/vpc-notes-test/flow' -DeliverLogsPermissionArn 'arn:aws:iam::111122223333:role/vpc-flow-logs'
+</code></pre>
+<h2 id="examples-to-try">Examples to try</h2>
+<p>From <a href="https://aws.ravindran.in">aws.ravindran.in</a>: <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/vpc/sg">VPC security groups</a>, <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/vpc/nacl">network ACLs</a>, <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/vpc/basics">VPC basics</a> and <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/vpc/peering-connection">VPC peering</a>.</p>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="tagging-and-governance.html"><span>Previous guide</span>Tagging and governance</a>
+      <a class="next" href="network-perimeter.html"><span>Next guide</span>Firewalls, endpoints and admin access</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guides | AWS | Notes | Ravindran Mani</title>
+<meta name="description" content="AWS guides covering account structure and access, tagging and governance, network and identity security, EC2, backup, monitoring and cost.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html" aria-current="page">AWS</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<section class="topic-head"><div class="wrap"><p class="crumbs"><a href="../../index.html">Notes</a> / <a href="../index.html">AWS</a> / Guides</p><h1>Guides</h1><p class="lead">AWS guides covering account structure and access, tagging and governance, network and identity security, EC2, backup, monitoring and cost.</p></div></section>
+<section aria-labelledby="guides-h" class="block">
+<div class="wrap two-col">
+<div class="col-head">
+<h2 id="guides-h">Guides</h2>
+<p class="muted">Grouped by subject and numbered in reading order. New to AWS operations? Start at the top.</p>
+</div>
+<ol class="guide-list">
+      <li class="guide-group">Start here</li>
+      <li><a href="../guides/getting-started.html"><span class="num">01</span><span class="gtext"><span class="gtitle">Getting started</span><span class="gsum">AWS Tools for PowerShell, signing in with IAM Identity Center, working across accounts and regions, and AWS Config queries.</span></span></a></li>
+      <li class="guide-group">Foundations</li>
+      <li><a href="../guides/account-structure-and-access.html"><span class="num">02</span><span class="gtext"><span class="gtitle">Account structure and access</span><span class="gsum">AWS Organizations, OUs and guardrail policies, IAM Identity Center, IAM roles, and protecting the root user.</span></span></a></li>
+      <li><a href="../guides/tagging-and-governance.html"><span class="num">03</span><span class="gtext"><span class="gtitle">Tagging and governance</span><span class="gsum">A tag strategy finance can use, and tag policies, SCPs and AWS Config to enforce it.</span></span></a></li>
+      <li class="guide-group">Security</li>
+      <li><a href="../guides/security-groups-and-nacls.html"><span class="num">04</span><span class="gtext"><span class="gtitle">Security groups and network ACLs</span><span class="gsum">How security groups and NACLs decide, referencing groups instead of IP addresses, risky rules, and checking what&#x27;s allowed.</span></span></a></li>
+      <li><a href="../guides/network-perimeter.html"><span class="num">05</span><span class="gtext"><span class="gtitle">Firewalls, endpoints and admin access</span><span class="gsum">Outbound control, Network Firewall, WAF and Shield, VPC endpoints, S3 Block Public Access, and Session Manager instead of SSH and RDP.</span></span></a></li>
+      <li><a href="../guides/security-baseline.html"><span class="num">06</span><span class="gtext"><span class="gtitle">Security baseline: identity, detection and encryption</span><span class="gsum">Root and IAM hygiene, IMDSv2, CloudTrail, GuardDuty, Security Hub, KMS, Secrets Manager and the logs you need.</span></span></a></li>
+      <li class="guide-group">Operations</li>
+      <li><a href="../guides/ec2.html"><span class="num">07</span><span class="gtext"><span class="gtitle">EC2 instances</span><span class="gsum">Instance types, EBS volumes, availability, patching with Systems Manager, monitoring agents and saving money on EC2.</span></span></a></li>
+      <li><a href="../guides/backup-and-recovery.html"><span class="num">08</span><span class="gtext"><span class="gtitle">Backup and recovery</span><span class="gsum">AWS Backup, protecting backups from ransomware, restores, restore testing and disaster recovery.</span></span></a></li>
+      <li><a href="../guides/monitoring-and-alerts.html"><span class="num">09</span><span class="gtext"><span class="gtitle">Monitoring and alerts</span><span class="gsum">CloudWatch building blocks, Logs Insights queries worth keeping, and alarms people act on.</span></span></a></li>
+      <li class="guide-group">Cost</li>
+      <li><a href="../guides/cost-hygiene.html"><span class="num">10</span><span class="gtext"><span class="gtitle">Cost hygiene</span><span class="gsum">Cost Explorer, budgets, the monthly clean-up checklist, Savings Plans and Spot.</span></span></a></li>
+</ol>
+</div>
+</section>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

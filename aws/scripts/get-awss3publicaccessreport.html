@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get-AwsS3PublicAccessReport | Notes | Ravindran Mani</title>
+<meta name="description" content="Checks every S3 bucket for public access, and reports Block Public Access, policy status, ACLs, encryption and versioning.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html" aria-current="page">AWS</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap">
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">AWS</a> / <a href="../../scripts/index.html">Scripts</a> / Network and data security</p>
+    <h1 class="script-title">Get-AwsS3PublicAccessReport</h1>
+    <p class="lead">Checks every S3 bucket for public access, and reports Block Public Access, policy status, ACLs, encryption and versioning.</p>
+    <dl class="facts">
+      <div><dt>Runs in</dt><dd>AWS Tools for PowerShell (AWS.Tools modules)</dd></div>
+      <div><dt>Safety</dt><dd><span class="flag flag-read">Read-only</span></dd></div>
+    </dl>
+    <p class="actions"><a class="btn btn-primary" href="Get-AwsS3PublicAccessReport.ps1" download>Download Get-AwsS3PublicAccessReport.ps1</a></p>
+
+    <h2 id="what-it-does">What it does</h2>
+    <p>For each account, reads the account-level S3 Block Public Access setting, then for every bucket reports:</p>
+<ul><li>Block Public Access settings on the bucket (all four on, or which are off)</li><li>Whether the bucket policy makes it public, and whether its ACL grants access to everyone</li><li>Object Ownership (ACLs disabled or not), default encryption and versioning</li></ul>
+<p>Flags each bucket:</p>
+<ul><li>High: the policy is public, or the ACL grants AllUsers or AuthenticatedUsers</li><li>Medium: Block Public Access isn&#x27;t fully on for the bucket or the account</li><li>Low: versioning off, or ACLs still enabled</li></ul>
+<p>Read-only: it doesn&#x27;t change any settings.</p>
+
+    <h2 id="parameters">Parameters</h2>
+    <div class="table-wrap">
+      <table class="params">
+          <tr><th scope="row"><code>-ProfileName</code><span class="ptype">string[]</span></th><td>AWS profiles to check, one per account. Default: the current credentials.</td></tr>
+          <tr><th scope="row"><code>-BucketName</code><span class="ptype">string[]</span></th><td>Check only these buckets. Default: every bucket in the account.</td></tr>
+          <tr><th scope="row"><code>-ProblemsOnly</code><span class="ptype">switch</span></th><td>Only list buckets with at least one finding.</td></tr>
+          <tr><th scope="row"><code>-OutputFile</code><span class="ptype">string</span></th><td>CSV output path.<span class="pdefault">Default: <code>Timestamped file in the current folder</code></span></td></tr>
+      </table>
+    </div>
+
+    <h2 id="examples">Examples</h2>
+    <pre><code class="language-powershell">.\Get-AwsS3PublicAccessReport.ps1</code></pre>
+    <pre><code class="language-powershell">.\Get-AwsS3PublicAccessReport.ps1 -ProfileName notes-test, notes-prod -ProblemsOnly -OutputFile .\s3.csv</code></pre>
+
+    <h2 id="notes">Notes</h2>
+    <p>Requires AWS.Tools.S3, AWS.Tools.S3Control and AWS.Tools.SecurityToken, and read access (s3:GetBucket* and s3:GetAccountPublicAccessBlock, included in SecurityAudit). A bucket whose settings can&#x27;t be read (for example, denied by its own bucket policy) is reported with the error rather than skipped. Buckets meant to be public (a static website) should normally be private behind CloudFront instead.</p>
+
+    <h2 id="source">Full script</h2>
+    <!-- Keep this in sync with Get-AwsS3PublicAccessReport.ps1 in this folder. -->
+    <pre><code class="language-powershell">&lt;#
+.SYNOPSIS
+    Checks every S3 bucket for public access, and reports Block Public Access, policy status, ACLs, encryption and versioning.
+
+.DESCRIPTION
+    For each account, reads the account-level S3 Block Public Access setting, then for every
+    bucket reports:
+    - Block Public Access settings on the bucket (all four on, or which are off)
+    - Whether the bucket policy makes it public, and whether its ACL grants access to everyone
+    - Object Ownership (ACLs disabled or not), default encryption and versioning
+    Flags each bucket:
+    - High: the policy is public, or the ACL grants AllUsers or AuthenticatedUsers
+    - Medium: Block Public Access isn&#x27;t fully on for the bucket or the account
+    - Low: versioning off, or ACLs still enabled
+
+    Read-only: it doesn&#x27;t change any settings.
+
+.PARAMETER ProfileName
+    AWS profiles to check, one per account. Default: the current credentials.
+
+.PARAMETER BucketName
+    Check only these buckets. Default: every bucket in the account.
+
+.PARAMETER ProblemsOnly
+    Only list buckets with at least one finding.
+
+.PARAMETER OutputFile
+    CSV output path.
+
+.EXAMPLE
+    .\Get-AwsS3PublicAccessReport.ps1
+
+.EXAMPLE
+    .\Get-AwsS3PublicAccessReport.ps1 -ProfileName notes-test, notes-prod -ProblemsOnly -OutputFile .\s3.csv
+
+.NOTES
+    Requires AWS.Tools.S3, AWS.Tools.S3Control and AWS.Tools.SecurityToken, and read access
+    (s3:GetBucket* and s3:GetAccountPublicAccessBlock, included in SecurityAudit). A bucket
+    whose settings can&#x27;t be read (for example, denied by its own bucket policy) is reported
+    with the error rather than skipped. Buckets meant to be public (a static website) should
+    normally be private behind CloudFront instead.
+#&gt;
+[CmdletBinding()]
+param(
+    [string[]]$ProfileName,
+    [string[]]$BucketName,
+    [switch]$ProblemsOnly,
+    [string]$OutputFile = (Join-Path -Path (Get-Location) -ChildPath (&#x27;AwsS3PublicAccessReport_{0:yyyyMMdd_HHmm}.csv&#x27; -f (Get-Date)))
+)
+
+foreach ($m in &#x27;AWS.Tools.S3&#x27;, &#x27;AWS.Tools.S3Control&#x27;, &#x27;AWS.Tools.SecurityToken&#x27;) {
+    if (-not (Get-Module -ListAvailable -Name $m)) { throw &quot;$m not found. Run: Install-AWSToolsModule AWS.Tools.S3, AWS.Tools.S3Control, AWS.Tools.SecurityToken&quot; }
+    Import-Module $m -ErrorAction Stop
+}
+
+# Returns &#x27;All on&#x27; or the names of the settings that are off
+function Get-BpaSummary {
+    param($Config)
+    if (-not $Config) { return &#x27;Not set&#x27; }
+    $off = @()
+    if (-not $Config.BlockPublicAcls) { $off += &#x27;BlockPublicAcls&#x27; }
+    if (-not $Config.IgnorePublicAcls) { $off += &#x27;IgnorePublicAcls&#x27; }
+    if (-not $Config.BlockPublicPolicy) { $off += &#x27;BlockPublicPolicy&#x27; }
+    if (-not $Config.RestrictPublicBuckets) { $off += &#x27;RestrictPublicBuckets&#x27; }
+    if ($off) { &#x27;Off: &#x27; + ($off -join &#x27;, &#x27;) } else { &#x27;All on&#x27; }
+}
+
+# Runs a read call; returns $null when the setting doesn&#x27;t exist (the S3 APIs throw for that)
+function Invoke-Quietly {
+    param([scriptblock]$Call)
+    try { &amp; $Call } catch { $null }
+}
+
+$report = New-Object System.Collections.Generic.List[object]
+$rank = @{ &#x27;High&#x27; = 0; &#x27;Medium&#x27; = 1; &#x27;Low&#x27; = 2; &#x27;&#x27; = 3 }
+$everyone = &#x27;http://acs.amazonaws.com/groups/global/AllUsers&#x27;, &#x27;http://acs.amazonaws.com/groups/global/AuthenticatedUsers&#x27;
+$targets = if ($ProfileName) { $ProfileName } else { @(&#x27;&#x27;) }
+
+foreach ($p in $targets) {
+    $cred = @{}
+    if ($p) { $cred.ProfileName = $p }
+    $account = (Get-STSCallerIdentity @cred -Region us-east-1).Account
+    $accountBpa = Invoke-Quietly { Get-S3CPublicAccessBlock @cred -Region us-east-1 -AccountId $account -ErrorAction Stop }
+    $accountSummary = Get-BpaSummary $accountBpa
+    Write-Host &quot;Account ${account}: account-level Block Public Access $accountSummary&quot; -ForegroundColor Cyan
+
+    $buckets = @(Get-S3Bucket @cred -Region us-east-1) | Where-Object { $_ -and (-not $BucketName -or $BucketName -contains $_.BucketName) }
+    foreach ($b in $buckets) {
+        $name = $b.BucketName
+        $findings = New-Object System.Collections.Generic.List[object]
+        $errorText = &#x27;&#x27;
+        try {
+            $loc = [string](Get-S3BucketLocation @cred -Region us-east-1 -BucketName $name -ErrorAction Stop).Value
+            $r = switch ($loc) { &#x27;&#x27; { &#x27;us-east-1&#x27; } &#x27;EU&#x27; { &#x27;eu-west-1&#x27; } default { $loc } }
+        } catch {
+            $r = &#x27;&#x27;; $errorText = $_.Exception.Message
+        }
+
+        $bucketBpa = $null; $policyPublic = $null; $aclPublic = $false; $ownership = &#x27;&#x27;; $encryption = &#x27;&#x27;; $versioning = &#x27;&#x27;
+        if ($r) {
+            $c = @{ Region = $r; BucketName = $name } + $cred
+            $bucketBpa = Invoke-Quietly { Get-S3PublicAccessBlock @c -ErrorAction Stop }
+            $status = Invoke-Quietly { Get-S3BucketPolicyStatus @c -ErrorAction Stop }
+            $policyPublic = if ($status) { [bool]$status.IsPublic } else { $false }
+            $acl = Invoke-Quietly { Get-S3ACL @c -ErrorAction Stop }
+            $aclPublic = [bool](@($acl.Grants) | Where-Object { $_ -and $everyone -contains $_.Grantee.URI })
+            $own = Invoke-Quietly { Get-S3BucketOwnershipControl @c -ErrorAction Stop }
+            $ownership = [string](@($own.Rules) | Select-Object -First 1).ObjectOwnership
+            if (-not $ownership) { $ownership = &#x27;ObjectWriter (ACLs enabled)&#x27; }
+            $enc = Invoke-Quietly { Get-S3BucketEncryption @c -ErrorAction Stop }
+            $encryption = [string](@($enc.ServerSideEncryptionRules) | Select-Object -First 1).ServerSideEncryptionByDefault.ServerSideEncryptionAlgorithm
+            $versioning = [string](Invoke-Quietly { Get-S3BucketVersioning @c -ErrorAction Stop }).Status
+            if (-not $versioning) { $versioning = &#x27;Off&#x27; }
+        }
+        $bucketSummary = Get-BpaSummary $bucketBpa
+
+        if ($policyPublic) { $findings.Add(@(&#x27;High&#x27;, &#x27;Bucket policy is public&#x27;)) }
+        if ($aclPublic) { $findings.Add(@(&#x27;High&#x27;, &#x27;ACL grants access to everyone&#x27;)) }
+        if ($bucketSummary -ne &#x27;All on&#x27; -and $accountSummary -ne &#x27;All on&#x27;) { $findings.Add(@(&#x27;Medium&#x27;, &#x27;Block Public Access not fully on (bucket or account)&#x27;)) }
+        if ($r -and $versioning -ne &#x27;Enabled&#x27;) { $findings.Add(@(&#x27;Low&#x27;, &quot;Versioning $versioning&quot;)) }
+        if ($r -and $ownership -ne &#x27;BucketOwnerEnforced&#x27;) { $findings.Add(@(&#x27;Low&#x27;, &#x27;ACLs enabled&#x27;)) }
+        if ($errorText) { $findings.Add(@(&#x27;Medium&#x27;, &quot;Could not read settings: $errorText&quot;)) }
+
+        if ($ProblemsOnly -and -not $findings.Count) { continue }
+        $top = $findings | Sort-Object { $rank[$_[0]] } | Select-Object -First 1
+        $report.Add([pscustomobject]@{
+            Account          = $account
+            Severity         = if ($top) { $top[0] } else { &#x27;&#x27; }
+            Bucket           = $name
+            Region           = $r
+            Findings         = ($findings | ForEach-Object { $_[1] }) -join &#x27;; &#x27;
+            AccountBPA       = $accountSummary
+            BucketBPA        = $bucketSummary
+            PolicyPublic     = $policyPublic
+            AclPublic        = $aclPublic
+            ObjectOwnership  = $ownership
+            Encryption       = $encryption
+            Versioning       = $versioning
+            Created          = $b.CreationDate
+        })
+    }
+}
+
+$report = $report | Sort-Object @{e = { $rank[$_.Severity] }}, Account, Bucket
+$report | Export-Csv -Path $OutputFile -NoTypeInformation -Encoding UTF8
+$report | Where-Object Severity | Group-Object Severity | Select-Object @{n=&#x27;Severity&#x27;;e={$_.Name}}, Count | Format-Table -AutoSize | Out-Host
+Write-Host &quot;Buckets reported: $(@($report).Count). Report: $OutputFile&quot; -ForegroundColor Green
+</code></pre>
+
+    <nav class="pager" aria-label="More scripts">
+      <a class="prev" href="get-awssecuritygroupreport.html"><span>Previous script</span>Get-AwsSecurityGroupReport</a>
+      <a class="next" href="get-awsbackupcoverage.html"><span>Next script</span>Get-AwsBackupCoverage</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

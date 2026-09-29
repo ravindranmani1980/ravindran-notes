@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scripts | AWS | Notes | Ravindran Mani</title>
+<meta name="description" content="AWS PowerShell scripts for inventory, clean-up, governance, security and operations.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html" aria-current="page">AWS</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<section class="topic-head"><div class="wrap"><p class="crumbs"><a href="../../index.html">Notes</a> / <a href="../index.html">AWS</a> / Scripts</p><h1>Scripts</h1><p class="lead">AWS PowerShell scripts for inventory, clean-up, governance, network and data security, and operations, with documentation and safe-use guidance.</p></div></section>
+<section aria-labelledby="scripts-h" class="block block-alt">
+<div class="wrap">
+<div class="col-head wide">
+<h2 id="scripts-h">Scripts</h2>
+<p class="muted">Every script has built-in help (<code>Get-Help .\Script.ps1 -Full</code>). Reports are read-only; scripts that make changes support <code>-WhatIf</code>.</p>
+</div>
+<div class="script-columns">
+<section class="script-group">
+<h3>Inventory and clean-up</h3>
+<p class="muted">Know what you have, and find what you&#x27;re paying for but not using.</p>
+<ul class="script-list">
+      <li><a class="script-link" href="../scripts/find-awsorphanedresources.html">Find-AwsOrphanedResources</a>
+        <p>Finds orphaned AWS resources that cost money or clutter: unattached EBS volumes, unused Elastic IPs, idle load balancers and more.</p></li>
+      <li><a class="script-link" href="../scripts/get-awsec2inventory.html">Get-AwsEC2Inventory</a>
+        <p>Lists every EC2 instance in every enabled region, with type, state, IPs, volumes, IMDS setting and tags.</p></li>
+</ul>
+</section>
+<section class="script-group">
+<h3>Governance</h3>
+<p class="muted">Credential hygiene and tagging across every account.</p>
+<ul class="script-list">
+      <li><a class="script-link" href="../scripts/get-awsiamcredentialreport.html">Get-AwsIamCredentialReport</a>
+        <p>Reports IAM users and the root user from the IAM credential report, and flags the risky ones: no MFA, old or unused access keys.</p></li>
+      <li><a class="script-link" href="../scripts/get-awsuntaggedresources.html">Get-AwsUntaggedResources</a>
+        <p>Lists AWS resources that are missing required tags, or have them spelled with the wrong case.</p></li>
+</ul>
+</section>
+<section class="script-group">
+<h3>Network and data security</h3>
+<p class="muted">Open ports and public S3 buckets.</p>
+<ul class="script-list">
+      <li><a class="script-link" href="../scripts/get-awssecuritygroupreport.html">Get-AwsSecurityGroupReport</a>
+        <p>Reports security group rules in every region and flags the risky ones, such as SSH or RDP open to the internet.</p></li>
+      <li><a class="script-link" href="../scripts/get-awss3publicaccessreport.html">Get-AwsS3PublicAccessReport</a>
+        <p>Checks every S3 bucket for public access, and reports Block Public Access, policy status, ACLs, encryption and versioning.</p></li>
+</ul>
+</section>
+<section class="script-group">
+<h3>Operations</h3>
+<p class="muted">Backup coverage and scheduled start/stop.</p>
+<ul class="script-list">
+      <li><a class="script-link" href="../scripts/get-awsbackupcoverage.html">Get-AwsBackupCoverage</a>
+        <p>Shows which EC2 instances, RDS databases, DynamoDB tables and EFS file systems are protected by AWS Backup, and which aren&#x27;t.</p></li>
+      <li><a class="script-link" href="../scripts/invoke-awsec2powerschedule.html">Invoke-AwsEC2PowerSchedule</a>
+        <p>Starts or stops EC2 instances that carry a schedule tag. Run it on a schedule from EC2, Lambda or Systems Manager.</p></li>
+</ul>
+</section>
+</div>
+</div>
+</section>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

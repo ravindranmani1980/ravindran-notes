@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Getting started | AWS | Notes | Ravindran Mani</title>
+<meta name="description" content="AWS Tools for PowerShell, signing in with IAM Identity Center, working across accounts and regions, and AWS Config queries.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html" aria-current="page">AWS</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 1 of 10</p>
+    <ol>
+      <li><a href="#about-the-example-names">About the example names</a></li>
+      <li><a href="#tip-1-pick-your-tool">Tip 1 – Pick your tool</a></li>
+      <li><a href="#tip-2-install-the-modules-you-need">Tip 2 – Install the modules you need</a></li>
+      <li><a href="#tip-3-sign-in-with-iam-identity-center">Tip 3 – Sign in with IAM Identity Center</a></li>
+      <li><a href="#tip-4-loop-over-accounts-and-regions">Tip 4 – Loop over accounts and regions</a></li>
+      <li><a href="#tip-5-query-everything-with-aws-config">Tip 5 – Query everything with AWS Config</a></li>
+      <li><a href="#tip-6-use-roles-for-automation">Tip 6 – Use roles for automation</a></li>
+      <li><a href="#tip-7-keep-a-transcript-and-use-whatif">Tip 7 – Keep a transcript, and use -WhatIf</a></li>
+      <li><a href="#examples-to-try">Examples to try</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">AWS</a> / Guide 1</p>
+    <h1>Getting started</h1>
+    <p class="lead">AWS Tools for PowerShell, signing in with IAM Identity Center, working across accounts and regions, and AWS Config queries.</p>
+
+<p>Everything in these AWS notes can be done in the console, but repeatable work belongs in scripts. This guide sets up the AWS Tools for PowerShell, explains how sign-in, profiles, accounts and regions work, and shows the two services that make reporting across many accounts practical: AWS Config advanced queries and AWS Resource Explorer.</p>
+<h2 id="about-the-example-names">About the example names</h2>
+<p>All examples use one test environment. Replace the names with your own. The full list is on the <a href="../environment/index.html">example environment</a> page.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Item</th><th>Example</th></tr>
+</thead>
+<tbody>
+<tr><td>Test account</td><td><code>111122223333</code>, alias <code>notes-test</code></td></tr>
+<tr><td>Sign-in portal (IAM Identity Center)</td><td><code>https://ravindran.awsapps.com/start</code></td></tr>
+<tr><td>Profile for PowerShell and the CLI</td><td><code>notes-test</code></td></tr>
+<tr><td>Region</td><td>US East (N. Virginia), <code>us-east-1</code></td></tr>
+<tr><td>VPC</td><td><code>vpc-notes-test</code> (<code>10.20.0.0/16</code>)</td></tr>
+<tr><td>EC2 instance (Name tag)</td><td><code>ec2-notes-test-01</code></td></tr>
+<tr><td>Domain (Route 53 hosted zone)</td><td><code>aws.ravindran.in</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Hands-on examples for 58 AWS services (CloudFormation templates, CLI scripts, Terraform and SDK samples) are on <a href="https://aws.ravindran.in">aws.ravindran.in</a>. These notes are the operations side: how to run what those examples build. Each guide ends with the examples that go with it.</p>
+<h2 id="tip-1-pick-your-tool">Tip 1 – Pick your tool</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Tool</th><th>Best for</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>AWS Tools for PowerShell</strong></td><td>Windows admins, reports to CSV, anything that loops over accounts, regions and resources. All scripts on this site use it.</td></tr>
+<tr><td><strong>AWS CLI</strong> (<code>aws</code>)</td><td>Quick one-liners, Linux and macOS shells, and most AWS documentation examples.</td></tr>
+<tr><td><strong>AWS CloudShell</strong></td><td>Both of the above in the browser, already signed in as you. Nothing to install.</td></tr>
+<tr><td><strong>CloudFormation / Terraform / CDK</strong></td><td>Creating infrastructure repeatably. Scripts report and fix; templates build.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="tip-2-install-the-modules-you-need">Tip 2 – Install the modules you need</h2>
+<p>Use the modular <strong>AWS.Tools</strong> packages (one module per service), not the old single <code>AWSPowerShell</code> module. They load faster, and the installer keeps them on the same version.</p>
+<pre><code class="language-powershell">Install-Module AWS.Tools.Installer -Scope CurrentUser
+Install-AWSToolsModule AWS.Tools.EC2, AWS.Tools.S3, AWS.Tools.IdentityManagement, AWS.Tools.SecurityToken, `
+    AWS.Tools.SSO, AWS.Tools.SSOOIDC, AWS.Tools.ConfigService -CleanUp
+
+# Later: update everything together
+Update-AWSToolsModule -CleanUp
+</code></pre>
+<p>Version 5 of the tools (June 2025) changed a few behaviours that matter in scripts: empty lists now come back as <code>$null</code> instead of an empty collection, every list cmdlet pages through all results by default, and <code>-PassThru</code> is replaced by <code>-Select</code>. Wrap results in <code>@()</code> before counting them and your scripts work on both versions.</p>
+<h2 id="tip-3-sign-in-with-iam-identity-center">Tip 3 – Sign in with IAM Identity Center</h2>
+<p>Don't create IAM users with access keys for people. Sign in through <strong>IAM Identity Center</strong> and let the tools get short-lived credentials. The easiest way to create the profile is the CLI's wizard; PowerShell reads the same profile file.</p>
+<pre><code class="language-powershell"># One-time: create the profile (asks for the portal URL, region, account and role)
+aws configure sso --profile notes-test
+
+# Each session: sign in through the browser, then use the profile
+Invoke-AWSSSOLogin -ProfileName notes-test
+Set-AWSCredential -ProfileName notes-test
+Set-DefaultAWSRegion -Region us-east-1
+
+# Who am I, and in which account?
+Get-STSCallerIdentity
+</code></pre>
+<p>If you'd rather stay in PowerShell, <code>Initialize-AWSSSOConfiguration</code> creates the same profile. Either way, the credentials last as long as the session duration set on the permission set (one hour by default), and nothing long-lived is stored on your machine.</p>
+<h2 id="tip-4-loop-over-accounts-and-regions">Tip 4 – Loop over accounts and regions</h2>
+<p>Most AWS services are regional: <code>Get-EC2Instance</code> only shows the region you ask for. Forgetting that is how instances in <code>ap-south-1</code> run for a year unnoticed. Loop over the enabled regions, and over one profile per account:</p>
+<pre><code class="language-powershell">$profiles = 'notes-test', 'notes-prod'          # one Identity Center profile per account
+foreach ($p in $profiles) {
+    Set-AWSCredential -ProfileName $p
+    $account = (Get-STSCallerIdentity).Account
+    $regions = (Get-EC2Region -Region us-east-1).RegionName   # regions enabled in this account
+    foreach ($r in $regions) {
+        $instances = @((Get-EC2Instance -Region $r).Instances)
+        if ($instances.Count) { '{0} {1}: {2} instance(s)' -f $account, $r, $instances.Count }
+    }
+}
+</code></pre>
+<p>Global services (IAM, Organizations, Route 53, CloudFront) don't take a region; call them once per account. S3 lists every bucket from any region, but each bucket's settings are read from the bucket's own region.</p>
+<h2 id="tip-5-query-everything-with-aws-config">Tip 5 – Query everything with AWS Config</h2>
+<p>Looping over every region and account works, but it's slow. If <strong>AWS Config</strong> is recording (and it should be; see <a href="tagging-and-governance.html">Guide 3</a>), you can query the configuration of every resource with SQL-like <strong>advanced queries</strong>, and across the whole organisation through an <strong>aggregator</strong>:</p>
+<pre><code class="language-powershell"># EC2 instances by type in this account and region
+Select-CFGResourceConfig -Expression &quot;SELECT configuration.instanceType, COUNT(*)
+  WHERE resourceType = 'AWS::EC2::Instance' GROUP BY configuration.instanceType&quot; |
+  ForEach-Object { $_ | ConvertFrom-Json }
+
+# Unattached EBS volumes across every account and region in the organisation
+Select-CFGAggregateResourceConfig -ConfigurationAggregatorName 'org-aggregator' -Expression &quot;SELECT accountId, awsRegion,
+  resourceId, configuration.size WHERE resourceType = 'AWS::EC2::Volume' AND configuration.state.value = 'available'&quot; |
+  ForEach-Object { $_ | ConvertFrom-Json }
+</code></pre>
+<p><strong>AWS Resource Explorer</strong> is the other option: a free search index of resources across regions (and the organisation), good for "where is that bucket?" questions from the console. Config is better for reports because it knows each resource's settings.</p>
+<h2 id="tip-6-use-roles-for-automation">Tip 6 – Use roles for automation</h2>
+<p>Scheduled scripts shouldn't use your sign-in or an IAM user's access keys. Run them where AWS provides credentials automatically:</p>
+<ul>
+<li><strong>On EC2:</strong> an <strong>instance profile</strong> (an IAM role attached to the instance). The tools pick the credentials up with no configuration.</li>
+<li><strong>In Lambda or Systems Manager Automation:</strong> the function's or runbook's execution role.</li>
+<li><strong>In a CI/CD pipeline outside AWS</strong> (GitHub Actions, Azure DevOps): an IAM role trusted through <strong>OIDC federation</strong>, not stored keys.</li>
+<li><strong>Across accounts:</strong> a read-only role in each account (deployed with CloudFormation StackSets) that the automation account can assume.</li>
+</ul>
+<h2 id="tip-7-keep-a-transcript-and-use-whatif">Tip 7 – Keep a transcript, and use -WhatIf</h2>
+<pre><code class="language-powershell">Start-Transcript -Path &quot;.\aws-$(Get-Date -Format yyyyMMdd-HHmm).log&quot;
+.\Invoke-AwsEC2PowerSchedule.ps1 -Action Stop -WhatIf   # see what it would do
+Stop-Transcript
+</code></pre>
+<p>Every script on this site that changes something supports <code>-WhatIf</code>. Reports are read-only and need only the <code>ReadOnlyAccess</code> (or <code>ViewOnlyAccess</code> plus <code>SecurityAudit</code>) permission set.</p>
+<h2 id="examples-to-try">Examples to try</h2>
+<p>From <a href="https://aws.ravindran.in">aws.ravindran.in</a>: <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/api">AWS CLI and API techniques</a> (filters, JMESPath queries, <code>jq</code>, waiters), <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/api/sts">STS</a> for assuming roles, and <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/s3/powershell-scripts">S3 PowerShell scripts</a>.</p>
+
+    <nav class="pager" aria-label="Guides">
+      <span></span>
+      <a class="next" href="account-structure-and-access.html"><span>Next guide</span>Account structure and access</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

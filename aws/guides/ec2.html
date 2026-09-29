@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EC2 instances | AWS | Notes | Ravindran Mani</title>
+<meta name="description" content="Instance types, EBS volumes, availability, patching with Systems Manager, monitoring agents and saving money on EC2.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html" aria-current="page">AWS</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 7 of 10</p>
+    <ol>
+      <li><a href="#know-what-you-have">Know what you have</a></li>
+      <li><a href="#choose-the-instance-type">Choose the instance type</a></li>
+      <li><a href="#ebs-volumes">EBS volumes</a></li>
+      <li><a href="#availability">Availability</a></li>
+      <li><a href="#patching-with-systems-manager">Patching with Systems Manager</a></li>
+      <li><a href="#monitoring-agents">Monitoring agents</a></li>
+      <li><a href="#save-money-on-ec2">Save money on EC2</a></li>
+      <li><a href="#troubleshooting-without-ssh-or-rdp">Troubleshooting without SSH or RDP</a></li>
+      <li><a href="#examples-to-try">Examples to try</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">AWS</a> / Guide 7</p>
+    <h1>EC2 instances</h1>
+    <p class="lead">Instance types, EBS volumes, availability, patching with Systems Manager, monitoring agents and saving money on EC2.</p>
+
+<p>EC2 is where most AWS operations work still happens, and usually where most of the bill is. This guide covers the day-to-day: knowing what's running, choosing instance types and volumes, availability, patching, monitoring, and spending less.</p>
+<h2 id="know-what-you-have">Know what you have</h2>
+<p>Start with an inventory across every region, not just the one the console opened in. <a href="../scripts/get-awsec2inventory.html"><code>Get-AwsEC2Inventory.ps1</code></a> lists every instance with type, state, platform, IPs, volumes, IMDS setting, and the owner and cost tags. Quick checks from the shell:</p>
+<pre><code class="language-powershell"># Running instances in this region, with their Name tag
+(Get-EC2Instance -Filter @{ Name = 'instance-state-name'; Values = 'running' }).Instances |
+    Select-Object InstanceId, InstanceType, @{n='Name';e={ ($_.Tags | Where-Object Key -eq 'Name').Value }},
+        PrivateIpAddress, LaunchTime
+
+# Instances stopped for more than 30 days still pay for their EBS volumes (and any Elastic IPs)
+(Get-EC2Instance -Filter @{ Name = 'instance-state-name'; Values = 'stopped' }).Instances |
+    Where-Object { $_.StateTransitionReason -match '\((\d{4}-\d{2}-\d{2})' -and [datetime]$Matches[1] -lt (Get-Date).AddDays(-30) } |
+    Select-Object InstanceId, InstanceType, StateTransitionReason
+</code></pre>
+<h2 id="choose-the-instance-type">Choose the instance type</h2>
+<p>An instance type name reads as family, generation, options and size: <code>m7g.large</code> is general purpose (<code>m</code>), 7th generation, Graviton (<code>g</code>), large.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Family</th><th>Good for</th></tr>
+</thead>
+<tbody>
+<tr><td><code>t</code> (burstable)</td><td>Small, spiky workloads: jump boxes, dev servers, low-traffic sites. Watch CPU credits: in <em>unlimited</em> mode, sustained load costs extra</td></tr>
+<tr><td><code>m</code> (general purpose)</td><td>Most application servers</td></tr>
+<tr><td><code>c</code> (compute)</td><td>CPU-heavy work: builds, batch, web front ends at scale</td></tr>
+<tr><td><code>r</code>, <code>x</code> (memory)</td><td>Databases, caches, SQL Server, SAP</td></tr>
+<tr><td><code>i</code>, <code>d</code> (storage)</td><td>Local NVMe for very fast temporary data</td></tr>
+<tr><td><code>g</code>, <code>p</code>, <code>inf</code>, <code>trn</code></td><td>Graphics and machine learning</td></tr>
+</tbody>
+</table>
+</div>
+<ul>
+<li><strong>Use the current generation.</strong> Newer generations usually cost the same or less for more performance. Moving from <code>m5</code> to <code>m7i</code> is often a straight win.</li>
+<li><strong>Consider Graviton</strong> (the <code>g</code> suffix, Arm-based) for Linux workloads: typically around 20% cheaper for similar or better performance. Most open-source stacks, containers and managed runtimes work unchanged.</li>
+<li><strong>Rightsize with data.</strong> <strong>AWS Compute Optimizer</strong> recommends instance types from 14 days of CloudWatch metrics (longer with enhanced metrics). Install the CloudWatch agent so it can see memory, not just CPU.</li>
+</ul>
+<h2 id="ebs-volumes">EBS volumes</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Type</th><th>Use for</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>gp3</strong></td><td>The default for almost everything. 3,000 IOPS and 125 MB/s included at any size; buy more of either separately</td></tr>
+<tr><td>gp2</td><td>Older default; performance tied to size. Migrate to gp3, usually about 20% cheaper, with no downtime</td></tr>
+<tr><td>io2 Block Express</td><td>Databases needing guaranteed high IOPS and 99.999% durability</td></tr>
+<tr><td>st1, sc1</td><td>Large sequential data (logs, big data) at low cost; can't be boot volumes</td></tr>
+</tbody>
+</table>
+</div>
+<pre><code class="language-powershell"># Convert every gp2 volume in this region to gp3 (online; runs in the background)
+Get-EC2Volume -Filter @{ Name = 'volume-type'; Values = 'gp2' } | ForEach-Object {
+    Edit-EC2Volume -VolumeId $_.VolumeId -VolumeType gp3 -WhatIf
+}
+</code></pre>
+<p>Remove <code>-WhatIf</code> to run it. Also: turn on <strong>EBS encryption by default</strong> (<a href="security-baseline.html#encryption-and-secrets">Guide 6</a>), set <strong>Delete on termination</strong> for volumes that shouldn't outlive the instance, and delete the unattached volumes and old snapshots <a href="../scripts/find-awsorphanedresources.html"><code>Find-AwsOrphanedResources.ps1</code></a> finds.</p>
+<h2 id="availability">Availability</h2>
+<ul>
+<li><strong>A single instance lives in one Availability Zone.</strong> An AZ outage takes it down. For anything that must stay up, run at least two instances in different AZs behind a load balancer.</li>
+<li><strong>Use Auto Scaling groups, even with a fixed size.</strong> A group of two with health checks replaces a failed instance automatically, across AZs.</li>
+<li><strong>Launch templates</strong> describe how an instance is built (AMI, type, security groups, IMDSv2, tags, user data). Version them and use them everywhere, instead of hand-launching.</li>
+<li><strong>Automatic recovery</strong> is on by default for most current instance types: if the underlying host fails, the instance restarts on new hardware with the same ID, IPs and volumes.</li>
+<li><strong>Stateful servers</strong> that can't be load-balanced (a legacy app server, SQL Server on EC2) need backups (<a href="backup-and-recovery.html">Guide 8</a>) and, for fast failover, a replica or AWS Elastic Disaster Recovery.</li>
+</ul>
+<h2 id="patching-with-systems-manager">Patching with Systems Manager</h2>
+<p><strong>AWS Systems Manager</strong> manages instances through the SSM Agent: patching, inventory, running commands and shell access, without SSH or RDP. Every instance should be a <em>managed node</em>, which needs the agent, an instance profile with <code>AmazonSSMManagedInstanceCore</code> (or Default Host Management Configuration for the whole account), and a route to Systems Manager.</p>
+<ul>
+<li><strong>Quick Setup &gt; Patch Manager</strong> creates a patch policy for the whole organisation: scan daily, install weekly in a maintenance window, with separate baselines for production and non-production.</li>
+<li><strong>Patch baselines</strong> set which updates are approved and how long after release (for example, critical and security updates after 7 days).</li>
+<li><strong>Patch groups</strong> (the <code>PatchGroup</code> tag) or tag-based targets decide which instances follow which schedule, so the two halves of a pair aren't patched at the same time.</li>
+<li><strong>Replace rather than patch</strong> where you can: instances in an Auto Scaling group can be refreshed from a newly patched AMI built by EC2 Image Builder.</li>
+</ul>
+<pre><code class="language-powershell"># Instances Systems Manager can't manage (agent missing, no role, or no route)
+$managed = (Get-SSMInstanceInformation).InstanceId
+(Get-EC2Instance -Filter @{ Name = 'instance-state-name'; Values = 'running' }).Instances |
+    Where-Object { $_.InstanceId -notin $managed } | Select-Object InstanceId, @{n='Name';e={ ($_.Tags | Where-Object Key -eq 'Name').Value }}
+
+# Patch compliance summary (the API takes up to 50 instance IDs per call)
+Get-SSMInstancePatchStateList -InstanceId ($managed | Select-Object -First 50) | Select-Object InstanceId, InstalledCount, MissingCount, FailedCount, OperationEndTime
+</code></pre>
+<h2 id="monitoring-agents">Monitoring agents</h2>
+<p>EC2 sends CPU, network and disk operations to CloudWatch without an agent, but not memory or disk space: those need the <strong>CloudWatch agent</strong>. Install and configure it through Systems Manager (the <code>AWS-ConfigureAWSPackage</code> document and a configuration stored in Parameter Store) so every instance gets the same setup. Collect memory and disk-used percentages, and the Windows event logs or Linux log files you actually troubleshoot with. <a href="monitoring-and-alerts.html">Guide 9</a> covers the alarms to set on them.</p>
+<h2 id="save-money-on-ec2">Save money on EC2</h2>
+<ul>
+<li><strong>Stop non-production instances out of hours.</strong> A server running 12 hours on weekdays costs about 36% of one running all month. <a href="../scripts/invoke-awsec2powerschedule.html"><code>Invoke-AwsEC2PowerSchedule.ps1</code></a> starts and stops instances by tag. Stopped instances still pay for EBS.</li>
+<li><strong>Rightsize, then commit.</strong> Act on Compute Optimizer first, then cover the steady baseline with Savings Plans (<a href="cost-hygiene.html">Guide 10</a>).</li>
+<li><strong>Spot Instances</strong> cost up to 90% less for work that can be interrupted: CI runners, batch, stateless workers in an Auto Scaling group with mixed instance types.</li>
+<li><strong>Release unused Elastic IPs</strong> and avoid public IPv4 addresses where you can: every public IPv4 address is charged by the hour.</li>
+<li><strong>Windows and SQL Server licences</strong> are a large part of the price. Check whether bring-your-own-licence or a smaller SQL edition applies.</li>
+</ul>
+<h2 id="troubleshooting-without-ssh-or-rdp">Troubleshooting without SSH or RDP</h2>
+<ul>
+<li><strong>Status checks:</strong> a failed <em>system</em> check is AWS's problem (stop and start moves the instance to new hardware); a failed <em>instance</em> check is the OS's (boot failure, full disk, bad network config).</li>
+<li><strong>Get system log and instance screenshot</strong> (Actions &gt; Monitor and troubleshoot) show the boot output and the console screen.</li>
+<li><strong>EC2 Serial Console</strong> gives a text console to fix a broken network or boot configuration. It's off by default; turn it on per account only when needed.</li>
+<li><strong>Session Manager</strong> and <strong>Run Command</strong> work as long as the SSM Agent can reach Systems Manager, even when SSH is broken or blocked.</li>
+<li><strong>AWSSupport-ExecuteEC2Rescue</strong> (a Systems Manager Automation runbook) fixes common Windows and Linux boot and connectivity problems by attaching the volume to a helper instance.</li>
+</ul>
+<h2 id="examples-to-try">Examples to try</h2>
+<p>From <a href="https://aws.ravindran.in">aws.ravindran.in</a>: <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/ec2">EC2</a> and <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/ec2/userdata">user data</a>, <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/asg">EC2 Auto Scaling</a>, <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/ebs">EBS</a> (including <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/ebs/resize">resizing</a>), and <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/elb/alb">Application Load Balancer</a>.</p>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="security-baseline.html"><span>Previous guide</span>Security baseline: identity, detection and encryption</a>
+      <a class="next" href="backup-and-recovery.html"><span>Next guide</span>Backup and recovery</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Account structure and access | AWS | Notes | Ravindran Mani</title>
+<meta name="description" content="AWS Organizations, OUs and guardrail policies, IAM Identity Center, IAM roles, and protecting the root user.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html" aria-current="page">AWS</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 2 of 10</p>
+    <ol>
+      <li><a href="#the-hierarchy">The hierarchy</a></li>
+      <li><a href="#a-practical-layout">A practical layout</a></li>
+      <li><a href="#guardrails-with-organization-policies">Guardrails with organization policies</a></li>
+      <li><a href="#access-with-iam-identity-center">Access with IAM Identity Center</a></li>
+      <li><a href="#iam-roles-and-least-privilege">IAM roles and least privilege</a></li>
+      <li><a href="#protect-the-root-user">Protect the root user</a></li>
+      <li><a href="#examples-to-try">Examples to try</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">AWS</a> / Guide 2</p>
+    <h1>Account structure and access</h1>
+    <p class="lead">AWS Organizations, OUs and guardrail policies, IAM Identity Center, IAM roles, and protecting the root user.</p>
+
+<p>In AWS, the <strong>account</strong> is the boundary that matters most: for security, for billing, and for how much damage one mistake can do. A good structure uses many accounts, groups them in AWS Organizations, and gives people access through IAM Identity Center rather than IAM users. Getting this right early is far easier than untangling one busy account later.</p>
+<h2 id="the-hierarchy">The hierarchy</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Level</th><th>What it is</th><th>Used for</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Organization</strong></td><td>All your accounts, under one management account</td><td>Consolidated billing, organisation-wide policies and services</td></tr>
+<tr><td><strong>Organizational units (OUs)</strong></td><td>Folders of accounts, up to five levels deep</td><td>Applying policies to groups of accounts</td></tr>
+<tr><td><strong>Accounts</strong></td><td>The isolation boundary</td><td>One workload and environment each; separate quotas and bills</td></tr>
+<tr><td><strong>Regions and VPCs</strong></td><td>Where resources run inside an account</td><td>Latency, data residency, network isolation</td></tr>
+<tr><td><strong>Resources</strong></td><td>Instances, buckets, databases</td><td>Tags group them for cost and ownership</td></tr>
+</tbody>
+</table>
+</div>
+<p>Policies attached to an OU apply to every account below it. Unlike Azure, AWS has no resource-group layer; tags (<a href="tagging-and-governance.html">Guide 3</a>) do that job.</p>
+<h2 id="a-practical-layout">A practical layout</h2>
+<p>This follows the AWS multi-account guidance, trimmed to what most organisations need:</p>
+<pre><code>Root
+├── Management account        billing and Organizations only: no workloads
+├── Security OU
+│   ├── log-archive           CloudTrail and Config logs, locked down
+│   └── security-tooling      GuardDuty, Security Hub delegated admin
+├── Infrastructure OU
+│   └── network               Transit Gateway, shared VPCs, DNS, egress
+├── Workloads OU
+│   ├── Prod OU               payroll-prod, web-prod ...
+│   └── NonProd OU            payroll-test, notes-test ...
+├── Sandbox OU                personal experiments, with budgets and auto-cleanup
+└── Suspended OU              closed or quarantined accounts, deny-all SCP
+</code></pre>
+<ul>
+<li><strong>Keep the management account empty.</strong> Service control policies don't apply to it, so anything running there is outside your guardrails.</li>
+<li><strong>One account per workload per environment.</strong> Production and test in the same account means test credentials can reach production data.</li>
+<li><strong>AWS Control Tower</strong> sets up this layout (log archive, audit account, guardrails, account factory) in an afternoon. Use it for new organisations; retrofitting an existing one takes more care but is still worth it.</li>
+</ul>
+<h2 id="guardrails-with-organization-policies">Guardrails with organization policies</h2>
+<p>Organization policies set limits that no one in an account can exceed, not even an administrator:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Policy type</th><th>Limits</th><th>Example</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Service control policy (SCP)</strong></td><td>What IAM users and roles in the accounts can do</td><td>Deny any action outside <code>us-east-1</code> and <code>us-west-2</code></td></tr>
+<tr><td><strong>Resource control policy (RCP)</strong></td><td>What can be done <em>to</em> resources, by anyone, including other accounts</td><td>S3 buckets and KMS keys can only be accessed by principals in the organisation</td></tr>
+<tr><td><strong>Declarative policy</strong></td><td>Service settings, enforced by the service itself</td><td>Block public access to EBS snapshots and AMIs; require IMDSv2</td></tr>
+<tr><td><strong>Tag policy</strong></td><td>Tag keys and allowed values</td><td>See <a href="tagging-and-governance.html">Guide 3</a></td></tr>
+<tr><td><strong>Backup policy</strong></td><td>AWS Backup plans applied across accounts</td><td>See <a href="backup-and-recovery.html">Guide 8</a></td></tr>
+</tbody>
+</table>
+</div>
+<p>SCPs worth having early: deny leaving the organisation, deny turning off CloudTrail, GuardDuty and Config, deny unused regions (with exceptions for global services), and deny creating IAM users' access keys outside a break-glass role. Test an SCP on the Sandbox OU first: a mistake can lock administrators out of every account below it.</p>
+<pre><code class="language-powershell"># Which SCPs apply to an account (directly; OUs above it apply too)
+Get-ORGPolicyForTarget -TargetId 111122223333 -Filter SERVICE_CONTROL_POLICY | Select-Object Name, Id
+
+# The OU tree
+$root = Get-ORGRoot
+Get-ORGOrganizationalUnitList -ParentId $root.Id | Select-Object Name, Id
+</code></pre>
+<h2 id="access-with-iam-identity-center">Access with IAM Identity Center</h2>
+<p><strong>IAM Identity Center</strong> is where people sign in. Connect it to your identity provider (Microsoft Entra ID, Okta, Google) so joiners and leavers flow through automatically with SCIM, then grant access as <strong>permission set + group + account</strong>:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Permission set</th><th>Based on</th><th>Give to</th></tr>
+</thead>
+<tbody>
+<tr><td><code>ReadOnly</code></td><td><code>ReadOnlyAccess</code> or <code>ViewOnlyAccess</code></td><td>Most people, most accounts</td></tr>
+<tr><td><code>Operator</code></td><td>Custom: start/stop, patch, restore</td><td>Operations team, production</td></tr>
+<tr><td><code>Developer</code></td><td><code>PowerUserAccess</code></td><td>Developers, non-production only</td></tr>
+<tr><td><code>Admin</code></td><td><code>AdministratorAccess</code></td><td>Few people; time-limited through a request workflow</td></tr>
+<tr><td><code>SecurityAudit</code></td><td><code>SecurityAudit</code></td><td>Security team and auditors, every account</td></tr>
+</tbody>
+</table>
+</div>
+<p>Always assign to <strong>groups</strong>, never to individual users. For standing admin access, use Identity Center with a temporary elevated access tool (AWS offers a reference solution, TEAM) so administrators request the <code>Admin</code> set for a few hours with a reason.</p>
+<h2 id="iam-roles-and-least-privilege">IAM roles and least privilege</h2>
+<p>Inside an account, everything that isn't a person uses an <strong>IAM role</strong>: EC2 instance profiles, Lambda execution roles, cross-account roles. Rules worth writing down:</p>
+<ul>
+<li><strong>No IAM users for people.</strong> The only IAM users left should be for systems that can't assume a role, each with an owner and a key rotation date. <a href="../scripts/get-awsiamcredentialreport.html"><code>Get-AwsIamCredentialReport.ps1</code></a> finds the rest.</li>
+<li><strong>Start from AWS managed policies, then narrow.</strong> <strong>IAM Access Analyzer</strong> can generate a policy from the actions a role actually used in CloudTrail, and flags unused roles, keys and permissions.</li>
+<li><strong>Check trust policies.</strong> A role that trusts <code>"AWS": "*"</code> or an unknown account ID is a door. Access Analyzer's external access findings list them.</li>
+<li><strong>Use conditions.</strong> <code>aws:PrincipalOrgID</code> on resource policies, <code>aws:SourceIp</code> or <code>aws:SourceVpc</code> where it fits, and MFA conditions for sensitive actions.</li>
+<li><strong>Permissions boundaries</strong> let developers create roles for their own apps without being able to create a role more powerful than themselves.</li>
+</ul>
+<h2 id="protect-the-root-user">Protect the root user</h2>
+<p>Every account has a root user that can do anything, including closing the account. AWS now requires MFA on root users in all account types. With Organizations, go further: turn on <strong>centralised root access management</strong> (IAM &gt; Root access management) to remove root credentials from member accounts entirely. The management account can then perform the few root-only tasks (such as unlocking a bucket policy that denies everyone) as a short, audited session. Keep the management account's root user with a hardware MFA key, in a safe, with an alert on every sign-in.</p>
+<h2 id="examples-to-try">Examples to try</h2>
+<p>From <a href="https://aws.ravindran.in">aws.ravindran.in</a>: <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/iam/policy">IAM policies</a>, <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/iam/type-of-policies">types of IAM policies</a> (identity, resource, boundaries), and <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/api/sts">STS and role assumption</a>.</p>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="getting-started.html"><span>Previous guide</span>Getting started</a>
+      <a class="next" href="tagging-and-governance.html"><span>Next guide</span>Tagging and governance</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

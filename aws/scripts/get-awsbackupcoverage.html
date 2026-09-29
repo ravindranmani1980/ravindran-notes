@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get-AwsBackupCoverage | Notes | Ravindran Mani</title>
+<meta name="description" content="Shows which EC2 instances, RDS databases, DynamoDB tables and EFS file systems are protected by AWS Backup, and which aren&#x27;t.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html" aria-current="page">AWS</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap">
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">AWS</a> / <a href="../../scripts/index.html">Scripts</a> / Operations</p>
+    <h1 class="script-title">Get-AwsBackupCoverage</h1>
+    <p class="lead">Shows which EC2 instances, RDS databases, DynamoDB tables and EFS file systems are protected by AWS Backup, and which aren&#x27;t.</p>
+    <dl class="facts">
+      <div><dt>Runs in</dt><dd>AWS Tools for PowerShell (AWS.Tools modules)</dd></div>
+      <div><dt>Safety</dt><dd><span class="flag flag-read">Read-only</span></dd></div>
+    </dl>
+    <p class="actions"><a class="btn btn-primary" href="Get-AwsBackupCoverage.ps1" download>Download Get-AwsBackupCoverage.ps1</a></p>
+
+    <h2 id="what-it-does">What it does</h2>
+    <p>For each account and region, compares the resources below with AWS Backup&#x27;s list of protected resources, and reports each one as:</p>
+<ul><li>Protected: backed up within the last -StaleDays days</li><li>Stale: AWS Backup has a recovery point, but the latest is older than -StaleDays days</li><li>Not protected: no recovery point in AWS Backup</li></ul>
+<p>Resource types: EC2 instances, RDS DB instances and Aurora clusters, DynamoDB tables and EFS file systems (use -ResourceType to choose).</p>
+<p>Read-only: it doesn&#x27;t change anything.</p>
+
+    <h2 id="parameters">Parameters</h2>
+    <div class="table-wrap">
+      <table class="params">
+          <tr><th scope="row"><code>-ProfileName</code><span class="ptype">string[]</span></th><td>AWS profiles to check, one per account. Default: the current credentials.</td></tr>
+          <tr><th scope="row"><code>-Region</code><span class="ptype">string[]</span></th><td>Regions to check. Default: every region enabled in the account.</td></tr>
+          <tr><th scope="row"><code>-ResourceType</code><span class="ptype">string[]</span></th><td>Which resource types to check: EC2, RDS, DynamoDB, EFS. Default: all four.</td></tr>
+          <tr><th scope="row"><code>-StaleDays</code><span class="ptype">int</span></th><td>A resource whose latest backup is older than this is Stale. Default 2.</td></tr>
+          <tr><th scope="row"><code>-UnprotectedOnly</code><span class="ptype">switch</span></th><td>Only list resources that are Stale or Not protected.</td></tr>
+          <tr><th scope="row"><code>-HomeRegion</code><span class="ptype">string</span></th><td>Region used for account-level calls (STS, listing regions). Default us-east-1.</td></tr>
+          <tr><th scope="row"><code>-OutputFile</code><span class="ptype">string</span></th><td>CSV output path.<span class="pdefault">Default: <code>Timestamped file in the current folder</code></span></td></tr>
+      </table>
+    </div>
+
+    <h2 id="examples">Examples</h2>
+    <pre><code class="language-powershell">.\Get-AwsBackupCoverage.ps1</code></pre>
+    <pre><code class="language-powershell">.\Get-AwsBackupCoverage.ps1 -Region us-east-1 -ResourceType EC2, RDS -UnprotectedOnly</code></pre>
+
+    <h2 id="notes">Notes</h2>
+    <p>Requires AWS.Tools.Backup, AWS.Tools.EC2 and AWS.Tools.SecurityToken, plus AWS.Tools.RDS, AWS.Tools.DynamoDBv2 and AWS.Tools.ElasticFileSystem for those types, and read access. Only AWS Backup is counted: RDS automated backups, DynamoDB point-in-time recovery and EBS snapshots taken by other tools aren&#x27;t, so check those before acting on the report.</p>
+
+    <h2 id="source">Full script</h2>
+    <!-- Keep this in sync with Get-AwsBackupCoverage.ps1 in this folder. -->
+    <pre><code class="language-powershell">&lt;#
+.SYNOPSIS
+    Shows which EC2 instances, RDS databases, DynamoDB tables and EFS file systems are protected by AWS Backup, and which aren&#x27;t.
+
+.DESCRIPTION
+    For each account and region, compares the resources below with AWS Backup&#x27;s list of
+    protected resources, and reports each one as:
+    - Protected: backed up within the last -StaleDays days
+    - Stale: AWS Backup has a recovery point, but the latest is older than -StaleDays days
+    - Not protected: no recovery point in AWS Backup
+    Resource types: EC2 instances, RDS DB instances and Aurora clusters, DynamoDB tables
+    and EFS file systems (use -ResourceType to choose).
+
+    Read-only: it doesn&#x27;t change anything.
+
+.PARAMETER ProfileName
+    AWS profiles to check, one per account. Default: the current credentials.
+
+.PARAMETER Region
+    Regions to check. Default: every region enabled in the account.
+
+.PARAMETER ResourceType
+    Which resource types to check: EC2, RDS, DynamoDB, EFS. Default: all four.
+
+.PARAMETER StaleDays
+    A resource whose latest backup is older than this is Stale. Default 2.
+
+.PARAMETER UnprotectedOnly
+    Only list resources that are Stale or Not protected.
+
+.PARAMETER HomeRegion
+    Region used for account-level calls (STS, listing regions). Default us-east-1.
+
+.PARAMETER OutputFile
+    CSV output path.
+
+.EXAMPLE
+    .\Get-AwsBackupCoverage.ps1
+
+.EXAMPLE
+    .\Get-AwsBackupCoverage.ps1 -Region us-east-1 -ResourceType EC2, RDS -UnprotectedOnly
+
+.NOTES
+    Requires AWS.Tools.Backup, AWS.Tools.EC2 and AWS.Tools.SecurityToken, plus AWS.Tools.RDS,
+    AWS.Tools.DynamoDBv2 and AWS.Tools.ElasticFileSystem for those types, and read access.
+    Only AWS Backup is counted: RDS automated backups, DynamoDB point-in-time recovery and
+    EBS snapshots taken by other tools aren&#x27;t, so check those before acting on the report.
+#&gt;
+[CmdletBinding()]
+param(
+    [string[]]$ProfileName,
+    [string[]]$Region,
+    [ValidateSet(&#x27;EC2&#x27;, &#x27;RDS&#x27;, &#x27;DynamoDB&#x27;, &#x27;EFS&#x27;)][string[]]$ResourceType = @(&#x27;EC2&#x27;, &#x27;RDS&#x27;, &#x27;DynamoDB&#x27;, &#x27;EFS&#x27;),
+    [ValidateRange(1, 365)][int]$StaleDays = 2,
+    [switch]$UnprotectedOnly,
+    [string]$HomeRegion = &#x27;us-east-1&#x27;,
+    [string]$OutputFile = (Join-Path -Path (Get-Location) -ChildPath (&#x27;AwsBackupCoverage_{0:yyyyMMdd_HHmm}.csv&#x27; -f (Get-Date)))
+)
+
+$modules = @(&#x27;AWS.Tools.Backup&#x27;, &#x27;AWS.Tools.EC2&#x27;, &#x27;AWS.Tools.SecurityToken&#x27;)
+if ($ResourceType -contains &#x27;RDS&#x27;) { $modules += &#x27;AWS.Tools.RDS&#x27; }
+if ($ResourceType -contains &#x27;DynamoDB&#x27;) { $modules += &#x27;AWS.Tools.DynamoDBv2&#x27; }
+if ($ResourceType -contains &#x27;EFS&#x27;) { $modules += &#x27;AWS.Tools.ElasticFileSystem&#x27; }
+foreach ($m in $modules) {
+    if (-not (Get-Module -ListAvailable -Name $m)) { throw &quot;$m not found. Run: Install-AWSToolsModule $($modules -join &#x27;, &#x27;)&quot; }
+    Import-Module $m -ErrorAction Stop
+}
+
+$report = New-Object System.Collections.Generic.List[object]
+$staleCutoff = (Get-Date).AddDays(-$StaleDays)
+$targets = if ($ProfileName) { $ProfileName } else { @(&#x27;&#x27;) }
+
+foreach ($p in $targets) {
+    $cred = @{}
+    if ($p) { $cred.ProfileName = $p }
+    $identity = Get-STSCallerIdentity @cred -Region $HomeRegion
+    $account = $identity.Account
+    $partition = ($identity.Arn -split &#x27;:&#x27;)[1]
+    $regions = if ($Region) { $Region } else { @((Get-EC2Region @cred -Region $HomeRegion).RegionName) }
+
+    foreach ($r in $regions) {
+        Write-Host &quot;Account $account, region $r...&quot; -ForegroundColor Cyan
+        $c = @{ Region = $r } + $cred
+        $protected = @{}
+        try {
+            foreach ($pr in @(Get-BAKProtectedResourceList @c -ErrorAction Stop) | Where-Object { $_ }) { $protected[$pr.ResourceArn] = $pr.LastBackupTime }
+        } catch {
+            Write-Warning &quot;Skipping $r in $account`: $($_.Exception.Message)&quot;
+            continue
+        }
+
+        # Each entry: Type, Name, Id, Arn, Owner
+        $resources = New-Object System.Collections.Generic.List[object]
+        if ($ResourceType -contains &#x27;EC2&#x27;) {
+            foreach ($i in @((Get-EC2Instance @c).Instances) | Where-Object { $_ -and [string]$_.State.Name -notin &#x27;terminated&#x27;, &#x27;shutting-down&#x27; }) {
+                $resources.Add([pscustomobject]@{ Type = &#x27;EC2&#x27;; Id = $i.InstanceId
+                    Name = ($i.Tags | Where-Object Key -eq &#x27;Name&#x27; | Select-Object -First 1).Value
+                    Owner = ($i.Tags | Where-Object Key -eq &#x27;Owner&#x27; | Select-Object -First 1).Value
+                    Arn = &quot;arn:${partition}:ec2:${r}:${account}:instance/$($i.InstanceId)&quot; })
+            }
+        }
+        if ($ResourceType -contains &#x27;RDS&#x27;) {
+            # Aurora is backed up per cluster, so skip instances that belong to a cluster
+            foreach ($d in @(Get-RDSDBInstance @c) | Where-Object { $_ -and -not $_.DBClusterIdentifier }) {
+                $resources.Add([pscustomobject]@{ Type = &#x27;RDS&#x27;; Id = $d.DBInstanceIdentifier; Name = &quot;$($d.Engine) $($d.DBInstanceClass)&quot;
+                    Owner = ($d.TagList | Where-Object Key -eq &#x27;Owner&#x27; | Select-Object -First 1).Value; Arn = $d.DBInstanceArn })
+            }
+            foreach ($cl in @(Get-RDSDBCluster @c) | Where-Object { $_ }) {
+                $resources.Add([pscustomobject]@{ Type = &#x27;Aurora&#x27;; Id = $cl.DBClusterIdentifier; Name = $cl.Engine
+                    Owner = ($cl.TagList | Where-Object Key -eq &#x27;Owner&#x27; | Select-Object -First 1).Value; Arn = $cl.DBClusterArn })
+            }
+        }
+        if ($ResourceType -contains &#x27;DynamoDB&#x27;) {
+            foreach ($t in @(Get-DDBTableList @c) | Where-Object { $_ }) {
+                $resources.Add([pscustomobject]@{ Type = &#x27;DynamoDB&#x27;; Id = $t; Name = $t; Owner = &#x27;&#x27;
+                    Arn = &quot;arn:${partition}:dynamodb:${r}:${account}:table/$t&quot; })
+            }
+        }
+        if ($ResourceType -contains &#x27;EFS&#x27;) {
+            foreach ($f in @(Get-EFSFileSystem @c) | Where-Object { $_ }) {
+                $resources.Add([pscustomobject]@{ Type = &#x27;EFS&#x27;; Id = $f.FileSystemId; Name = $f.Name
+                    Owner = ($f.Tags | Where-Object Key -eq &#x27;Owner&#x27; | Select-Object -First 1).Value; Arn = $f.FileSystemArn })
+            }
+        }
+
+        foreach ($res in $resources) {
+            $last = $protected[$res.Arn]
+            $status = if (-not $protected.ContainsKey($res.Arn)) { &#x27;Not protected&#x27; } elseif ($last -and $last -lt $staleCutoff) { &#x27;Stale&#x27; } else { &#x27;Protected&#x27; }
+            if ($UnprotectedOnly -and $status -eq &#x27;Protected&#x27;) { continue }
+            $report.Add([pscustomobject]@{
+                Account    = $account
+                Region     = $r
+                Type       = $res.Type
+                Id         = $res.Id
+                Name       = $res.Name
+                Status     = $status
+                LastBackup = $last
+                DaysSince  = if ($last) { [int]((Get-Date) - $last).TotalDays } else { $null }
+                Owner      = $res.Owner
+                Arn        = $res.Arn
+            })
+        }
+    }
+}
+
+$order = @{ &#x27;Not protected&#x27; = 0; &#x27;Stale&#x27; = 1; &#x27;Protected&#x27; = 2 }
+$report | Sort-Object @{e = { $order[$_.Status] }}, Account, Region, Type, Id | Export-Csv -Path $OutputFile -NoTypeInformation -Encoding UTF8
+$report | Group-Object Type, Status | Select-Object @{n=&#x27;Type, status&#x27;;e={$_.Name}}, Count | Format-Table -AutoSize | Out-Host
+Write-Host &quot;Resources reported: $($report.Count). Report: $OutputFile&quot; -ForegroundColor Green
+</code></pre>
+
+    <nav class="pager" aria-label="More scripts">
+      <a class="prev" href="get-awss3publicaccessreport.html"><span>Previous script</span>Get-AwsS3PublicAccessReport</a>
+      <a class="next" href="invoke-awsec2powerschedule.html"><span>Next script</span>Invoke-AwsEC2PowerSchedule</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

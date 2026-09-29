@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Backup and recovery | AWS | Notes | Ravindran Mani</title>
+<meta name="description" content="AWS Backup, protecting backups from ransomware, restores, restore testing and disaster recovery.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html" aria-current="page">AWS</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 8 of 10</p>
+    <ol>
+      <li><a href="#backup-versus-disaster-recovery">Backup versus disaster recovery</a></li>
+      <li><a href="#find-what-is-not-protected">Find what is not protected</a></li>
+      <li><a href="#set-up-aws-backup">Set up AWS Backup</a></li>
+      <li><a href="#protect-the-backups-themselves">Protect the backups themselves</a></li>
+      <li><a href="#watch-for-failed-backups">Watch for failed backups</a></li>
+      <li><a href="#restoring">Restoring</a></li>
+      <li><a href="#test-restores-on-a-schedule">Test restores on a schedule</a></li>
+      <li><a href="#beyond-ec2">Beyond EC2</a></li>
+      <li><a href="#disaster-recovery">Disaster recovery</a></li>
+      <li><a href="#examples-to-try">Examples to try</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">AWS</a> / Guide 8</p>
+    <h1>Backup and recovery</h1>
+    <p class="lead">AWS Backup, protecting backups from ransomware, restores, restore testing and disaster recovery.</p>
+
+<p>AWS keeps your data durable, but it doesn't keep it safe from you: a deleted table, a script run against the wrong account, or ransomware using stolen admin credentials. That's what backups are for. This guide covers AWS Backup, protecting the backups themselves, restores, and disaster recovery.</p>
+<h2 id="backup-versus-disaster-recovery">Backup versus disaster recovery</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th></th><th>Backup</th><th>Disaster recovery</th></tr>
+</thead>
+<tbody>
+<tr><td>Protects against</td><td>Deletion, corruption, ransomware, bad changes</td><td>Losing a region or an AZ-wide failure of a stateful system</td></tr>
+<tr><td>Recovery point</td><td>Hours (the last backup)</td><td>Seconds to minutes (continuous replication)</td></tr>
+<tr><td>Recovery time</td><td>Minutes to hours, per resource</td><td>Minutes, for a whole application</td></tr>
+<tr><td>AWS service</td><td>AWS Backup</td><td>Elastic Disaster Recovery, database replicas, multi-region designs</td></tr>
+</tbody>
+</table>
+</div>
+<p>You need both for important systems. Replication alone faithfully copies a deletion or an encrypted file to the other side.</p>
+<h2 id="find-what-is-not-protected">Find what is not protected</h2>
+<p>Start by finding the gaps. <a href="../scripts/get-awsbackupcoverage.html"><code>Get-AwsBackupCoverage.ps1</code></a> compares EC2 instances, EBS volumes, RDS databases, DynamoDB tables and EFS file systems in each region with AWS Backup's list of protected resources, and shows the last backup time for each:</p>
+<pre><code class="language-powershell">.\Get-AwsBackupCoverage.ps1 -Region us-east-1 -UnprotectedOnly
+</code></pre>
+<h2 id="set-up-aws-backup">Set up AWS Backup</h2>
+<p>AWS Backup is one service for EC2, EBS, RDS and Aurora, DynamoDB, EFS, FSx, S3 and more. The pieces:</p>
+<ul>
+<li><strong>Backup vault:</strong> where recovery points are stored, encrypted with a KMS key.</li>
+<li><strong>Backup plan:</strong> schedules and retention, for example daily kept 35 days, monthly kept 12 months, with lifecycle to cold storage for long retention where the resource type supports it.</li>
+<li><strong>Resource assignment:</strong> which resources the plan covers. <strong>Assign by tag</strong> (<code>Backup = Daily</code>), not by listing resources, so new resources are covered the moment they're tagged.</li>
+</ul>
+<p>With AWS Organizations, use <strong>backup policies</strong> to push the same plans to every account from the management account (or a delegated administrator), and turn on <strong>cross-account monitoring</strong> to see every job in one place. Tag-based assignment plus a tag policy (<a href="tagging-and-governance.html">Guide 3</a>) that requires a <code>Backup</code> value means nothing is left out by accident.</p>
+<pre><code class="language-powershell"># What's protected in this region, and when it was last backed up
+Get-BAKProtectedResourceList | Sort-Object LastBackupTime |
+    Select-Object ResourceType, ResourceName, ResourceArn, LastBackupTime
+
+# Plans and their rules
+Get-BAKBackupPlanList | ForEach-Object {
+    (Get-BAKBackupPlan -BackupPlanId $_.BackupPlanId -Select BackupPlan).Rules |
+        Select-Object RuleName, ScheduleExpression, @{n='KeepDays';e={$_.Lifecycle.DeleteAfterDays}}, TargetBackupVaultName
+}
+</code></pre>
+<h2 id="protect-the-backups-themselves">Protect the backups themselves</h2>
+<p>Attackers with admin credentials go after backups first. Make them hard to delete, even for administrators:</p>
+<ul>
+<li><strong>AWS Backup Vault Lock</strong> in <em>compliance mode</em>: once the grace period ends, no one (including the root user and AWS) can delete recovery points before their retention ends or change the lock. Test in <em>governance mode</em> first; compliance mode can't be undone.</li>
+<li><strong>Copy to another account:</strong> a copy rule in the backup plan sends recovery points to a vault in a separate backup account, in the same or another region. Credentials stolen from a workload account can't reach it.</li>
+<li><strong>Logically air-gapped vaults</strong> go further: locked by default, encrypted with AWS-owned keys, and shareable to a recovery account through AWS RAM for restore, even if the source account is lost.</li>
+<li><strong>Restrict who can delete:</strong> an SCP denying <code>backup:DeleteRecoveryPoint</code>, <code>backup:DeleteBackupVault</code> and changes to vault access policies, except for a break-glass role.</li>
+<li><strong>Use a customer managed KMS key</strong> for vaults holding copies, with a key policy that allows only the backup account to use it.</li>
+</ul>
+<h2 id="watch-for-failed-backups">Watch for failed backups</h2>
+<p>A backup nobody checks isn't a backup. AWS Backup publishes job state changes to EventBridge and can notify an SNS topic directly:</p>
+<pre><code class="language-powershell"># Failed or expired backup jobs in the last 7 days
+Get-BAKBackupJobList -ByCreatedAfter (Get-Date).AddDays(-7) |
+    Where-Object { $_.State -in 'FAILED', 'EXPIRED', 'ABORTED' } |
+    Select-Object CreationDate, ResourceType, ResourceArn, State, StatusMessage
+
+# Notify an SNS topic when jobs fail
+Write-BAKBackupVaultNotification -BackupVaultName 'bv-notes-test' `
+    -SNSTopicArn 'arn:aws:sns:us-east-1:111122223333:notes-test-alerts' `
+    -BackupVaultEvent BACKUP_JOB_FAILED, COPY_JOB_FAILED, RESTORE_JOB_FAILED
+</code></pre>
+<p><strong>AWS Backup Audit Manager</strong> adds continuous checks (resources protected by a plan, minimum retention, cross-region copies, vault lock) and produces reports for auditors.</p>
+<h2 id="restoring">Restoring</h2>
+<ul>
+<li><strong>EC2:</strong> a restore creates a new instance from the recovery point (an AMI underneath). Restore into an isolated subnet first if you're recovering from an incident, so you don't bring the problem back.</li>
+<li><strong>Single files:</strong> restore the EBS volume, attach it to a helper instance, and copy what you need. For EFS, FSx and S3, AWS Backup can restore individual items directly.</li>
+<li><strong>RDS:</strong> restores always create a new database instance; point the application at it or rename. Automated RDS backups also give point-in-time restore to any second in the retention window (up to 35 days).</li>
+<li><strong>Keep the details that matter:</strong> security groups, instance profile, tags and IP addresses aren't always restored as they were. Record them in a runbook, or restore with a launch template.</li>
+</ul>
+<h2 id="test-restores-on-a-schedule">Test restores on a schedule</h2>
+<p><strong>AWS Backup restore testing</strong> restores recovery points on a schedule you set, runs your validation (a Lambda function or EventBridge rule that checks the restored resource), records how long it took, and deletes the test copy. Schedule one test per critical system per month, and keep the results: they're the evidence auditors ask for, and the real recovery time you can promise.</p>
+<h2 id="beyond-ec2">Beyond EC2</h2>
+<ul>
+<li><strong>S3:</strong> versioning plus lifecycle rules for old versions protects against overwrites and deletes; S3 Object Lock makes objects immutable; replication copies to another region or account. AWS Backup for S3 adds point-in-time restore.</li>
+<li><strong>DynamoDB:</strong> turn on point-in-time recovery (continuous backups, up to 35 days) for every production table.</li>
+<li><strong>Aurora:</strong> continuous backups are built in; use AWS Backup for longer retention and cross-account copies.</li>
+<li><strong>Configuration:</strong> keep infrastructure in CloudFormation or Terraform in source control. Rebuilding from code is faster and more reliable than restoring configuration.</li>
+</ul>
+<h2 id="disaster-recovery">Disaster recovery</h2>
+<p>Pick the pattern by how long the business can wait and how much data it can lose:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Pattern</th><th>Recovery time</th><th>Cost</th><th>How</th></tr>
+</thead>
+<tbody>
+<tr><td>Backup and restore</td><td>Hours</td><td>Lowest</td><td>Cross-region backup copies; rebuild from templates</td></tr>
+<tr><td>Pilot light</td><td>Tens of minutes</td><td>Low</td><td>Data replicated (database replicas, S3 replication); compute created on failover</td></tr>
+<tr><td>Warm standby</td><td>Minutes</td><td>Medium</td><td>A scaled-down, running copy in the second region</td></tr>
+<tr><td>Multi-site active/active</td><td>Near zero</td><td>Highest</td><td>Full capacity in both regions, traffic split by Route 53</td></tr>
+</tbody>
+</table>
+</div>
+<p>For servers that can't be redesigned, <strong>AWS Elastic Disaster Recovery</strong> continuously replicates EC2 or on-premises servers to low-cost staging in another region and launches full instances on failover. Run a drill at least twice a year; the first one always finds something.</p>
+<h2 id="examples-to-try">Examples to try</h2>
+<p>From <a href="https://aws.ravindran.in">aws.ravindran.in</a>: <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/s3/s3-versioning">S3 versioning</a>, <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/s3/object-locks">S3 Object Lock</a>, <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/s3/replication">S3 replication</a>, <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/s3/lifecycle">S3 lifecycle</a> and <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/rds/basic">RDS</a>.</p>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="ec2.html"><span>Previous guide</span>EC2 instances</a>
+      <a class="next" href="monitoring-and-alerts.html"><span>Next guide</span>Monitoring and alerts</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

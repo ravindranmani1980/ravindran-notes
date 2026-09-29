@@ -4,9 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AWS | Notes | Ravindran Mani</title>
-<meta name="description" content="Account structure, IAM hygiene, compute and storage operations.">
+<meta name="description" content="AWS account structure, IAM and governance, network and identity security, EC2, backup, monitoring and cost.">
 <meta name="author" content="Ravindran Mani">
-<meta name="robots" content="noindex">
 <link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
 <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,8 +24,8 @@
         <li><a href="../index.html">Home</a></li>
         <li><a href="../sharepoint/index.html">SharePoint</a></li>
         <li><a href="../azure/index.html">Azure</a></li>
+        <li><a href="../aws/index.html" aria-current="page">AWS</a></li>
         <!-- Add each topic here when it goes live, for example:
-        <li><a href="../aws/index.html">AWS</a></li>
         <li><a href="../finops/index.html">FinOps</a></li>
         -->
         <li><a href="../scripts/index.html">Scripts</a></li>
@@ -37,35 +36,27 @@
   </div>
 </header>
 <main id="main">
-<!--
-  AWS topic page. Not linked from the menu yet.
-  To go live:
-    1. Add guides to aws/guides/ and scripts to aws/scripts/ (copy the files in _templates/).
-    2. Replace the "Planned" list below with a guide list and script list (copy the layout from sharepoint/index.html).
-    3. Add the menu link on every page, and move the topic from "In progress" to live on index.html.
--->
 <section class="topic-head">
-  <div class="wrap">
-    <p class="crumbs"><a href="../index.html">Notes</a> / AWS</p>
-    <h1>AWS</h1>
-    <p class="lead">Account structure, IAM hygiene, compute and storage operations.</p>
-  </div>
+<div class="wrap">
+<p class="crumbs"><a href="../index.html">Notes</a> / AWS</p>
+<h1>AWS</h1>
+<p class="lead">Running AWS well day to day: accounts and guardrails that scale, tags and policies that keep it tidy, networks and identities locked down, EC2, backups and monitoring that hold up, and a bill that stays under control. 10 guides and 8 PowerShell scripts.</p>
+</div>
 </section>
-
-<section class="block">
-  <div class="wrap two-col">
-    <div class="col-head">
-      <h2>Planned</h2>
-      <p class="muted">This section is being written. Guides and scripts will appear here as they're ready.</p>
-    </div>
-    <ul class="plan-list">
-      <li>Account structure with AWS Organizations</li>
-      <li>IAM hygiene: roles, access keys and least privilege</li>
-      <li>EC2 and EBS operations basics</li>
-      <li>Scripts: EC2 inventory; unattached EBS volumes; idle load balancers; S3 public access check</li>
-    </ul>
-  </div>
+<section aria-labelledby="span-h" class="span">
+<div class="wrap">
+<h2 id="span-h">How AWS is organised</h2>
+<p class="muted span-intro">Organization policies attached at one level apply to every account beneath it. The account is the main security and billing boundary.</p>
+<ol class="releases releases-5">
+<li><span class="year">Organization</span><span class="rel">Management account, consolidated billing</span></li>
+<li><span class="year">Organizational units</span><span class="rel">SCPs and policies at scale</span></li>
+<li><span class="year">Accounts</span><span class="rel">Security, billing and quota boundary</span></li>
+<li><span class="year">Regions and VPCs</span><span class="rel">Where resources run</span></li>
+<li><span class="year">Resources</span><span class="rel">Grouped by tags</span></li>
+</ol>
+</div>
 </section>
+<section aria-labelledby="explore-h" class="block"><div class="wrap"><div class="col-head wide"><h2 id="explore-h">Explore AWS notes</h2><p class="muted">Open only the section you need.</p></div><ul class="topic-list"><li><a class="topic-row" href="guides/"><span class="tname">Guides</span><span class="tdesc">10 practical guides covering accounts, governance, security, operations and cost.</span><span class="st st-live">Open</span></a></li><li><a class="topic-row" href="scripts/"><span class="tname">Scripts</span><span class="tdesc">8 documented PowerShell scripts for inventory, clean-up, governance, security and operations.</span><span class="st st-live">Open</span></a></li><li><a class="topic-row" href="environment/"><span class="tname">Example environment</span><span class="tdesc">Example names used consistently throughout the AWS examples.</span><span class="st">Reference</span></a></li><li><a class="topic-row" href="https://aws.ravindran.in"><span class="tname">Hands-on examples</span><span class="tdesc">aws.ravindran.in: CloudFormation, CLI, Terraform and SDK examples for 58 AWS services.</span><span class="st">External</span></a></li></ul></div></section>
 </main>
 <footer class="site-footer">
   <div class="wrap footer-row">

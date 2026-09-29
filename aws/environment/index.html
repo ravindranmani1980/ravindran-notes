@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Example environment | AWS | Notes | Ravindran Mani</title>
+<meta name="description" content="Example names used throughout the Azure examples.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html" aria-current="page">AWS</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<section class="topic-head"><div class="wrap"><p class="crumbs"><a href="../../index.html">Notes</a> / <a href="../index.html">AWS</a> / Example environment</p><h1>Example environment</h1><p class="lead">Example names used consistently throughout the AWS examples.</p></div></section>
+<section aria-labelledby="env-h" class="block">
+<div class="wrap two-col">
+<div class="col-head">
+<h2 id="env-h">Example environment</h2>
+<p class="muted">Every example uses these names. Swap in your own.</p>
+</div>
+<div class="table-wrap">
+<table class="env">
+<tr><th scope="row">Organization management account</th><td><code>ravindran-management</code></td></tr>
+<tr><th scope="row">Test account</th><td><code>111122223333</code>, alias <code>notes-test</code></td></tr>
+<tr><th scope="row">Production account (examples)</th><td><code>444455556666</code>, alias <code>notes-prod</code></td></tr>
+<tr><th scope="row">Organizational units</th><td><code>Security</code>, <code>Infrastructure</code>, <code>Workloads/Prod</code>, <code>Workloads/NonProd</code>, <code>Sandbox</code></td></tr>
+<tr><th scope="row">IAM Identity Center portal</th><td><code>https://ravindran.awsapps.com/start</code></td></tr>
+<tr><th scope="row">PowerShell and CLI profile</th><td><code>notes-test</code></td></tr>
+<tr><th scope="row">Region</th><td><code>us-east-1</code> (second region <code>us-west-2</code>)</td></tr>
+<tr><th scope="row">VPC</th><td><code>vpc-notes-test</code> (<code>10.20.0.0/16</code>)</td></tr>
+<tr><th scope="row">Subnets</th><td><code>subnet-notes-test-public-a</code>, <code>subnet-notes-test-private-a</code>, <code>subnet-notes-test-data-a</code></td></tr>
+<tr><th scope="row">Security groups</th><td><code>sg-alb</code>, <code>sg-web</code>, <code>sg-app</code>, <code>sg-db</code></td></tr>
+<tr><th scope="row">EC2 instance (Name tag)</th><td><code>ec2-notes-test-01</code> (<code>i-0123456789abcdef0</code>)</td></tr>
+<tr><th scope="row">S3 bucket</th><td><code>notes-test-logs-111122223333</code></td></tr>
+<tr><th scope="row">Backup vault</th><td><code>bv-notes-test</code></td></tr>
+<tr><th scope="row">KMS key</th><td><code>alias/notes-test</code></td></tr>
+<tr><th scope="row">SNS topic</th><td><code>notes-test-alerts</code></td></tr>
+<tr><th scope="row">CloudWatch log group</th><td><code>/notes-test/app</code></td></tr>
+<tr><th scope="row">Domain (Route 53 hosted zone)</th><td><code>aws.ravindran.in</code>, app at <code>app.aws.ravindran.in</code></td></tr>
+<tr><th scope="row">Hands-on examples</th><td><a href="https://aws.ravindran.in">aws.ravindran.in</a></td></tr>
+</table>
+</div>
+</div>
+</section>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

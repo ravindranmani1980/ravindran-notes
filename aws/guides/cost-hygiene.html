@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cost hygiene | AWS | Notes | Ravindran Mani</title>
+<meta name="description" content="Cost Explorer, budgets, the monthly clean-up checklist, Savings Plans and Spot.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html" aria-current="page">AWS</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 10 of 10</p>
+    <ol>
+      <li><a href="#see-where-the-money-goes">See where the money goes</a></li>
+      <li><a href="#set-budgets-and-alerts">Set budgets and alerts</a></li>
+      <li><a href="#the-monthly-clean-up-checklist">The monthly clean-up checklist</a></li>
+      <li><a href="#pay-less-for-what-you-keep">Pay less for what you keep</a></li>
+      <li><a href="#storage-and-data-transfer">Storage and data transfer</a></li>
+      <li><a href="#make-it-routine">Make it routine</a></li>
+      <li><a href="#examples-to-try">Examples to try</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">AWS</a> / Guide 10</p>
+    <h1>Cost hygiene</h1>
+    <p class="lead">Cost Explorer, budgets, the monthly clean-up checklist, Savings Plans and Spot.</p>
+
+<p>AWS bills are rarely high because of one big mistake. They grow from many small ones: an instance nobody stopped, volumes left behind, a NAT gateway moving more data than expected, logs kept forever. Cost hygiene is a monthly routine that finds them, plus paying less for what you keep.</p>
+<h2 id="see-where-the-money-goes">See where the money goes</h2>
+<ul>
+<li><strong>Cost Explorer</strong> (Billing and Cost Management): group by <em>Service</em>, then <em>Linked account</em>, then by your <code>CostCenter</code> and <code>Application</code> tags. Look at the last three months side by side; changes matter more than totals.</li>
+<li><strong>Usage type</strong> explains surprises: <code>NatGateway-Bytes</code>, <code>DataTransfer-Regional-Bytes</code> (cross-AZ traffic) and <code>PublicIPv4:InUseAddress</code> often appear in the top ten and are easy to miss.</li>
+<li><strong>Data Exports</strong> (the Cost and Usage Report 2.0 or FOCUS format) to S3, queried with Athena or a dashboard such as the Cloud Intelligence Dashboards, when you need line-item detail or showback reports.</li>
+<li><strong>Activate cost allocation tags</strong> first, or none of the tag views work (<a href="tagging-and-governance.html#tags-in-cost-reports">Guide 3</a>).</li>
+</ul>
+<pre><code class="language-powershell"># Last month's cost by service (Cost Explorer API: run from the management account, us-east-1)
+$start = (Get-Date -Day 1).AddMonths(-1).ToString('yyyy-MM-dd'); $end = (Get-Date -Day 1).ToString('yyyy-MM-dd')
+(Get-CECostAndUsage -TimePeriod @{ Start = $start; End = $end } -Granularity MONTHLY -Metric UnblendedCost `
+    -GroupBy @{ Type = 'DIMENSION'; Key = 'SERVICE' }).ResultsByTime.Groups |
+    Select-Object @{n='Service';e={$_.Keys[0]}}, @{n='USD';e={ [math]::Round([double]$_.Metrics['UnblendedCost'].Amount, 2) }} |
+    Sort-Object USD -Descending | Select-Object -First 15
+</code></pre>
+<p>Each Cost Explorer API request is charged (a cent per request), so don't put it in a loop that runs every minute.</p>
+<h2 id="set-budgets-and-alerts">Set budgets and alerts</h2>
+<ul>
+<li><strong>A budget per account</strong> (and per cost centre), with alerts at 50%, 80% and 100% of actual spend and at 100% of forecast. Forecast alerts give you time to act before the month ends.</li>
+<li><strong>Cost Anomaly Detection</strong> watches spend by service, account or cost category and emails a daily or weekly summary of unusual jumps. It's free; turn it on in the management account.</li>
+<li><strong>Budget actions</strong> can apply an SCP or IAM policy when a sandbox account passes its budget, stopping further spend without deleting anything.</li>
+</ul>
+<h2 id="the-monthly-clean-up-checklist">The monthly clean-up checklist</h2>
+<p><a href="../scripts/find-awsorphanedresources.html"><code>Find-AwsOrphanedResources.ps1</code></a> covers most of this list across every region:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Look for</th><th>Why it costs</th></tr>
+</thead>
+<tbody>
+<tr><td>Unattached EBS volumes</td><td>Charged per GB-month whether attached or not</td></tr>
+<tr><td>Old EBS snapshots and AMIs nobody uses</td><td>Snapshots of deleted volumes, AMIs from old builds; move long-term ones to the archive tier</td></tr>
+<tr><td>Unassociated Elastic IPs, and public IPv4 addresses in general</td><td>Every public IPv4 address is charged hourly</td></tr>
+<tr><td>Load balancers with no healthy targets</td><td>Charged hourly plus capacity units, doing nothing</td></tr>
+<tr><td>Instances stopped for weeks</td><td>No compute charge, but volumes and addresses still bill; snapshot and terminate</td></tr>
+<tr><td>NAT gateways in non-production VPCs</td><td>Hourly charge per gateway plus per GB processed; share one, or use VPC endpoints for S3 and DynamoDB</td></tr>
+<tr><td>Idle RDS instances</td><td>Stop non-production databases out of hours (they restart automatically after 7 days)</td></tr>
+<tr><td>Log groups with no retention</td><td>Storage grows forever (<a href="monitoring-and-alerts.html#set-up-the-foundation">Guide 9</a>)</td></tr>
+<tr><td>Incomplete multipart uploads in S3</td><td>Invisible in the console, still stored; add a lifecycle rule to abort them after 7 days</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>AWS Trusted Advisor</strong> and <strong>Compute Optimizer</strong> list idle and underused resources too; the full set of Trusted Advisor cost checks needs Business support or higher. <strong>Cost Optimization Hub</strong> collects the recommendations from across the organisation into one list with estimated savings.</p>
+<h2 id="pay-less-for-what-you-keep">Pay less for what you keep</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Option</th><th>Discount</th><th>Commitment</th><th>Use for</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Compute Savings Plans</strong></td><td>Up to about 66%</td><td>$ per hour for 1 or 3 years, any region, family, OS, plus Fargate and Lambda</td><td>The default choice for steady compute</td></tr>
+<tr><td><strong>EC2 Instance Savings Plans</strong></td><td>Up to about 72%</td><td>$ per hour for one instance family in one region</td><td>Very stable fleets that won't change family</td></tr>
+<tr><td><strong>Reserved Instances</strong></td><td>Up to about 72%</td><td>Specific attributes, 1 or 3 years</td><td>RDS, ElastiCache, OpenSearch and Redshift, which Savings Plans don't cover</td></tr>
+<tr><td><strong>Spot Instances</strong></td><td>Up to 90%</td><td>None, but can be interrupted with 2 minutes' notice</td><td>Batch, CI, stateless and fault-tolerant work</td></tr>
+</tbody>
+</table>
+</div>
+<ul>
+<li><strong>Rightsize first, then commit.</strong> A Savings Plan on an oversized fleet locks in the waste.</li>
+<li><strong>Commit to the floor,</strong> not the average: cover the usage that's there at 3 a.m. on a Sunday, and let on-demand and Spot handle the rest. Cost Explorer's Savings Plans recommendations do the maths.</li>
+<li><strong>Buy centrally</strong> in the management account, so the discount is shared across all accounts, and track utilisation and coverage monthly.</li>
+<li><strong>Graviton</strong> instances (<a href="ec2.html#choose-the-instance-type">Guide 7</a>) stack with Savings Plans for another saving on top.</li>
+</ul>
+<h2 id="storage-and-data-transfer">Storage and data transfer</h2>
+<ul>
+<li><strong>S3 Intelligent-Tiering</strong> for data with unknown or changing access patterns; lifecycle rules to move known-cold data to Glacier classes and to expire old versions.</li>
+<li><strong>gp2 to gp3</strong> for every EBS volume: about 20% cheaper with no downtime (<a href="ec2.html#ebs-volumes">Guide 7</a>).</li>
+<li><strong>Cross-AZ traffic</strong> is charged in both directions. Keep chatty services in the same AZ where the design allows, and use VPC endpoints so S3 traffic doesn't pay NAT processing.</li>
+<li><strong>Data out to the internet</strong> is cheaper through CloudFront than directly from EC2 or S3, and the first 1 TB per month from CloudFront is free.</li>
+</ul>
+<h2 id="make-it-routine">Make it routine</h2>
+<ul>
+<li><strong>A monthly cost review</strong> with the owners of the top ten cost items: what changed, what can go, what to commit to.</li>
+<li><strong>Stop schedules for non-production</strong> (<a href="../scripts/invoke-awsec2powerschedule.html"><code>Invoke-AwsEC2PowerSchedule.ps1</code></a>) and budgets on every sandbox account.</li>
+<li><strong>Tag compliance</strong> as a standing item: untagged cost is cost nobody owns (<a href="../scripts/get-awsuntaggedresources.html"><code>Get-AwsUntaggedResources.ps1</code></a>).</li>
+<li><strong>Show the savings.</strong> A monthly note on what was removed and what it saved keeps the routine funded.</li>
+</ul>
+<h2 id="examples-to-try">Examples to try</h2>
+<p>From <a href="https://aws.ravindran.in">aws.ravindran.in</a>: <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/s3/lifecycle">S3 lifecycle rules</a>, <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/s3/change-storage-class">changing storage class</a>, <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/s3/glacier">Glacier</a> and <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/vpc/gateway-endpoint">VPC gateway endpoints</a> (no NAT charges for S3).</p>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="monitoring-and-alerts.html"><span>Previous guide</span>Monitoring and alerts</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

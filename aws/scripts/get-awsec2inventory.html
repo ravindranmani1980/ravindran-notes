@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get-AwsEC2Inventory | Notes | Ravindran Mani</title>
+<meta name="description" content="Lists every EC2 instance in every enabled region, with type, state, IPs, volumes, IMDS setting and tags.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html" aria-current="page">AWS</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap">
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">AWS</a> / <a href="../../scripts/index.html">Scripts</a> / Inventory and clean-up</p>
+    <h1 class="script-title">Get-AwsEC2Inventory</h1>
+    <p class="lead">Lists every EC2 instance in every enabled region, with type, state, IPs, volumes, IMDS setting and tags.</p>
+    <dl class="facts">
+      <div><dt>Runs in</dt><dd>AWS Tools for PowerShell (AWS.Tools modules)</dd></div>
+      <div><dt>Safety</dt><dd><span class="flag flag-read">Read-only</span></dd></div>
+    </dl>
+    <p class="actions"><a class="btn btn-primary" href="Get-AwsEC2Inventory.ps1" download>Download Get-AwsEC2Inventory.ps1</a></p>
+
+    <h2 id="what-it-does">What it does</h2>
+    <p>For each account (AWS profile) and region, lists every EC2 instance that isn&#x27;t terminated:</p>
+<ul><li>Name tag, instance ID, type, state, platform and Availability Zone</li><li>Private and public IP addresses, VPC and subnet</li><li>Number and total size of attached EBS volumes</li><li>Whether IMDSv2 is required, and the instance profile (IAM role)</li><li>The Owner, CostCenter and Environment tags</li></ul>
+<p>Read-only: it doesn&#x27;t change anything.</p>
+
+    <h2 id="parameters">Parameters</h2>
+    <div class="table-wrap">
+      <table class="params">
+          <tr><th scope="row"><code>-ProfileName</code><span class="ptype">string[]</span></th><td>AWS profiles to report on, one per account. Default: the current credentials.</td></tr>
+          <tr><th scope="row"><code>-Region</code><span class="ptype">string[]</span></th><td>Regions to check. Default: every region enabled in the account.</td></tr>
+          <tr><th scope="row"><code>-HomeRegion</code><span class="ptype">string</span></th><td>Region used for account-level calls (STS, listing regions). Default us-east-1.</td></tr>
+          <tr><th scope="row"><code>-OutputFile</code><span class="ptype">string</span></th><td>CSV output path.<span class="pdefault">Default: <code>Timestamped file in the current folder</code></span></td></tr>
+      </table>
+    </div>
+
+    <h2 id="examples">Examples</h2>
+    <pre><code class="language-powershell">.\Get-AwsEC2Inventory.ps1</code></pre>
+    <pre><code class="language-powershell">.\Get-AwsEC2Inventory.ps1 -ProfileName notes-test, notes-prod -Region us-east-1, us-west-2 -OutputFile .\ec2.csv</code></pre>
+
+    <h2 id="notes">Notes</h2>
+    <p>Requires AWS.Tools.EC2 and AWS.Tools.SecurityToken, and read access (for example the ReadOnlyAccess or ViewOnlyAccess permission set). Sign in first, for example with Invoke-AWSSSOLogin -ProfileName notes-test.</p>
+
+    <h2 id="source">Full script</h2>
+    <!-- Keep this in sync with Get-AwsEC2Inventory.ps1 in this folder. -->
+    <pre><code class="language-powershell">&lt;#
+.SYNOPSIS
+    Lists every EC2 instance in every enabled region, with type, state, IPs, volumes, IMDS setting and tags.
+
+.DESCRIPTION
+    For each account (AWS profile) and region, lists every EC2 instance that isn&#x27;t terminated:
+    - Name tag, instance ID, type, state, platform and Availability Zone
+    - Private and public IP addresses, VPC and subnet
+    - Number and total size of attached EBS volumes
+    - Whether IMDSv2 is required, and the instance profile (IAM role)
+    - The Owner, CostCenter and Environment tags
+
+    Read-only: it doesn&#x27;t change anything.
+
+.PARAMETER ProfileName
+    AWS profiles to report on, one per account. Default: the current credentials.
+
+.PARAMETER Region
+    Regions to check. Default: every region enabled in the account.
+
+.PARAMETER HomeRegion
+    Region used for account-level calls (STS, listing regions). Default us-east-1.
+
+.PARAMETER OutputFile
+    CSV output path.
+
+.EXAMPLE
+    .\Get-AwsEC2Inventory.ps1
+
+.EXAMPLE
+    .\Get-AwsEC2Inventory.ps1 -ProfileName notes-test, notes-prod -Region us-east-1, us-west-2 -OutputFile .\ec2.csv
+
+.NOTES
+    Requires AWS.Tools.EC2 and AWS.Tools.SecurityToken, and read access (for example the
+    ReadOnlyAccess or ViewOnlyAccess permission set). Sign in first, for example with
+    Invoke-AWSSSOLogin -ProfileName notes-test.
+#&gt;
+[CmdletBinding()]
+param(
+    [string[]]$ProfileName,
+    [string[]]$Region,
+    [string]$HomeRegion = &#x27;us-east-1&#x27;,
+    [string]$OutputFile = (Join-Path -Path (Get-Location) -ChildPath (&#x27;AwsEC2Inventory_{0:yyyyMMdd_HHmm}.csv&#x27; -f (Get-Date)))
+)
+
+foreach ($m in &#x27;AWS.Tools.EC2&#x27;, &#x27;AWS.Tools.SecurityToken&#x27;) {
+    if (-not (Get-Module -ListAvailable -Name $m)) { throw &quot;$m not found. Run: Install-AWSToolsModule AWS.Tools.EC2, AWS.Tools.SecurityToken&quot; }
+    Import-Module $m -ErrorAction Stop
+}
+
+function Get-TagValue {
+    param($Tags, [string]$Key)
+    ($Tags | Where-Object { $_.Key -eq $Key } | Select-Object -First 1).Value
+}
+
+$report = New-Object System.Collections.Generic.List[object]
+$targets = if ($ProfileName) { $ProfileName } else { @(&#x27;&#x27;) }
+
+foreach ($p in $targets) {
+    $cred = @{}
+    if ($p) { $cred.ProfileName = $p }
+    $account = (Get-STSCallerIdentity @cred -Region $HomeRegion).Account
+    $regions = if ($Region) { $Region } else { @((Get-EC2Region @cred -Region $HomeRegion).RegionName) }
+
+    foreach ($r in $regions) {
+        Write-Host &quot;Account $account, region $r...&quot; -ForegroundColor Cyan
+        try {
+            $instances = @((Get-EC2Instance @cred -Region $r -ErrorAction Stop).Instances) | Where-Object { $_ }
+        } catch {
+            Write-Warning &quot;Skipping $r in $account`: $($_.Exception.Message)&quot;
+            continue
+        }
+        if (-not $instances) { continue }
+
+        $volumes = @{}
+        foreach ($v in @(Get-EC2Volume @cred -Region $r)) {
+            if (-not $v) { continue }
+            foreach ($a in @($v.Attachments)) {
+                if (-not $a) { continue }
+                if (-not $volumes[$a.InstanceId]) { $volumes[$a.InstanceId] = New-Object System.Collections.Generic.List[object] }
+                $volumes[$a.InstanceId].Add($v)
+            }
+        }
+
+        foreach ($i in $instances) {
+            if ([string]$i.State.Name -eq &#x27;terminated&#x27;) { continue }
+            $vols = if ($volumes.ContainsKey($i.InstanceId)) { $volumes[$i.InstanceId].ToArray() } else { @() }
+            $report.Add([pscustomobject]@{
+                Account         = $account
+                Region          = $r
+                Name            = Get-TagValue $i.Tags &#x27;Name&#x27;
+                InstanceId      = $i.InstanceId
+                InstanceType    = [string]$i.InstanceType
+                State           = [string]$i.State.Name
+                Platform        = $i.PlatformDetails
+                AvailabilityZone = $i.Placement.AvailabilityZone
+                PrivateIp       = $i.PrivateIpAddress
+                PublicIp        = $i.PublicIpAddress
+                VpcId           = $i.VpcId
+                SubnetId        = $i.SubnetId
+                Volumes         = $vols.Count
+                VolumeGB        = [int]($vols | Measure-Object -Property Size -Sum).Sum
+                IMDSv2Required  = ([string]$i.MetadataOptions.HttpTokens -eq &#x27;required&#x27;)
+                InstanceProfile = if ($i.IamInstanceProfile) { ($i.IamInstanceProfile.Arn -split &#x27;/&#x27;)[-1] } else { &#x27;&#x27; }
+                LaunchTime      = $i.LaunchTime
+                Owner           = Get-TagValue $i.Tags &#x27;Owner&#x27;
+                CostCenter      = Get-TagValue $i.Tags &#x27;CostCenter&#x27;
+                Environment     = Get-TagValue $i.Tags &#x27;Environment&#x27;
+            })
+        }
+    }
+}
+
+$report | Sort-Object Account, Region, Name | Export-Csv -Path $OutputFile -NoTypeInformation -Encoding UTF8
+$report | Group-Object Account, Region, State | Select-Object @{n=&#x27;Account, region, state&#x27;;e={$_.Name}}, Count |
+    Format-Table -AutoSize | Out-Host
+Write-Host &quot;Instances: $($report.Count). Report: $OutputFile&quot; -ForegroundColor Green
+</code></pre>
+
+    <nav class="pager" aria-label="More scripts">
+      <a class="prev" href="find-awsorphanedresources.html"><span>Previous script</span>Find-AwsOrphanedResources</a>
+      <a class="next" href="get-awsiamcredentialreport.html"><span>Next script</span>Get-AwsIamCredentialReport</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

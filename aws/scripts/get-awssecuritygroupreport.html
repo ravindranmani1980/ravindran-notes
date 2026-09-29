@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get-AwsSecurityGroupReport | Notes | Ravindran Mani</title>
+<meta name="description" content="Reports security group rules in every region and flags the risky ones, such as SSH or RDP open to the internet.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html" aria-current="page">AWS</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap">
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">AWS</a> / <a href="../../scripts/index.html">Scripts</a> / Network and data security</p>
+    <h1 class="script-title">Get-AwsSecurityGroupReport</h1>
+    <p class="lead">Reports security group rules in every region and flags the risky ones, such as SSH or RDP open to the internet.</p>
+    <dl class="facts">
+      <div><dt>Runs in</dt><dd>AWS Tools for PowerShell (AWS.Tools modules)</dd></div>
+      <div><dt>Safety</dt><dd><span class="flag flag-read">Read-only</span></dd></div>
+    </dl>
+    <p class="actions"><a class="btn btn-primary" href="Get-AwsSecurityGroupReport.ps1" download>Download Get-AwsSecurityGroupReport.ps1</a></p>
+
+    <h2 id="what-it-does">What it does</h2>
+    <p>Reads the inbound rules of every security group in each account and region, and flags:</p>
+<ul><li>High: all traffic, or every port, allowed from the internet (0.0.0.0/0 or ::/0)</li><li>High: management ports (SSH, RDP, WinRM) or database ports allowed from the internet</li><li>Medium: other ports allowed from the internet (except -PublicPort, 80 and 443 by default)</li><li>Medium: a VPC&#x27;s default security group that still has rules</li><li>Low: wide port ranges (more than -WidePortRange ports) allowed from an address range</li><li>Low: ICMP and other protocols without ports allowed from the internet</li></ul>
+<p>Each row shows how many network interfaces use the group, so you can fix the rules that matter first.</p>
+<p>Read-only: it doesn&#x27;t change any rules.</p>
+
+    <h2 id="parameters">Parameters</h2>
+    <div class="table-wrap">
+      <table class="params">
+          <tr><th scope="row"><code>-ProfileName</code><span class="ptype">string[]</span></th><td>AWS profiles to check, one per account. Default: the current credentials.</td></tr>
+          <tr><th scope="row"><code>-Region</code><span class="ptype">string[]</span></th><td>Regions to check. Default: every region enabled in the account.</td></tr>
+          <tr><th scope="row"><code>-RiskyPort</code><span class="ptype">int[]</span></th><td>Ports treated as management or database ports. Default: 22, 23, 135, 139, 445, 1433, 1521, 3306, 3389, 5432, 5985, 5986, 6379, 9200, 11211, 27017.</td></tr>
+          <tr><th scope="row"><code>-PublicPort</code><span class="ptype">int[]</span></th><td>Ports that are expected to be open to the internet (on load balancers and web servers) and aren&#x27;t flagged. Default: 80, 443.</td></tr>
+          <tr><th scope="row"><code>-WidePortRange</code><span class="ptype">int</span></th><td>A rule allowing more ports than this in one range is flagged as wide. Default 100.</td></tr>
+          <tr><th scope="row"><code>-IncludeAll</code><span class="ptype">switch</span></th><td>Include every inbound rule, not only the flagged ones.</td></tr>
+          <tr><th scope="row"><code>-HomeRegion</code><span class="ptype">string</span></th><td>Region used for account-level calls (STS, listing regions). Default us-east-1.</td></tr>
+          <tr><th scope="row"><code>-OutputFile</code><span class="ptype">string</span></th><td>CSV output path.<span class="pdefault">Default: <code>Timestamped file in the current folder</code></span></td></tr>
+      </table>
+    </div>
+
+    <h2 id="examples">Examples</h2>
+    <pre><code class="language-powershell">.\Get-AwsSecurityGroupReport.ps1</code></pre>
+    <pre><code class="language-powershell">.\Get-AwsSecurityGroupReport.ps1 -ProfileName notes-test -Region us-east-1 -IncludeAll -OutputFile .\sg-rules.csv</code></pre>
+    <pre><code class="language-powershell">.\Get-AwsSecurityGroupReport.ps1 -PublicPort 443 -RiskyPort 22, 3389, 8080</code></pre>
+
+    <h2 id="notes">Notes</h2>
+    <p>Requires AWS.Tools.EC2 and AWS.Tools.SecurityToken, and read access. A flagged rule on a group that no interface uses has no effect today, but will the moment someone attaches the group. Rules that reference other security groups or prefix lists are listed with -IncludeAll but never flagged as open to the internet.</p>
+
+    <h2 id="source">Full script</h2>
+    <!-- Keep this in sync with Get-AwsSecurityGroupReport.ps1 in this folder. -->
+    <pre><code class="language-powershell">&lt;#
+.SYNOPSIS
+    Reports security group rules in every region and flags the risky ones, such as SSH or RDP open to the internet.
+
+.DESCRIPTION
+    Reads the inbound rules of every security group in each account and region, and flags:
+    - High: all traffic, or every port, allowed from the internet (0.0.0.0/0 or ::/0)
+    - High: management ports (SSH, RDP, WinRM) or database ports allowed from the internet
+    - Medium: other ports allowed from the internet (except -PublicPort, 80 and 443 by default)
+    - Medium: a VPC&#x27;s default security group that still has rules
+    - Low: wide port ranges (more than -WidePortRange ports) allowed from an address range
+    - Low: ICMP and other protocols without ports allowed from the internet
+    Each row shows how many network interfaces use the group, so you can fix the rules
+    that matter first.
+
+    Read-only: it doesn&#x27;t change any rules.
+
+.PARAMETER ProfileName
+    AWS profiles to check, one per account. Default: the current credentials.
+
+.PARAMETER Region
+    Regions to check. Default: every region enabled in the account.
+
+.PARAMETER RiskyPort
+    Ports treated as management or database ports. Default: 22, 23, 135, 139, 445, 1433, 1521, 3306, 3389, 5432, 5985, 5986, 6379, 9200, 11211, 27017.
+
+.PARAMETER PublicPort
+    Ports that are expected to be open to the internet (on load balancers and web servers) and aren&#x27;t flagged. Default: 80, 443.
+
+.PARAMETER WidePortRange
+    A rule allowing more ports than this in one range is flagged as wide. Default 100.
+
+.PARAMETER IncludeAll
+    Include every inbound rule, not only the flagged ones.
+
+.PARAMETER HomeRegion
+    Region used for account-level calls (STS, listing regions). Default us-east-1.
+
+.PARAMETER OutputFile
+    CSV output path.
+
+.EXAMPLE
+    .\Get-AwsSecurityGroupReport.ps1
+
+.EXAMPLE
+    .\Get-AwsSecurityGroupReport.ps1 -ProfileName notes-test -Region us-east-1 -IncludeAll -OutputFile .\sg-rules.csv
+
+.EXAMPLE
+    .\Get-AwsSecurityGroupReport.ps1 -PublicPort 443 -RiskyPort 22, 3389, 8080
+
+.NOTES
+    Requires AWS.Tools.EC2 and AWS.Tools.SecurityToken, and read access. A flagged rule on a
+    group that no interface uses has no effect today, but will the moment someone attaches
+    the group. Rules that reference other security groups or prefix lists are listed with
+    -IncludeAll but never flagged as open to the internet.
+#&gt;
+[CmdletBinding()]
+param(
+    [string[]]$ProfileName,
+    [string[]]$Region,
+    [int[]]$RiskyPort = @(22, 23, 135, 139, 445, 1433, 1521, 3306, 3389, 5432, 5985, 5986, 6379, 9200, 11211, 27017),
+    [int[]]$PublicPort = @(80, 443),
+    [ValidateRange(1, 65535)][int]$WidePortRange = 100,
+    [switch]$IncludeAll,
+    [string]$HomeRegion = &#x27;us-east-1&#x27;,
+    [string]$OutputFile = (Join-Path -Path (Get-Location) -ChildPath (&#x27;AwsSecurityGroupReport_{0:yyyyMMdd_HHmm}.csv&#x27; -f (Get-Date)))
+)
+
+foreach ($m in &#x27;AWS.Tools.EC2&#x27;, &#x27;AWS.Tools.SecurityToken&#x27;) {
+    if (-not (Get-Module -ListAvailable -Name $m)) { throw &quot;$m not found. Run: Install-AWSToolsModule AWS.Tools.EC2, AWS.Tools.SecurityToken&quot; }
+    Import-Module $m -ErrorAction Stop
+}
+
+function New-Row {
+    param($Base, $Extra)
+    $row = [ordered]@{}
+    foreach ($k in $Base.Keys) { $row[$k] = $Base[$k] }
+    foreach ($k in $Extra.Keys) { $row[$k] = $Extra[$k] }
+    [pscustomobject]$row
+}
+
+$report = New-Object System.Collections.Generic.List[object]
+$rank = @{ &#x27;High&#x27; = 0; &#x27;Medium&#x27; = 1; &#x27;Low&#x27; = 2; &#x27;&#x27; = 3 }
+$targets = if ($ProfileName) { $ProfileName } else { @(&#x27;&#x27;) }
+
+foreach ($p in $targets) {
+    $cred = @{}
+    if ($p) { $cred.ProfileName = $p }
+    $account = (Get-STSCallerIdentity @cred -Region $HomeRegion).Account
+    $regions = if ($Region) { $Region } else { @((Get-EC2Region @cred -Region $HomeRegion).RegionName) }
+
+    foreach ($r in $regions) {
+        Write-Host &quot;Account $account, region $r...&quot; -ForegroundColor Cyan
+        $c = @{ Region = $r } + $cred
+        try {
+            $groups = @(Get-EC2SecurityGroup @c -ErrorAction Stop) | Where-Object { $_ }
+        } catch {
+            Write-Warning &quot;Skipping $r in $account`: $($_.Exception.Message)&quot;
+            continue
+        }
+        $attached = @{}
+        foreach ($eni in @(Get-EC2NetworkInterface @c) | Where-Object { $_ }) {
+            foreach ($g in @($eni.Groups)) { if ($g) { $attached[$g.GroupId] = 1 + [int]$attached[$g.GroupId] } }
+        }
+
+        foreach ($g in $groups) {
+            $uses = [int]$attached[$g.GroupId]
+            $base = [ordered]@{ Account = $account; Region = $r; GroupId = $g.GroupId; GroupName = $g.GroupName; VpcId = $g.VpcId; Interfaces = $uses }
+
+            if ($g.GroupName -eq &#x27;default&#x27; -and (@($g.IpPermissions | Where-Object { $_ }).Count -or @($g.IpPermissionsEgress | Where-Object { $_ }).Count)) {
+                $report.Add((New-Row $base ([ordered]@{ Severity = &#x27;Medium&#x27;; Finding = &#x27;Default security group has rules (use named groups instead)&#x27;;
+                    Protocol = &#x27;&#x27;; Ports = &#x27;&#x27;; Source = &#x27;&#x27;; Description = &#x27;&#x27; })))
+            }
+
+            foreach ($perm in @($g.IpPermissions) | Where-Object { $_ }) {
+                $proto = [string]$perm.IpProtocol
+                $allTraffic = $proto -eq &#x27;-1&#x27;
+                $from = if ($allTraffic -or $null -eq $perm.FromPort) { 0 } else { [int]$perm.FromPort }
+                $to = if ($allTraffic -or $null -eq $perm.ToPort) { 65535 } else { [int]$perm.ToPort }
+                $isPortProtocol = $allTraffic -or $proto -in &#x27;tcp&#x27;, &#x27;udp&#x27;, &#x27;6&#x27;, &#x27;17&#x27;
+                $ports = if ($allTraffic) { &#x27;All&#x27; } elseif (-not $isPortProtocol) { &quot;type $from&quot; } elseif ($from -eq $to) { &quot;$from&quot; } else { &quot;$from-$to&quot; }
+                $width = if ($isPortProtocol) { $to - $from + 1 } else { 0 }
+
+                $sources = @()
+                foreach ($x in @($perm.Ipv4Ranges) | Where-Object { $_ }) { $sources += [pscustomobject]@{ Value = $x.CidrIp; Cidr = $true; Description = $x.Description } }
+                foreach ($x in @($perm.Ipv6Ranges) | Where-Object { $_ }) { $sources += [pscustomobject]@{ Value = $x.CidrIpv6; Cidr = $true; Description = $x.Description } }
+                foreach ($x in @($perm.UserIdGroupPairs) | Where-Object { $_ }) { $sources += [pscustomobject]@{ Value = $x.GroupId; Cidr = $false; Description = $x.Description } }
+                foreach ($x in @($perm.PrefixListIds) | Where-Object { $_ }) { $sources += [pscustomobject]@{ Value = $x.PrefixListId; Cidr = $false; Description = $x.Description } }
+
+                foreach ($s in $sources) {
+                    $fromInternet = $s.Value -in &#x27;0.0.0.0/0&#x27;, &#x27;::/0&#x27;
+                    $exposed = @($RiskyPort | Where-Object { $isPortProtocol -and $_ -ge $from -and $_ -le $to })
+                    $expected = $isPortProtocol -and $from -eq $to -and $PublicPort -contains $from
+
+                    $severity = &#x27;&#x27;; $finding = &#x27;&#x27;
+                    if ($fromInternet -and ($allTraffic -or ($isPortProtocol -and $width -ge 65535))) {
+                        $severity = &#x27;High&#x27;; $finding = &#x27;All traffic allowed from the internet&#x27;
+                    } elseif ($fromInternet -and $exposed.Count) {
+                        $severity = &#x27;High&#x27;; $finding = &quot;Management or database port open to the internet: $($exposed -join &#x27;, &#x27;)&quot;
+                    } elseif ($fromInternet -and -not $isPortProtocol) {
+                        $severity = &#x27;Low&#x27;; $finding = &quot;Protocol $proto (for example ICMP) allowed from the internet&quot;
+                    } elseif ($fromInternet -and -not $expected) {
+                        $severity = &#x27;Medium&#x27;; $finding = &#x27;Port open to the internet (check it should be public)&#x27;
+                    } elseif ($s.Cidr -and $width -gt $WidePortRange) {
+                        $severity = &#x27;Low&#x27;; $finding = &quot;Wide port range ($width ports)&quot;
+                    }
+                    if (-not $severity -and -not $IncludeAll) { continue }
+
+                    $report.Add((New-Row $base ([ordered]@{ Severity = $severity; Finding = $finding;
+                        Protocol = if ($allTraffic) { &#x27;All&#x27; } else { $proto }; Ports = $ports; Source = $s.Value; Description = $s.Description })))
+                }
+            }
+        }
+    }
+}
+
+$report = $report | Sort-Object @{e = { $rank[$_.Severity] }}, Account, Region, GroupName
+$report | Select-Object Severity, Finding, Account, Region, GroupId, GroupName, VpcId, Interfaces, Protocol, Ports, Source, Description |
+    Export-Csv -Path $OutputFile -NoTypeInformation -Encoding UTF8
+$report | Where-Object Severity | Group-Object Severity | Select-Object @{n=&#x27;Severity&#x27;;e={$_.Name}}, Count | Format-Table -AutoSize | Out-Host
+Write-Host &quot;Rules reported: $(@($report).Count). Report: $OutputFile&quot; -ForegroundColor Green
+</code></pre>
+
+    <nav class="pager" aria-label="More scripts">
+      <a class="prev" href="get-awsuntaggedresources.html"><span>Previous script</span>Get-AwsUntaggedResources</a>
+      <a class="next" href="get-awss3publicaccessreport.html"><span>Next script</span>Get-AwsS3PublicAccessReport</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

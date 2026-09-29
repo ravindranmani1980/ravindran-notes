@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security baseline: identity, detection and encryption | AWS | Notes | Ravindran Mani</title>
+<meta name="description" content="Root and IAM hygiene, IMDSv2, CloudTrail, GuardDuty, Security Hub, KMS, Secrets Manager and the logs you need.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html" aria-current="page">AWS</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 6 of 10</p>
+    <ol>
+      <li><a href="#identity-comes-first">Identity comes first</a></li>
+      <li><a href="#roles-over-access-keys">Roles over access keys</a></li>
+      <li><a href="#cloudtrail-for-the-whole-organisation">CloudTrail for the whole organisation</a></li>
+      <li><a href="#guardduty-and-security-hub">GuardDuty and Security Hub</a></li>
+      <li><a href="#work-the-findings">Work the findings</a></li>
+      <li><a href="#encryption-and-secrets">Encryption and secrets</a></li>
+      <li><a href="#logs-you-will-need-later">Logs you will need later</a></li>
+      <li><a href="#a-security-baseline-checklist">A security baseline checklist</a></li>
+      <li><a href="#examples-to-try">Examples to try</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">AWS</a> / Guide 6</p>
+    <h1>Security baseline: identity, detection and encryption</h1>
+    <p class="lead">Root and IAM hygiene, IMDSv2, CloudTrail, GuardDuty, Security Hub, KMS, Secrets Manager and the logs you need.</p>
+
+<p>Network controls limit where an attacker can go. Most AWS incidents, though, start with credentials: an access key committed to a repository, a phished administrator, an IAM user nobody removed. This guide covers the baseline that sits alongside the network: identity, CloudTrail, GuardDuty, Security Hub, encryption with KMS, Secrets Manager, and the logs you'll need on the day something happens.</p>
+<h2 id="identity-comes-first">Identity comes first</h2>
+<ul>
+<li><strong>Root users:</strong> MFA is now required on every root user, in every account type. With AWS Organizations, remove member accounts' root credentials altogether with centralised root access management (<a href="account-structure-and-access.html#protect-the-root-user">Guide 2</a>), and make sure no root user has access keys.</li>
+<li><strong>People sign in through IAM Identity Center,</strong> with MFA enforced by your identity provider or by Identity Center itself. Phishing-resistant methods (FIDO2 security keys, passkeys) for anyone with admin permission sets.</li>
+<li><strong>No long-lived access keys for people.</strong> Identity Center gives the CLI and PowerShell short-lived credentials (<a href="getting-started.html#tip-3-sign-in-with-iam-identity-center">Guide 1</a>).</li>
+<li><strong>Two break-glass IAM users</strong> in the management account (or a dedicated account), with hardware MFA, no access keys, and an alarm on every sign-in, for when Identity Center or the identity provider is down.</li>
+<li><strong>Review access quarterly.</strong> <a href="../scripts/get-awsiamcredentialreport.html"><code>Get-AwsIamCredentialReport.ps1</code></a> lists IAM users without MFA, old and unused access keys, and root user status. IAM Access Analyzer's unused access findings show roles and permissions nobody uses.</li>
+</ul>
+<h2 id="roles-over-access-keys">Roles over access keys</h2>
+<p>Every access key in a config file is a password that doesn't expire on its own and can't use MFA. For anything running in AWS, use a role: an EC2 instance profile, a Lambda or ECS task role, an EKS pod identity. AWS issues and rotates the credentials, and nothing is stored in code.</p>
+<p>For things outside AWS: <strong>OIDC federation</strong> for CI/CD platforms (GitHub Actions, GitLab, Azure DevOps), <strong>IAM Roles Anywhere</strong> with certificates for on-premises servers, and IAM user access keys only as a last resort, with an owner, a rotation date and a policy that restricts them to known source IPs.</p>
+<p>Instance roles have their own risk: any process on the instance can read the credentials from the instance metadata service. <strong>Require IMDSv2</strong> (session tokens), which blocks the server-side request forgery attacks that used IMDSv1 to steal them. Set it as the account default for new instances, and with a declarative policy across the organisation:</p>
+<pre><code class="language-powershell"># New instances in this region default to IMDSv2 only
+Edit-EC2InstanceMetadataDefault -HttpToken required -HttpPutResponseHopLimit 2 -Region us-east-1
+
+# Existing instances still allowing IMDSv1
+(Get-EC2Instance).Instances | Where-Object { $_.MetadataOptions.HttpTokens -ne 'required' } |
+    Select-Object InstanceId, @{n='Name';e={ ($_.Tags | Where-Object Key -eq 'Name').Value }}
+</code></pre>
+<h2 id="cloudtrail-for-the-whole-organisation">CloudTrail for the whole organisation</h2>
+<p><strong>CloudTrail</strong> records every API call: who did what, from where, and when. The console's event history keeps 90 days of management events per account and region. That isn't enough for an investigation. Create one <strong>organisation trail</strong> from the management account (Control Tower does this for you):</p>
+<ul>
+<li>All regions, all accounts, management events (read and write), delivered to an S3 bucket in the <strong>log archive account</strong>.</li>
+<li>That bucket with versioning, S3 Object Lock (or at least an SCP and bucket policy that deny deletes), and a lifecycle rule to move older logs to a cheaper storage class.</li>
+<li><strong>Log file validation</strong> on, so you can prove logs weren't altered.</li>
+<li><strong>Data events</strong> (S3 object reads and writes, Lambda invocations) only for sensitive buckets and functions: they're charged per event and add up quickly.</li>
+<li>Optionally, a copy to CloudWatch Logs or CloudTrail Lake for querying.</li>
+</ul>
+<h2 id="guardduty-and-security-hub">GuardDuty and Security Hub</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Service</th><th>What it does</th><th>Turn on</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Amazon GuardDuty</strong></td><td>Threat detection from CloudTrail, VPC flow logs and DNS logs: compromised credentials, crypto-mining, calls from known-bad IPs. Optional protection plans for S3, EKS, RDS, Lambda, malware scanning and runtime monitoring</td><td>Every account and region, from a delegated administrator account</td></tr>
+<tr><td><strong>AWS Security Hub CSPM</strong></td><td>Posture checks against standards: AWS Foundational Security Best Practices, CIS AWS Foundations Benchmark, NIST, PCI DSS. A score per standard and a list of failed controls</td><td>Every account and region, with central configuration</td></tr>
+<tr><td><strong>AWS Security Hub</strong></td><td>Correlates findings from GuardDuty, Inspector and Security Hub CSPM into prioritised exposures and attack paths, with ticketing integrations</td><td>Organisation-wide, from the security tooling account</td></tr>
+<tr><td><strong>Amazon Inspector</strong></td><td>Vulnerability scanning of EC2 instances, container images and Lambda functions</td><td>Production accounts first</td></tr>
+<tr><td><strong>IAM Access Analyzer</strong></td><td>Resources shared outside the organisation, and unused access</td><td>Organisation zone of trust, free for external access</td></tr>
+</tbody>
+</table>
+</div>
+<p>Make the <strong>security tooling account</strong> the delegated administrator for all of them, so findings from every account land in one place and member accounts can't turn the services off.</p>
+<pre><code class="language-powershell"># Is GuardDuty on in this region, and what are the 20 most severe findings?
+$detectorId = Get-GDDetectorList
+$sort = New-Object Amazon.GuardDuty.Model.SortCriteria -Property @{ AttributeName = 'severity'; OrderBy = 'DESC' }
+$ids = Get-GDFindingList -DetectorId $detectorId -SortCriterion $sort -MaxResult 20 -NoAutoIteration
+Get-GDFinding -DetectorId $detectorId -FindingId $ids | Select-Object Severity, Type, Title, UpdatedAt
+
+# Failed Security Hub CSPM controls with critical or high severity, grouped by control
+function New-SHFilter($Value) { New-Object Amazon.SecurityHub.Model.StringFilter -Property @{ Comparison = 'EQUALS'; Value = $Value } }
+$filter = New-Object Amazon.SecurityHub.Model.AwsSecurityFindingFilters
+$filter.ComplianceStatus = New-SHFilter 'FAILED'
+$filter.RecordState = New-SHFilter 'ACTIVE'
+$filter.SeverityLabel = @((New-SHFilter 'CRITICAL'), (New-SHFilter 'HIGH'))
+Get-SHUBFinding -Filter $filter | Group-Object Title | Sort-Object Count -Descending | Select-Object Count, Name -First 20
+</code></pre>
+<h2 id="work-the-findings">Work the findings</h2>
+<ul>
+<li><strong>Fix by control, not by resource.</strong> A handful of controls (MFA, open security groups, public S3, IMDSv2, EBS encryption, CloudTrail) cover most of the risk and map to these guides.</li>
+<li><strong>Fix with a guardrail, so it stays fixed:</strong> an SCP, a declarative policy, an account-level default or a Config remediation, rather than hand-fixing each resource.</li>
+<li><strong>Suppress with a reason.</strong> Disable a control that doesn't apply, or set a finding's workflow status to <em>Suppressed</em> with a note, so the score reflects real risk.</li>
+<li><strong>Route high-severity findings to people:</strong> an EventBridge rule on GuardDuty and Security Hub findings, to an SNS topic, chat channel or ticket queue (<a href="monitoring-and-alerts.html">Guide 9</a>).</li>
+</ul>
+<h2 id="encryption-and-secrets">Encryption and secrets</h2>
+<p><strong>Turn on EBS encryption by default</strong> in every region; new volumes and snapshot copies are then encrypted automatically. S3 encrypts new objects by default. For data that needs control over who can decrypt, use <strong>customer managed KMS keys</strong>:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Setting</th><th>Why</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Key policy</strong> that separates key administrators from key users</td><td>Whoever manages the key shouldn't automatically be able to decrypt the data</td></tr>
+<tr><td><strong>Automatic rotation</strong> on</td><td>Yearly by default (the period is adjustable); old versions still decrypt old data</td></tr>
+<tr><td>One key per application and data classification</td><td>A compromised or misused key exposes less</td></tr>
+<tr><td>Deletion waiting period (7&ndash;30 days) and an alarm on <code>ScheduleKeyDeletion</code></td><td>Deleting a key makes everything encrypted with it unrecoverable</td></tr>
+</tbody>
+</table>
+</div>
+<p>Secrets (database passwords, API keys) belong in <strong>AWS Secrets Manager</strong>, not in environment variables, user data or code. Turn on <strong>automatic rotation</strong> for database credentials, grant apps <code>secretsmanager:GetSecretValue</code> on their own secrets only, and use RDS-managed master passwords so nobody ever sees the admin password. Systems Manager Parameter Store <code>SecureString</code> parameters are a cheaper option for configuration values that don't need rotation.</p>
+<pre><code class="language-powershell"># EBS encryption by default, per region
+Enable-EC2EbsEncryptionByDefault -Region us-east-1
+Get-EC2EbsEncryptionByDefault -Region us-east-1
+
+# Customer managed keys without automatic rotation
+Get-KMSKeyList | ForEach-Object {
+    $k = Get-KMSKey -KeyId $_.KeyId
+    if ($k.KeyManager -eq 'CUSTOMER' -and $k.KeyState -eq 'Enabled' -and -not (Get-KMSKeyRotationStatus -KeyId $_.KeyId)) { $k.Arn }
+}
+</code></pre>
+<h2 id="logs-you-will-need-later">Logs you will need later</h2>
+<p>Investigations fail most often because the logs were never collected, or were kept for too short a time. Keep these in the log archive account, for at least a year (longer if your auditors ask):</p>
+<ul>
+<li><strong>CloudTrail</strong> organisation trail (above).</li>
+<li><strong>AWS Config</strong> configuration history and snapshots: what a resource looked like at any point in time.</li>
+<li><strong>VPC flow logs</strong> for production VPCs (<a href="security-groups-and-nacls.html#check-what-is-actually-allowed">Guide 4</a>).</li>
+<li><strong>Load balancer, CloudFront and WAF access logs</strong> for internet-facing services.</li>
+<li><strong>Route 53 Resolver query logs</strong>: which instance looked up which domain, invaluable after a malware finding.</li>
+<li><strong>Session Manager</strong> session logs.</li>
+</ul>
+<p>For searching and correlating across all of them, <strong>Amazon Security Lake</strong> normalises these sources into one format (OCSF) in your own S3 buckets, ready for Athena or a SIEM such as Microsoft Sentinel or Splunk.</p>
+<h2 id="a-security-baseline-checklist">A security baseline checklist</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Area</th><th>Baseline</th><th>How to check</th></tr>
+</thead>
+<tbody>
+<tr><td>Identity</td><td>Identity Center with MFA; no root credentials or keys; break-glass users alarmed</td><td><a href="../scripts/get-awsiamcredentialreport.html"><code>Get-AwsIamCredentialReport</code></a></td></tr>
+<tr><td>Management ports</td><td>No SSH or RDP from the internet; Session Manager instead</td><td><a href="../scripts/get-awssecuritygroupreport.html"><code>Get-AwsSecurityGroupReport</code></a></td></tr>
+<tr><td>Data exposure</td><td>S3 Block Public Access on at account level; no public snapshots or AMIs</td><td><a href="../scripts/get-awss3publicaccessreport.html"><code>Get-AwsS3PublicAccessReport</code></a></td></tr>
+<tr><td>Instances</td><td>IMDSv2 required; EBS encryption by default</td><td>The PowerShell above; Security Hub controls EC2.8 and EC2.7</td></tr>
+<tr><td>Detection</td><td>GuardDuty and Security Hub CSPM in every account and region, delegated admin</td><td>Security Hub console</td></tr>
+<tr><td>Logging</td><td>Organisation CloudTrail to a locked log archive bucket; Config everywhere</td><td>Security Hub controls CloudTrail.1 and Config.1</td></tr>
+<tr><td>Secrets</td><td>Roles instead of keys; secrets in Secrets Manager with rotation</td><td>IAM Access Analyzer; Secrets Manager console</td></tr>
+<tr><td>Backup</td><td>AWS Backup with a locked vault and cross-account copies for production</td><td><a href="backup-and-recovery.html">Guide 8</a>; <a href="../scripts/get-awsbackupcoverage.html"><code>Get-AwsBackupCoverage</code></a></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="examples-to-try">Examples to try</h2>
+<p>From <a href="https://aws.ravindran.in">aws.ravindran.in</a>: <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/cloudtrail">CloudTrail</a> (and <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/cloudtrail/cloudwatch">CloudTrail to CloudWatch</a>), <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/secrets-manager">Secrets Manager</a> (including <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/secrets-manager/db">database credentials</a>), <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/ebs/encrypt">EBS encryption</a> and <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/s3/encryption">S3 encryption</a>.</p>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="network-perimeter.html"><span>Previous guide</span>Firewalls, endpoints and admin access</a>
+      <a class="next" href="ec2.html"><span>Next guide</span>EC2 instances</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

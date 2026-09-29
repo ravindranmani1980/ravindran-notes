@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagging and governance | AWS | Notes | Ravindran Mani</title>
+<meta name="description" content="A tag strategy finance can use, and tag policies, SCPs and AWS Config to enforce it.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html" aria-current="page">AWS</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 3 of 10</p>
+    <ol>
+      <li><a href="#a-tag-strategy-that-finance-can-use">A tag strategy that finance can use</a></li>
+      <li><a href="#enforce-names-and-values-with-tag-policies">Enforce names and values with tag policies</a></li>
+      <li><a href="#require-tags-at-creation-with-an-scp">Require tags at creation with an SCP</a></li>
+      <li><a href="#check-compliance-with-aws-config">Check compliance with AWS Config</a></li>
+      <li><a href="#tags-in-cost-reports">Tags in cost reports</a></li>
+      <li><a href="#other-guardrails-worth-setting-early">Other guardrails worth setting early</a></li>
+      <li><a href="#examples-to-try">Examples to try</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">AWS</a> / Guide 3</p>
+    <h1>Tagging and governance</h1>
+    <p class="lead">A tag strategy finance can use, and tag policies, SCPs and AWS Config to enforce it.</p>
+
+<p>Tags answer the questions that come up every month: who owns this, what does it belong to, and who pays for it. In AWS they matter even more than in Azure, because there are no resource groups: tags are the only way to group resources across services. Tag policies, service control policies and AWS Config make sure the answers are there.</p>
+<h2 id="a-tag-strategy-that-finance-can-use">A tag strategy that finance can use</h2>
+<p>Keep the set small and required. The same five tags as the Azure notes work well:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Tag</th><th>Example</th><th>Why</th></tr>
+</thead>
+<tbody>
+<tr><td><code>Owner</code></td><td><code>jane@ravindran.in</code></td><td>Who to ask before changing or deleting it</td></tr>
+<tr><td><code>CostCenter</code></td><td><code>CC-1042</code></td><td>Who pays; used for showback and chargeback</td></tr>
+<tr><td><code>Environment</code></td><td><code>Production</code>, <code>Test</code>, <code>Dev</code></td><td>Different rules, schedules and priorities</td></tr>
+<tr><td><code>Application</code></td><td><code>Payroll</code></td><td>Groups resources across services</td></tr>
+<tr><td><code>DataClassification</code></td><td><code>Confidential</code></td><td>Drives security controls</td></tr>
+</tbody>
+</table>
+</div>
+<p>Rules worth writing down:</p>
+<ul>
+<li><strong>Tag keys and values are case-sensitive in AWS.</strong> <code>CostCenter</code> and <code>costcenter</code> are two different tags, and both will appear in cost reports. Pick one spelling and enforce it.</li>
+<li><strong>Add <code>Name</code> too.</strong> The console shows the <code>Name</code> tag as the resource's display name for EC2, EBS and VPC resources.</li>
+<li><strong>Tag at creation.</strong> Most services accept tags in the create call, and SCPs (below) can refuse creates without them. Tags added later miss the cost of the hours before.</li>
+<li><strong>Tags don't flow down automatically.</strong> An EC2 instance's tags aren't copied to its volumes unless you set it: use launch templates with tag specifications for instances, volumes and network interfaces, and CloudFormation stack-level tags, which propagate to supported resources.</li>
+<li><strong>Limits:</strong> 50 user tags per resource; keys up to 128 characters, values up to 256. The <code>aws:</code> prefix is reserved.</li>
+<li><strong>Don't put secrets or personal data in tags.</strong> Many people and tools can read them.</li>
+</ul>
+<h2 id="enforce-names-and-values-with-tag-policies">Enforce names and values with tag policies</h2>
+<p>A <strong>tag policy</strong> in AWS Organizations defines the exact spelling of each tag key and its allowed values. Attached to the root or an OU, it reports non-compliant tags, and can optionally block non-compliant tagging for the resource types you list.</p>
+<pre><code class="language-json">{
+  &quot;tags&quot;: {
+    &quot;Environment&quot;: {
+      &quot;tag_key&quot;: { &quot;@@assign&quot;: &quot;Environment&quot; },
+      &quot;tag_value&quot;: { &quot;@@assign&quot;: [ &quot;Production&quot;, &quot;Test&quot;, &quot;Dev&quot; ] },
+      &quot;enforced_for&quot;: { &quot;@@assign&quot;: [ &quot;ec2:instance&quot;, &quot;ec2:volume&quot;, &quot;s3:bucket&quot; ] }
+    },
+    &quot;CostCenter&quot;: { &quot;tag_key&quot;: { &quot;@@assign&quot;: &quot;CostCenter&quot; } }
+  }
+}
+</code></pre>
+<p>Note what it doesn't do: a tag policy checks tags that are there, but <strong>can't require a tag to exist</strong>. For that, use an SCP or AWS Config.</p>
+<h2 id="require-tags-at-creation-with-an-scp">Require tags at creation with an SCP</h2>
+<p>This SCP refuses to launch an EC2 instance or create a volume without a <code>CostCenter</code> tag. It works per API action and resource type, so add the services you care about most, and test it on the Sandbox OU first:</p>
+<pre><code class="language-json">{
+  &quot;Version&quot;: &quot;2012-10-17&quot;,
+  &quot;Statement&quot;: [{
+    &quot;Sid&quot;: &quot;RequireCostCenterOnCreate&quot;,
+    &quot;Effect&quot;: &quot;Deny&quot;,
+    &quot;Action&quot;: [ &quot;ec2:RunInstances&quot;, &quot;ec2:CreateVolume&quot; ],
+    &quot;Resource&quot;: [ &quot;arn:aws:ec2:*:*:instance/*&quot;, &quot;arn:aws:ec2:*:*:volume/*&quot; ],
+    &quot;Condition&quot;: { &quot;Null&quot;: { &quot;aws:RequestTag/CostCenter&quot;: &quot;true&quot; } }
+  }]
+}
+</code></pre>
+<h2 id="check-compliance-with-aws-config">Check compliance with AWS Config</h2>
+<p><strong>AWS Config</strong> records the configuration of every resource and evaluates <strong>rules</strong> against it. It's the AWS counterpart of Azure Policy's audit side, and several other guides rely on it. Turn it on in every account and region through Control Tower or an organisation-wide deployment, and send the data to the log archive account.</p>
+<ul>
+<li>The managed rule <strong><code>required-tags</code></strong> reports resources missing up to six tags you name.</li>
+<li><strong>Conformance packs</strong> bundle rules: start with <em>Operational Best Practices for CIS AWS Foundations Benchmark</em> or the AWS Foundational Security Best Practices checks in Security Hub (<a href="security-baseline.html">Guide 6</a>).</li>
+<li><strong>Remediation</strong> can run a Systems Manager Automation document to fix what a rule finds, automatically or on request.</li>
+<li><strong>Watch the cost.</strong> Config charges per configuration item recorded. Record globally-scoped resources (IAM) in one region only, and consider periodic rather than continuous recording for resource types that change constantly in non-production.</li>
+</ul>
+<pre><code class="language-powershell"># Which Config rules are non-compliant in this account and region
+Get-CFGComplianceByConfigRule -ComplianceType NON_COMPLIANT |
+    Select-Object ConfigRuleName, @{n='Compliance';e={$_.Compliance.ComplianceType}}
+
+# Resources failing the required-tags rule
+Get-CFGComplianceDetailsByConfigRule -ConfigRuleName 'required-tags' -ComplianceType NON_COMPLIANT |
+    ForEach-Object { $_.EvaluationResultIdentifier.EvaluationResultQualifier } |
+    Select-Object ResourceType, ResourceId
+</code></pre>
+<p>For a direct list of what's missing which tags, across regions, run <a href="../scripts/get-awsuntaggedresources.html"><code>Get-AwsUntaggedResources.ps1</code></a>.</p>
+<h2 id="tags-in-cost-reports">Tags in cost reports</h2>
+<p>Tags don't appear in Cost Explorer or the Cost and Usage Report until you <strong>activate them as cost allocation tags</strong> in the management account (Billing and Cost Management &gt; Cost allocation tags). Activation isn't retroactive, so do it on day one. Also:</p>
+<ul>
+<li><strong>Cost categories</strong> map accounts, tags and services to business units, and fill gaps (for example "everything in <code>payroll-prod</code> is Payroll, whether tagged or not").</li>
+<li><strong>Account-level tags</strong> and a one-workload-per-account layout mean most costs are allocated correctly even when a resource tag is missing.</li>
+</ul>
+<h2 id="other-guardrails-worth-setting-early">Other guardrails worth setting early</h2>
+<ul>
+<li><strong>Allowed regions:</strong> an SCP that denies actions outside your approved regions, with the documented exceptions for global services.</li>
+<li><strong>Allowed instance types:</strong> an SCP condition on <code>ec2:InstanceType</code> for non-production OUs, which stops accidental very large instances.</li>
+<li><strong>Protect the logging:</strong> deny <code>cloudtrail:StopLogging</code>, <code>config:StopConfigurationRecorder</code> and <code>guardduty:DeleteDetector</code> for everyone except a break-glass role.</li>
+<li><strong>Block public sharing:</strong> declarative policies for EBS snapshot and AMI block public access, and S3 Block Public Access at account level (<a href="network-perimeter.html">Guide 5</a>).</li>
+</ul>
+<h2 id="examples-to-try">Examples to try</h2>
+<p>From <a href="https://aws.ravindran.in">aws.ravindran.in</a>: <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/s3/object-tags">S3 object tags</a>, <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/cfn">CloudFormation</a> (stack tags propagate to resources), and <a href="https://github.com/ravindranmani1980/AWS_Examples/tree/main/cfn/drift-detection">CloudFormation drift detection</a>.</p>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="account-structure-and-access.html"><span>Previous guide</span>Account structure and access</a>
+      <a class="next" href="security-groups-and-nacls.html"><span>Next guide</span>Security groups and network ACLs</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

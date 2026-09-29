@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Invoke-AwsEC2PowerSchedule | Notes | Ravindran Mani</title>
+<meta name="description" content="Starts or stops EC2 instances that carry a schedule tag. Run it on a schedule from EC2, Lambda or Systems Manager.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran Mani</span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html" aria-current="page">AWS</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap">
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">AWS</a> / <a href="../../scripts/index.html">Scripts</a> / Operations</p>
+    <h1 class="script-title">Invoke-AwsEC2PowerSchedule</h1>
+    <p class="lead">Starts or stops EC2 instances that carry a schedule tag. Run it on a schedule from EC2, Lambda or Systems Manager.</p>
+    <dl class="facts">
+      <div><dt>Runs in</dt><dd>AWS Tools for PowerShell (AWS.Tools modules)</dd></div>
+      <div><dt>Safety</dt><dd><span class="flag flag-change">Makes changes. Run with -WhatIf first</span></dd></div>
+    </dl>
+    <p class="actions"><a class="btn btn-primary" href="Invoke-AwsEC2PowerSchedule.ps1" download>Download Invoke-AwsEC2PowerSchedule.ps1</a></p>
+
+    <h2 id="what-it-does">What it does</h2>
+    <p>Finds instances with the tag -TagName set to -TagValue (default AutoShutdown = Yes) in the chosen regions and starts or stops them. Stopped instances aren&#x27;t billed for compute, but their EBS volumes and any Elastic IPs still are. Instances already in the requested state are skipped, and so are instances in an Auto Scaling group (the group would replace them).</p>
+<p>Typical setup: a small EC2 instance or a scheduled Systems Manager Automation with a role allowed ec2:DescribeInstances, ec2:StartInstances and ec2:StopInstances, running the script at 19:00 (Stop) and 07:00 (Start) on weekdays. For large estates, the AWS Instance Scheduler solution does the same with more options.</p>
+<p>Supports -WhatIf.</p>
+
+    <h2 id="parameters">Parameters</h2>
+    <div class="table-wrap">
+      <table class="params">
+          <tr><th scope="row"><code>-Action</code><span class="ptype">string</span></th><td>Start or Stop.</td></tr>
+          <tr><th scope="row"><code>-TagName</code><span class="ptype">string</span></th><td>Tag that marks instances for scheduling. Default AutoShutdown.</td></tr>
+          <tr><th scope="row"><code>-TagValue</code><span class="ptype">string</span></th><td>Tag value that opts an instance in. Default Yes.</td></tr>
+          <tr><th scope="row"><code>-Region</code><span class="ptype">string[]</span></th><td>Regions to act on. Default: the default region of the current session.</td></tr>
+          <tr><th scope="row"><code>-ProfileName</code><span class="ptype">string</span></th><td>AWS profile to use. Default: the current credentials (for example the instance profile).</td></tr>
+      </table>
+    </div>
+
+    <h2 id="examples">Examples</h2>
+    <pre><code class="language-powershell">.\Invoke-AwsEC2PowerSchedule.ps1 -Action Stop -WhatIf</code></pre>
+    <pre><code class="language-powershell">.\Invoke-AwsEC2PowerSchedule.ps1 -Action Start -Region us-east-1, us-west-2 -ProfileName notes-test</code></pre>
+
+    <h2 id="notes">Notes</h2>
+    <p>Requires AWS.Tools.EC2. The tag name and value are compared case-insensitively. Instances with encrypted volumes need the role to be allowed to use the KMS key to start.</p>
+
+    <h2 id="source">Full script</h2>
+    <!-- Keep this in sync with Invoke-AwsEC2PowerSchedule.ps1 in this folder. -->
+    <pre><code class="language-powershell">&lt;#
+.SYNOPSIS
+    Starts or stops EC2 instances that carry a schedule tag. Run it on a schedule from EC2, Lambda or Systems Manager.
+
+.DESCRIPTION
+    Finds instances with the tag -TagName set to -TagValue (default AutoShutdown = Yes) in the
+    chosen regions and starts or stops them. Stopped instances aren&#x27;t billed for compute, but
+    their EBS volumes and any Elastic IPs still are. Instances already in the requested state
+    are skipped, and so are instances in an Auto Scaling group (the group would replace them).
+
+    Typical setup: a small EC2 instance or a scheduled Systems Manager Automation with a role
+    allowed ec2:DescribeInstances, ec2:StartInstances and ec2:StopInstances, running the script
+    at 19:00 (Stop) and 07:00 (Start) on weekdays. For large estates, the AWS Instance
+    Scheduler solution does the same with more options.
+
+    Supports -WhatIf.
+
+.PARAMETER Action
+    Start or Stop.
+
+.PARAMETER TagName
+    Tag that marks instances for scheduling. Default AutoShutdown.
+
+.PARAMETER TagValue
+    Tag value that opts an instance in. Default Yes.
+
+.PARAMETER Region
+    Regions to act on. Default: the default region of the current session.
+
+.PARAMETER ProfileName
+    AWS profile to use. Default: the current credentials (for example the instance profile).
+
+.EXAMPLE
+    .\Invoke-AwsEC2PowerSchedule.ps1 -Action Stop -WhatIf
+
+.EXAMPLE
+    .\Invoke-AwsEC2PowerSchedule.ps1 -Action Start -Region us-east-1, us-west-2 -ProfileName notes-test
+
+.NOTES
+    Requires AWS.Tools.EC2. The tag name and value are compared case-insensitively.
+    Instances with encrypted volumes need the role to be allowed to use the KMS key to start.
+#&gt;
+[CmdletBinding(SupportsShouldProcess)]
+param(
+    [Parameter(Mandatory)][ValidateSet(&#x27;Start&#x27;, &#x27;Stop&#x27;)][string]$Action,
+    [string]$TagName = &#x27;AutoShutdown&#x27;,
+    [string]$TagValue = &#x27;Yes&#x27;,
+    [string[]]$Region,
+    [string]$ProfileName
+)
+
+if (-not (Get-Module -ListAvailable -Name AWS.Tools.EC2)) { throw &#x27;AWS.Tools.EC2 not found. Run: Install-AWSToolsModule AWS.Tools.EC2&#x27; }
+Import-Module AWS.Tools.EC2 -ErrorAction Stop
+
+$cred = @{}
+if ($ProfileName) { $cred.ProfileName = $ProfileName }
+if (-not $Region) {
+    $default = Get-DefaultAWSRegion
+    if (-not $default) { throw &#x27;No region given and no default region set. Use -Region, or Set-DefaultAWSRegion.&#x27; }
+    $Region = @($default.Region)
+}
+
+$summary = New-Object System.Collections.Generic.List[object]
+
+foreach ($r in $Region) {
+    Write-Output &quot;Region $r&quot;
+    $instances = @((Get-EC2Instance @cred -Region $r).Instances) | Where-Object {
+        $_ -and ($_.Tags | Where-Object { $_.Key -ieq $TagName -and $_.Value -ieq $TagValue })
+    }
+
+    foreach ($i in $instances) {
+        $name = ($i.Tags | Where-Object Key -eq &#x27;Name&#x27; | Select-Object -First 1).Value
+        $state = [string]$i.State.Name
+        $row = [pscustomobject]@{ Region = $r; InstanceId = $i.InstanceId; Name = $name; Before = $state; Result = &#x27;&#x27; }
+
+        if ($i.Tags | Where-Object Key -eq &#x27;aws:autoscaling:groupName&#x27;) {
+            $row.Result = &#x27;Skipped (in an Auto Scaling group)&#x27;
+        } elseif (($Action -eq &#x27;Stop&#x27; -and $state -in &#x27;stopped&#x27;, &#x27;stopping&#x27;, &#x27;terminated&#x27;, &#x27;shutting-down&#x27;) -or
+                  ($Action -eq &#x27;Start&#x27; -and $state -in &#x27;running&#x27;, &#x27;pending&#x27;, &#x27;terminated&#x27;, &#x27;shutting-down&#x27;)) {
+            $row.Result = &#x27;Skipped (already in state)&#x27;
+        } elseif ($PSCmdlet.ShouldProcess(&quot;$r/$($i.InstanceId) ($name)&quot;, &quot;$Action instance&quot;)) {
+            try {
+                if ($Action -eq &#x27;Stop&#x27;) { Stop-EC2Instance @cred -Region $r -InstanceId $i.InstanceId -Force -ErrorAction Stop | Out-Null }
+                else { Start-EC2Instance @cred -Region $r -InstanceId $i.InstanceId -ErrorAction Stop | Out-Null }
+                $row.Result = &#x27;Requested&#x27;
+            } catch { $row.Result = &quot;Failed: $($_.Exception.Message)&quot; }
+        } else { continue }
+        $summary.Add($row)
+    }
+}
+
+# Write-Output (not Write-Host) so the summary appears in job and Lambda logs
+$summary | Format-Table -AutoSize | Out-String | Write-Output
+Write-Output (&quot;{0}: {1} instance(s) acted on, {2} skipped, {3} failed.&quot; -f $Action,
+    @($summary | Where-Object Result -eq &#x27;Requested&#x27;).Count,
+    @($summary | Where-Object { $_.Result -like &#x27;Skipped*&#x27; }).Count,
+    @($summary | Where-Object { $_.Result -like &#x27;Failed*&#x27; }).Count)
+</code></pre>
+
+    <nav class="pager" aria-label="More scripts">
+      <a class="prev" href="get-awsbackupcoverage.html"><span>Previous script</span>Get-AwsBackupCoverage</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>
