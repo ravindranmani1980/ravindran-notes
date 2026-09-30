@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Labels and governance | GCP | Notes | Ravindran Mani</title>
+<meta name="description" content="A label strategy finance can use, labels versus tags, organisation policy constraints, and labels in cost reports.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../gcp/index.html" aria-current="page">GCP</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 3 of 10</p>
+    <ol>
+      <li><a href="#labels-and-tags-are-different">Labels and tags are different</a></li>
+      <li><a href="#a-label-strategy-that-finance-can-use">A label strategy that finance can use</a></li>
+      <li><a href="#find-what-is-missing-labels">Find what is missing labels</a></li>
+      <li><a href="#organisation-policy-constraints-worth-setting">Organisation policy constraints worth setting</a></li>
+      <li><a href="#labels-in-cost-reports">Labels in cost reports</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">GCP</a> / Guide 3</p>
+    <h1>Labels and governance</h1>
+    <p class="lead">A label strategy finance can use, labels versus tags, organisation policy constraints, and labels in cost reports.</p>
+
+<p>Labels answer the questions that come up every month: who owns this, what does it belong to, and who pays for it. In Google Cloud, labels flow straight into the billing export, so good labels mean cost reports by team and application with no extra work. Organisation policies and Cloud Asset Inventory make sure the rules are followed.</p>
+<h2 id="labels-and-tags-are-different">Labels and tags are different</h2>
+<p>Google Cloud has two similar-sounding features. Use both, for different jobs:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th></th><th>Labels</th><th>Tags (Resource Manager tags)</th></tr>
+</thead>
+<tbody>
+<tr><td>What they are</td><td>Key/value pairs on a resource</td><td>Key/value resources defined centrally, then bound to resources</td></tr>
+<tr><td>Used for</td><td>Cost reports, filtering, automation</td><td>Access and policy: IAM Conditions, organisation policy conditions, firewall policies</td></tr>
+<tr><td>Who can set them</td><td>Anyone who can edit the resource</td><td>Only people granted <code>tagUser</code> on the tag value</td></tr>
+<tr><td>Inheritance</td><td>None</td><td>Inherited down the hierarchy</td></tr>
+<tr><td>In billing export</td><td>Yes</td><td>Yes</td></tr>
+</tbody>
+</table>
+</div>
+<p>Because anyone who can edit a resource can change its labels, <strong>never base security decisions on labels</strong>. That's what tags are for. And don't confuse either with <em>network tags</em> on VMs, which are plain strings used to target firewall rules (<a href="vpc-firewall-rules.html">Guide 4</a>).</p>
+<h2 id="a-label-strategy-that-finance-can-use">A label strategy that finance can use</h2>
+<p>The same five as the Azure and AWS notes, adapted to Google's rules:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Label</th><th>Example</th><th>Why</th></tr>
+</thead>
+<tbody>
+<tr><td><code>owner</code></td><td><code>jane_ravindran_in</code></td><td>Who to ask before changing or deleting it</td></tr>
+<tr><td><code>costcenter</code></td><td><code>cc-1042</code></td><td>Who pays; used for showback and chargeback</td></tr>
+<tr><td><code>environment</code></td><td><code>prod</code>, <code>test</code>, <code>dev</code></td><td>Different rules, schedules and priorities</td></tr>
+<tr><td><code>application</code></td><td><code>payroll</code></td><td>Groups resources across projects and services</td></tr>
+<tr><td><code>dataclassification</code></td><td><code>confidential</code></td><td>Drives security controls</td></tr>
+</tbody>
+</table>
+</div>
+<ul>
+<li><strong>Lowercase only.</strong> Keys and values can contain lowercase letters, digits, underscores and dashes; keys must start with a letter. No <code>@</code> or <code>.</code>, which is why the owner is written <code>jane_ravindran_in</code>.</li>
+<li><strong>Limits:</strong> up to 64 labels per resource; keys and values up to 63 characters.</li>
+<li><strong>Label the project too.</strong> Project labels appear in the billing export alongside resource labels, so a one-workload-per-project layout gets most costs allocated even when a resource label is missing.</li>
+<li><strong>Not everything takes labels.</strong> VMs, disks, snapshots, buckets, Cloud SQL, BigQuery datasets, GKE clusters and Cloud Run services do; firewall rules and IAM don't.</li>
+<li><strong>Don't put secrets or personal data in labels.</strong> Many people and tools can read them.</li>
+</ul>
+<pre><code class="language-powershell"># Label a VM and a bucket
+gcloud compute instances add-labels vm-notes-test-01 --zone=us-east1-b `
+    --labels=owner=jane_ravindran_in,costcenter=cc-1042,environment=test
+gcloud storage buckets update gs://prj-notes-test-logs --update-labels=owner=jane_ravindran_in,costcenter=cc-1042
+
+# Label the project
+gcloud projects update prj-notes-test --update-labels=costcenter=cc-1042,environment=test
+</code></pre>
+<h2 id="find-what-is-missing-labels">Find what is missing labels</h2>
+<p>Google Cloud has no built-in "require this label" policy for every service. Check instead, with Cloud Asset Inventory:</p>
+<pre><code class="language-powershell"># Resources in the organisation with no costcenter label
+gcloud asset search-all-resources --scope=organizations/123456789012 `
+    --asset-types=compute.googleapis.com/Instance,compute.googleapis.com/Disk,storage.googleapis.com/Bucket `
+    --query=&quot;NOT labels:costcenter&quot; --format=json | ConvertFrom-Json |
+    Select-Object assetType, displayName, project, location
+</code></pre>
+<p><a href="../scripts/get-gcpunlabeledresources.html"><code>Get-GcpUnlabeledResources.ps1</code></a> does this for a list of required labels across the common billable resource types, and reports near misses such as <code>cost_center</code> or <code>cost-center</code>. To enforce labels at creation, use <strong>custom organisation policy constraints</strong> for the services that support them (for example Compute Engine instances and GKE clusters), or require labels in your Terraform modules.</p>
+<h2 id="organisation-policy-constraints-worth-setting">Organisation policy constraints worth setting</h2>
+<p>Beyond the secure-by-default set (<a href="resource-hierarchy-and-access.html#organisation-policies">Guide 2</a>):</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Constraint</th><th>Why</th></tr>
+</thead>
+<tbody>
+<tr><td><code>gcp.resourceLocations</code></td><td>Keep resources in approved regions (data residency and support)</td></tr>
+<tr><td><code>compute.skipDefaultNetworkCreation</code></td><td>New projects don't get the <code>default</code> network with its permissive firewall rules</td></tr>
+<tr><td><code>compute.vmExternalIpAccess</code></td><td>VMs can't have public IPs, except those you list</td></tr>
+<tr><td><code>compute.requireOsLogin</code></td><td>SSH access controlled by IAM, not by keys in metadata</td></tr>
+<tr><td><code>compute.requireShieldedVm</code></td><td>Secure boot and integrity monitoring on every VM</td></tr>
+<tr><td><code>storage.publicAccessPrevention</code></td><td>No bucket can be made public</td></tr>
+<tr><td><code>sql.restrictPublicIp</code></td><td>Cloud SQL instances on private IPs only</td></tr>
+<tr><td><code>iam.allowedPolicyMemberDomains</code></td><td>Stop grants to personal Gmail accounts and other outside domains</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Test before you enforce.</strong> Organisation policies support <strong>dry run</strong>: the policy is evaluated and violations are logged, but nothing is blocked. Run it for a couple of weeks, check the logs, fix or exempt what breaks, then enforce. Set exceptions on specific projects or with tag conditions rather than turning a constraint off higher up.</p>
+<pre><code class="language-powershell"># Enforce a boolean constraint on a folder
+gcloud resource-manager org-policies enable-enforce compute.skipDefaultNetworkCreation --folder=111122223333
+
+# Or set a list constraint from a YAML file (supports dryRunSpec for testing)
+gcloud org-policies set-policy .\resource-locations.yaml
+</code></pre>
+<h2 id="labels-in-cost-reports">Labels in cost reports</h2>
+<ul>
+<li><strong>Billing reports</strong> in the console group and filter by label and project label straight away; nothing to activate, unlike AWS.</li>
+<li><strong>Export billing data to BigQuery</strong> (standard and detailed usage cost) from day one. The export isn't retroactive, and it's where showback reports, dashboards and anomaly checks come from (<a href="cost-hygiene.html">Guide 10</a>).</li>
+<li>Labels apply to cost from the moment they're added. Costs from before a label was set stay unlabelled, so label at creation.</li>
+</ul>
+<pre><code class="language-sql">-- Last month's cost by costcenter label (BigQuery billing export)
+SELECT
+  (SELECT value FROM UNNEST(labels) WHERE key = 'costcenter') AS costcenter,
+  ROUND(SUM(cost) + SUM(IFNULL((SELECT SUM(c.amount) FROM UNNEST(credits) c), 0)), 2) AS net_cost
+FROM `prj-billing-export.billing.gcp_billing_export_v1_012345_6789AB_CDEF01`
+WHERE invoice.month = FORMAT_DATE('%Y%m', DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
+GROUP BY costcenter
+ORDER BY net_cost DESC
+</code></pre>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="resource-hierarchy-and-access.html"><span>Previous guide</span>Resource hierarchy and access</a>
+      <a class="next" href="vpc-firewall-rules.html"><span>Next guide</span>VPC firewall rules and policies</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

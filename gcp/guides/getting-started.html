@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Getting started | GCP | Notes | Ravindran Mani</title>
+<meta name="description" content="The gcloud CLI from PowerShell, sign-in and configurations, working across projects, and Cloud Asset Inventory.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../gcp/index.html" aria-current="page">GCP</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 1 of 10</p>
+    <ol>
+      <li><a href="#about-the-example-names">About the example names</a></li>
+      <li><a href="#tip-1-pick-your-tool">Tip 1 – Pick your tool</a></li>
+      <li><a href="#tip-2-install-the-cli-and-sign-in">Tip 2 – Install the CLI and sign in</a></li>
+      <li><a href="#tip-3-use-json-output-in-powershell">Tip 3 – Use JSON output in PowerShell</a></li>
+      <li><a href="#tip-4-loop-over-projects">Tip 4 – Loop over projects</a></li>
+      <li><a href="#tip-5-search-everything-with-cloud-asset-inventory">Tip 5 – Search everything with Cloud Asset Inventory</a></li>
+      <li><a href="#tip-6-use-service-accounts-for-automation">Tip 6 – Use service accounts for automation</a></li>
+      <li><a href="#tip-7-keep-a-transcript-and-use-whatif">Tip 7 – Keep a transcript, and use -WhatIf</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">GCP</a> / Guide 1</p>
+    <h1>Getting started</h1>
+    <p class="lead">The gcloud CLI from PowerShell, sign-in and configurations, working across projects, and Cloud Asset Inventory.</p>
+
+<p>Everything in these Google Cloud notes can be done in the console, but repeatable work belongs in scripts. This guide sets up the Google Cloud CLI (<code>gcloud</code>), shows how to drive it from PowerShell, explains how sign-in, projects and regions work, and introduces Cloud Asset Inventory, which answers "what do we have?" across the whole organisation in one call.</p>
+<h2 id="about-the-example-names">About the example names</h2>
+<p>All examples use one test environment. Replace the names with your own. The full list is on the <a href="../environment/index.html">example environment</a> page.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Item</th><th>Example</th></tr>
+</thead>
+<tbody>
+<tr><td>Organization</td><td><code>ravindran.in</code> (ID <code>123456789012</code>)</td></tr>
+<tr><td>Project</td><td><code>prj-notes-test</code></td></tr>
+<tr><td>Region and zone</td><td><code>us-east1</code>, <code>us-east1-b</code></td></tr>
+<tr><td>VPC network</td><td><code>vpc-notes-test</code> (subnet <code>10.30.1.0/24</code>)</td></tr>
+<tr><td>VM instance</td><td><code>vm-notes-test-01</code></td></tr>
+<tr><td>Service account</td><td><code>sa-app@prj-notes-test.iam.gserviceaccount.com</code></td></tr>
+<tr><td>Domain (Cloud DNS zone)</td><td><code>gcp.ravindran.in</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="tip-1-pick-your-tool">Tip 1 – Pick your tool</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Tool</th><th>Best for</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>gcloud CLI</strong></td><td>Almost everything: every Google Cloud service, JSON output, the same commands on Windows, macOS and Linux. The scripts on this site call it from PowerShell.</td></tr>
+<tr><td><strong>Cloud Shell</strong></td><td>gcloud in the browser, already signed in, with a small persistent home directory. Nothing to install. PowerShell is available too (<code>pwsh</code>).</td></tr>
+<tr><td><strong><code>gcloud storage</code> and <code>bq</code></strong></td><td>Cloud Storage and BigQuery. <code>gcloud storage</code> replaces the older <code>gsutil</code>.</td></tr>
+<tr><td><strong>Terraform / Infrastructure Manager</strong></td><td>Creating infrastructure repeatably. Scripts report and fix; templates build.</td></tr>
+</tbody>
+</table>
+</div>
+<p>Google's own PowerShell module, <strong>Cloud Tools for PowerShell</strong>, is deprecated: since 14 January 2026 it can no longer be installed through the Google Cloud CLI, and its repository was archived in July 2026. Don't build new scripts on it. Calling <code>gcloud</code> with JSON output and converting it with <code>ConvertFrom-Json</code> works everywhere and uses the tool Google supports.</p>
+<h2 id="tip-2-install-the-cli-and-sign-in">Tip 2 – Install the CLI and sign in</h2>
+<p>Install the Google Cloud CLI from Google's installer (Windows) or package repository (Linux, macOS), then:</p>
+<pre><code class="language-powershell"># One-time: sign in, pick a default project, region and zone
+gcloud init
+
+# Separate credentials for scripts and client libraries (Application Default Credentials)
+gcloud auth application-default login
+
+# Who am I, and which project am I pointed at?
+gcloud auth list
+gcloud config list
+</code></pre>
+<p><code>gcloud auth login</code> signs in the CLI itself; <code>application-default login</code> signs in code that uses Google's client libraries and Terraform. They're separate, which surprises most people the first time.</p>
+<p>Use <strong>named configurations</strong> to switch between organisations or environments without re-typing flags:</p>
+<pre><code class="language-powershell">gcloud config configurations create notes-test
+gcloud config set project prj-notes-test
+gcloud config set compute/region us-east1
+gcloud config set compute/zone us-east1-b
+
+gcloud config configurations activate notes-test
+</code></pre>
+<h2 id="tip-3-use-json-output-in-powershell">Tip 3 – Use JSON output in PowerShell</h2>
+<p>Every <code>gcloud</code> list and describe command can return JSON. Convert it to objects and PowerShell does the rest: filtering, grouping, CSV export.</p>
+<pre><code class="language-powershell"># VMs in a project, as PowerShell objects
+$vms = gcloud compute instances list --project prj-notes-test --format=json | ConvertFrom-Json
+$vms | Select-Object name, status, @{n='Zone';e={ ($_.zone -split '/')[-1] }},
+    @{n='Type';e={ ($_.machineType -split '/')[-1] }} | Format-Table
+
+# Let gcloud filter on the server side where it can: faster, and less to download
+gcloud compute instances list --filter=&quot;status=RUNNING AND labels.environment=test&quot; --format=json | ConvertFrom-Json
+</code></pre>
+<p>Two habits that save time: resource fields such as <code>zone</code> and <code>machineType</code> come back as full URLs, so split on <code>/</code> and take the last part; and check <code>$LASTEXITCODE</code> after each call, because <code>gcloud</code> errors don't stop a PowerShell script on their own.</p>
+<h2 id="tip-4-loop-over-projects">Tip 4 – Loop over projects</h2>
+<p>In Google Cloud the <strong>project</strong> is the unit you work in: most commands act on one project at a time. Loop over the active ones:</p>
+<pre><code class="language-powershell">$projects = gcloud projects list --filter=&quot;lifecycleState:ACTIVE&quot; --format=json | ConvertFrom-Json
+foreach ($p in $projects) {
+    $vms = @(gcloud compute instances list --project $p.projectId --format=json 2&gt;$null | ConvertFrom-Json)
+    if ($LASTEXITCODE -ne 0) { Write-Warning &quot;$($p.projectId): Compute Engine API not enabled or no access&quot;; continue }
+    '{0}: {1} VM(s)' -f $p.projectId, $vms.Count
+}
+</code></pre>
+<p>Unlike AWS, you don't need to loop over regions: <code>gcloud compute instances list</code> returns every zone in the project unless you filter.</p>
+<h2 id="tip-5-search-everything-with-cloud-asset-inventory">Tip 5 – Search everything with Cloud Asset Inventory</h2>
+<p>Looping over projects works, but <strong>Cloud Asset Inventory</strong> searches every resource and IAM policy in a project, folder or the whole organisation in one call. It's the Google Cloud equivalent of Azure Resource Graph, and several scripts on this site use it.</p>
+<pre><code class="language-powershell"># Every VM in the organisation, with its project, location and labels
+gcloud asset search-all-resources --scope=organizations/123456789012 `
+    --asset-types=compute.googleapis.com/Instance --format=json | ConvertFrom-Json |
+    Select-Object displayName, project, location, state
+
+# Everything without an owner label
+gcloud asset search-all-resources --scope=organizations/123456789012 --query=&quot;NOT labels:owner&quot; --format=json
+
+# Who has Owner anywhere in the organisation
+gcloud asset search-all-iam-policies --scope=organizations/123456789012 --query=&quot;policy:roles/owner&quot; --format=json
+</code></pre>
+<p>It needs the <strong>Cloud Asset API</strong> enabled in the project you run from, and the <code>roles/cloudasset.viewer</code> role at the scope you search.</p>
+<h2 id="tip-6-use-service-accounts-for-automation">Tip 6 – Use service accounts for automation</h2>
+<p>Scheduled scripts shouldn't run as you, and they shouldn't use a downloaded service account key either (new organisations block key creation by default, and they're right to). Instead:</p>
+<ul>
+<li><strong>On Google Cloud</strong> (a VM, Cloud Run job, Cloud Build): attach a service account to the resource. gcloud and the client libraries pick up its credentials automatically.</li>
+<li><strong>Outside Google Cloud</strong> (GitHub Actions, Azure DevOps, AWS, on-premises): <strong>Workload Identity Federation</strong> exchanges the platform's own token for short-lived Google credentials. No key file.</li>
+<li><strong>From your own machine, as a service account:</strong> impersonate it, which needs <code>roles/iam.serviceAccountTokenCreator</code> on that account and leaves an audit trail with your name on it:</li>
+</ul>
+<pre><code class="language-powershell">gcloud compute instances list --impersonate-service-account=sa-reports@prj-notes-test.iam.gserviceaccount.com
+</code></pre>
+<h2 id="tip-7-keep-a-transcript-and-use-whatif">Tip 7 – Keep a transcript, and use -WhatIf</h2>
+<pre><code class="language-powershell">Start-Transcript -Path &quot;.\gcp-$(Get-Date -Format yyyyMMdd-HHmm).log&quot;
+.\Invoke-GcpVMPowerSchedule.ps1 -Action Stop -WhatIf   # see what it would do
+Stop-Transcript
+</code></pre>
+<p>Every script on this site that changes something supports <code>-WhatIf</code>. Reports are read-only and need only viewer roles: <code>roles/viewer</code> (or <code>roles/browser</code> plus the specific viewer roles) on the projects, and <code>roles/cloudasset.viewer</code> for the Asset Inventory scripts.</p>
+
+    <nav class="pager" aria-label="Guides">
+      <span></span>
+      <a class="next" href="resource-hierarchy-and-access.html"><span>Next guide</span>Resource hierarchy and access</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

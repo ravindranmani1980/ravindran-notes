@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scripts | GCP | Notes | Ravindran Mani</title>
+<meta name="description" content="Google Cloud PowerShell scripts (using gcloud) for inventory, clean-up, governance, security and operations.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../gcp/index.html" aria-current="page">GCP</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<section class="topic-head"><div class="wrap"><p class="crumbs"><a href="../../index.html">Notes</a> / <a href="../index.html">GCP</a> / Scripts</p><h1>Scripts</h1><p class="lead">Google Cloud PowerShell scripts for inventory, clean-up, governance, network and data security, and operations, with documentation and safe-use guidance.</p></div></section>
+<section aria-labelledby="scripts-h" class="block block-alt">
+<div class="wrap">
+<div class="col-head wide">
+<h2 id="scripts-h">Scripts</h2>
+<p class="muted">Every script has built-in help (<code>Get-Help .\Script.ps1 -Full</code>). Reports are read-only; scripts that make changes support <code>-WhatIf</code>.</p>
+</div>
+<div class="script-columns">
+<section class="script-group">
+<h3>Inventory and clean-up</h3>
+<p class="muted">Know what you have, and find what you&#x27;re paying for but not using.</p>
+<ul class="script-list">
+      <li><a class="script-link" href="../scripts/find-gcporphanedresources.html">Find-GcpOrphanedResources</a>
+        <p>Finds orphaned Google Cloud resources that cost money or clutter: unattached disks, unused static IPs, old snapshots and more.</p></li>
+      <li><a class="script-link" href="../scripts/get-gcpvminventory.html">Get-GcpVMInventory</a>
+        <p>Lists every Compute Engine VM in every project you can see, with machine type, status, IPs, disks, service account and labels.</p></li>
+</ul>
+</section>
+<section class="script-group">
+<h3>Governance</h3>
+<p class="muted">IAM hygiene and labelling across every project.</p>
+<ul class="script-list">
+      <li><a class="script-link" href="../scripts/get-gcpiamreport.html">Get-GcpIamReport</a>
+        <p>Reports risky IAM grants and service account keys in every project: public access, basic roles, outside domains and user-managed keys.</p></li>
+      <li><a class="script-link" href="../scripts/get-gcpunlabeledresources.html">Get-GcpUnlabeledResources</a>
+        <p>Lists Google Cloud resources that are missing required labels, or have them under a slightly different name.</p></li>
+</ul>
+</section>
+<section class="script-group">
+<h3>Network and data security</h3>
+<p class="muted">Open firewall rules and public Cloud Storage buckets.</p>
+<ul class="script-list">
+      <li><a class="script-link" href="../scripts/get-gcpfirewallreport.html">Get-GcpFirewallReport</a>
+        <p>Reports VPC firewall rules in every project and flags the risky ones, such as SSH or RDP open to the internet.</p></li>
+      <li><a class="script-link" href="../scripts/get-gcpbucketpublicaccessreport.html">Get-GcpBucketPublicAccessReport</a>
+        <p>Checks every Cloud Storage bucket for public access, and reports public access prevention, uniform access, versioning and soft delete.</p></li>
+</ul>
+</section>
+<section class="script-group">
+<h3>Operations</h3>
+<p class="muted">Backup coverage and scheduled start/stop.</p>
+<ul class="script-list">
+      <li><a class="script-link" href="../scripts/get-gcpbackupcoverage.html">Get-GcpBackupCoverage</a>
+        <p>Shows which Compute Engine VMs and Cloud SQL instances are protected by backups, and which aren&#x27;t.</p></li>
+      <li><a class="script-link" href="../scripts/invoke-gcpvmpowerschedule.html">Invoke-GcpVMPowerSchedule</a>
+        <p>Starts or stops Compute Engine VMs that carry a schedule label. Run it on a schedule from Cloud Scheduler, a VM or a pipeline.</p></li>
+</ul>
+</section>
+</div>
+</div>
+</section>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

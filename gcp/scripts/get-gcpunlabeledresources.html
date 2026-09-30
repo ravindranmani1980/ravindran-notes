@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get-GcpUnlabeledResources | Notes | Ravindran Mani</title>
+<meta name="description" content="Lists Google Cloud resources that are missing required labels, or have them under a slightly different name.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../gcp/index.html" aria-current="page">GCP</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap">
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">GCP</a> / <a href="../../scripts/index.html">Scripts</a> / Governance</p>
+    <h1 class="script-title">Get-GcpUnlabeledResources</h1>
+    <p class="lead">Lists Google Cloud resources that are missing required labels, or have them under a slightly different name.</p>
+    <dl class="facts">
+      <div><dt>Runs in</dt><dd>PowerShell with the Google Cloud CLI (gcloud)</dd></div>
+      <div><dt>Safety</dt><dd><span class="flag flag-read">Read-only</span></dd></div>
+    </dl>
+    <p class="actions"><a class="btn btn-primary" href="Get-GcpUnlabeledResources.ps1" download>Download Get-GcpUnlabeledResources.ps1</a></p>
+
+    <h2 id="what-it-does">What it does</h2>
+    <p>Uses Cloud Asset Inventory to search the common billable resource types (VMs, disks, snapshots, images, buckets, Cloud SQL, BigQuery datasets, GKE clusters, Cloud Run services, Memorystore and Filestore) and reports every resource where a -RequiredLabel is:</p>
+<ul><li>missing, or</li><li>present under a near-miss name (cost_center or cost-center instead of costcenter), which splits cost reports in two</li></ul>
+<p>Read-only: it doesn&#x27;t change any labels.</p>
+
+    <h2 id="parameters">Parameters</h2>
+    <div class="table-wrap">
+      <table class="params">
+          <tr><th scope="row"><code>-RequiredLabel</code><span class="ptype">string[]</span></th><td>Label keys every resource must have. Default: owner, costcenter, environment.</td></tr>
+          <tr><th scope="row"><code>-Scope</code><span class="ptype">string</span></th><td>Where to search: organizations/ID, folders/ID or projects/ID. Default: each project in -ProjectId, or every active project you can see.</td></tr>
+          <tr><th scope="row"><code>-ProjectId</code><span class="ptype">string[]</span></th><td>Projects to search when -Scope isn&#x27;t given.</td></tr>
+          <tr><th scope="row"><code>-AssetType</code><span class="ptype">string[]</span></th><td>Asset types to check. Default: the common billable types listed above.</td></tr>
+          <tr><th scope="row"><code>-OutputFile</code><span class="ptype">string</span></th><td>CSV output path.<span class="pdefault">Default: <code>Timestamped file in the current folder</code></span></td></tr>
+      </table>
+    </div>
+
+    <h2 id="examples">Examples</h2>
+    <pre><code class="language-powershell">.\Get-GcpUnlabeledResources.ps1 -Scope organizations/123456789012</code></pre>
+    <pre><code class="language-powershell">.\Get-GcpUnlabeledResources.ps1 -ProjectId prj-notes-test -RequiredLabel owner, costcenter -AssetType compute.googleapis.com/Instance</code></pre>
+
+    <h2 id="notes">Notes</h2>
+    <p>Requires the Google Cloud CLI (gcloud), the Cloud Asset API enabled in your current project, and roles/cloudasset.viewer at the scope you search. Labels are always lowercase in Google Cloud, so near misses are spelling differences rather than capitalisation.</p>
+
+    <h2 id="source">Full script</h2>
+    <!-- Keep this in sync with Get-GcpUnlabeledResources.ps1 in this folder. -->
+    <pre><code class="language-powershell">&lt;#
+.SYNOPSIS
+    Lists Google Cloud resources that are missing required labels, or have them under a slightly different name.
+
+.DESCRIPTION
+    Uses Cloud Asset Inventory to search the common billable resource types (VMs, disks,
+    snapshots, images, buckets, Cloud SQL, BigQuery datasets, GKE clusters, Cloud Run services,
+    Memorystore and Filestore) and reports every resource where a -RequiredLabel is:
+    - missing, or
+    - present under a near-miss name (cost_center or cost-center instead of costcenter),
+      which splits cost reports in two
+
+    Read-only: it doesn&#x27;t change any labels.
+
+.PARAMETER RequiredLabel
+    Label keys every resource must have. Default: owner, costcenter, environment.
+
+.PARAMETER Scope
+    Where to search: organizations/ID, folders/ID or projects/ID. Default: each project in -ProjectId, or every active project you can see.
+
+.PARAMETER ProjectId
+    Projects to search when -Scope isn&#x27;t given.
+
+.PARAMETER AssetType
+    Asset types to check. Default: the common billable types listed above.
+
+.PARAMETER OutputFile
+    CSV output path.
+
+.EXAMPLE
+    .\Get-GcpUnlabeledResources.ps1 -Scope organizations/123456789012
+
+.EXAMPLE
+    .\Get-GcpUnlabeledResources.ps1 -ProjectId prj-notes-test -RequiredLabel owner, costcenter -AssetType compute.googleapis.com/Instance
+
+.NOTES
+    Requires the Google Cloud CLI (gcloud), the Cloud Asset API enabled in your current
+    project, and roles/cloudasset.viewer at the scope you search. Labels are always lowercase
+    in Google Cloud, so near misses are spelling differences rather than capitalisation.
+#&gt;
+[CmdletBinding()]
+param(
+    [string[]]$RequiredLabel = @(&#x27;owner&#x27;, &#x27;costcenter&#x27;, &#x27;environment&#x27;),
+    [string]$Scope,
+    [string[]]$ProjectId,
+    [string[]]$AssetType = @(
+        &#x27;compute.googleapis.com/Instance&#x27;, &#x27;compute.googleapis.com/Disk&#x27;, &#x27;compute.googleapis.com/Snapshot&#x27;,
+        &#x27;compute.googleapis.com/Image&#x27;, &#x27;storage.googleapis.com/Bucket&#x27;, &#x27;sqladmin.googleapis.com/Instance&#x27;,
+        &#x27;bigquery.googleapis.com/Dataset&#x27;, &#x27;container.googleapis.com/Cluster&#x27;, &#x27;run.googleapis.com/Service&#x27;,
+        &#x27;redis.googleapis.com/Instance&#x27;, &#x27;file.googleapis.com/Instance&#x27;),
+    [string]$OutputFile = (Join-Path -Path (Get-Location) -ChildPath (&#x27;GcpUnlabeledResources_{0:yyyyMMdd_HHmm}.csv&#x27; -f (Get-Date)))
+)
+
+if (-not (Get-Command gcloud -ErrorAction SilentlyContinue)) { throw &#x27;gcloud not found. Install the Google Cloud CLI and run gcloud auth login.&#x27; }
+
+function Invoke-Gcloud {
+    # Runs gcloud with JSON output and returns the result as objects. Throws on a gcloud error.
+    param([Parameter(Mandatory)][string[]]$Arguments)
+    $output = &amp; gcloud @Arguments --format=json --quiet 2&gt;&amp;1
+    $code = $LASTEXITCODE
+    $text = (@($output | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] }) -join &quot;`n&quot;).Trim()
+    if ($code -ne 0) {
+        $message = (@($output | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] } | ForEach-Object { $_.ToString() }) -join &#x27; &#x27;).Trim()
+        throw &quot;gcloud $($Arguments[0..1] -join &#x27; &#x27;) failed: $message&quot;
+    }
+    if ($text) { foreach ($item in ($text | ConvertFrom-Json)) { $item } }
+}
+
+function Get-TargetProject {
+    # The projects to report on: -ProjectId if given, otherwise every active project you can see
+    param([string[]]$ProjectId)
+    if ($ProjectId) { return $ProjectId }
+    @(Invoke-Gcloud @(&#x27;projects&#x27;, &#x27;list&#x27;, &#x27;--filter=lifecycleState:ACTIVE&#x27;) | ForEach-Object { $_.projectId })
+}
+
+function Get-Leaf {
+    # Last part of a resource URL, for example the zone name from a zone URL
+    param([string]$Url)
+    if ($Url) { ($Url -split &#x27;/&#x27;)[-1] } else { &#x27;&#x27; }
+}
+
+# Compare label keys ignoring - and _ so cost-center and cost_center match costcenter
+function Get-LabelKeyForm { param([string]$Key) ($Key -replace &#x27;[-_]&#x27;, &#x27;&#x27;).ToLower() }
+
+$report = New-Object System.Collections.Generic.List[object]
+$scopes = if ($Scope) { @($Scope) } else { @(Get-TargetProject $ProjectId | ForEach-Object { &quot;projects/$_&quot; }) }
+
+foreach ($s in $scopes) {
+    Write-Host &quot;Searching $s...&quot; -ForegroundColor Cyan
+    try {
+        $assets = @(Invoke-Gcloud @(&#x27;asset&#x27;, &#x27;search-all-resources&#x27;, &quot;--scope=$s&quot;, &quot;--asset-types=$($AssetType -join &#x27;,&#x27;)&quot;))
+    } catch {
+        Write-Warning &quot;Skipping $s`: $($_.Exception.Message)&quot;
+        continue
+    }
+    foreach ($a in $assets) {
+        if (-not $a) { continue }
+        $keys = @()
+        if ($a.labels) { $keys = @($a.labels.PSObject.Properties.Name) }
+        $missing = @(); $nearMiss = @()
+        foreach ($r in $RequiredLabel) {
+            if ($keys -contains $r) { continue }
+            $near = $keys | Where-Object { (Get-LabelKeyForm $_) -eq (Get-LabelKeyForm $r) } | Select-Object -First 1
+            if ($near) { $nearMiss += &quot;$near (should be $r)&quot; } else { $missing += $r }
+        }
+        if (-not $missing -and -not $nearMiss) { continue }
+        $report.Add([pscustomobject]@{
+            Project   = $a.project
+            AssetType = ($a.assetType -split &#x27;/&#x27;)[-1]
+            Service   = ($a.assetType -split &#x27;/&#x27;)[0]
+            Name      = if ($a.displayName) { $a.displayName } else { Get-Leaf $a.name }
+            Location  = $a.location
+            Missing   = $missing -join &#x27;, &#x27;
+            NearMiss  = $nearMiss -join &#x27;, &#x27;
+            Owner     = if ($a.labels) { $a.labels.owner } else { &#x27;&#x27; }
+            Resource  = $a.name
+        })
+    }
+}
+
+$report | Sort-Object Project, Service, AssetType, Name | Export-Csv -Path $OutputFile -NoTypeInformation -Encoding UTF8
+$report | Group-Object Service, AssetType | Sort-Object Count -Descending | Select-Object @{n=&#x27;Service, type&#x27;;e={$_.Name}}, Count |
+    Format-Table -AutoSize | Out-Host
+Write-Host &quot;Resources missing labels: $($report.Count). Report: $OutputFile&quot; -ForegroundColor Green
+</code></pre>
+
+    <nav class="pager" aria-label="More scripts">
+      <a class="prev" href="get-gcpiamreport.html"><span>Previous script</span>Get-GcpIamReport</a>
+      <a class="next" href="get-gcpfirewallreport.html"><span>Next script</span>Get-GcpFirewallReport</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

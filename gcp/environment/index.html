@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Example environment | GCP | Notes | Ravindran Mani</title>
+<meta name="description" content="Example names used throughout the Azure examples.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../gcp/index.html" aria-current="page">GCP</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<section class="topic-head"><div class="wrap"><p class="crumbs"><a href="../../index.html">Notes</a> / <a href="../index.html">GCP</a> / Example environment</p><h1>Example environment</h1><p class="lead">Example names used consistently throughout the Google Cloud examples.</p></div></section>
+<section aria-labelledby="env-h" class="block">
+<div class="wrap two-col">
+<div class="col-head">
+<h2 id="env-h">Example environment</h2>
+<p class="muted">Every example uses these names. Swap in your own.</p>
+</div>
+<div class="table-wrap">
+<table class="env">
+<tr><th scope="row">Organization</th><td><code>ravindran.in</code> (ID <code>123456789012</code>)</td></tr>
+<tr><th scope="row">Folders</th><td><code>fldr-common</code>, <code>fldr-prod</code>, <code>fldr-nonprod</code>, <code>fldr-sandbox</code></td></tr>
+<tr><th scope="row">Test project</th><td><code>prj-notes-test</code></td></tr>
+<tr><th scope="row">Other projects (examples)</th><td><code>prj-logging</code>, <code>prj-security</code>, <code>prj-network-hub</code>, <code>prj-billing-export</code>, <code>prj-monitoring</code>, <code>prj-notes-backup</code></td></tr>
+<tr><th scope="row">gcloud configuration</th><td><code>notes-test</code></td></tr>
+<tr><th scope="row">Region and zone</th><td><code>us-east1</code>, <code>us-east1-b</code></td></tr>
+<tr><th scope="row">VPC network</th><td><code>vpc-notes-test</code>, subnet <code>10.30.1.0/24</code></td></tr>
+<tr><th scope="row">Service accounts</th><td><code>sa-web@prj-notes-test.iam.gserviceaccount.com</code>, <code>sa-app@&hellip;</code>, <code>sa-reports@&hellip;</code></td></tr>
+<tr><th scope="row">VM instance</th><td><code>vm-notes-test-01</code></td></tr>
+<tr><th scope="row">Cloud Router and NAT</th><td><code>rtr-notes-test-us-east1</code>, <code>nat-notes-test-us-east1</code></td></tr>
+<tr><th scope="row">Cloud Storage bucket</th><td><code>prj-notes-test-logs</code></td></tr>
+<tr><th scope="row">Cloud Armor policy</th><td><code>sp-web-notes-test</code></td></tr>
+<tr><th scope="row">Snapshot schedule</th><td><code>sched-daily-14d</code></td></tr>
+<tr><th scope="row">Billing account</th><td><code>012345-6789AB-CDEF01</code></td></tr>
+<tr><th scope="row">Labels</th><td><code>owner</code>, <code>costcenter</code>, <code>environment</code>, <code>application</code>, <code>dataclassification</code> (lowercase)</td></tr>
+<tr><th scope="row">Domain (Cloud DNS zone)</th><td><code>gcp.ravindran.in</code>, app at <code>app.gcp.ravindran.in</code></td></tr>
+</table>
+</div>
+</div>
+</section>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

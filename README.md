@@ -9,6 +9,7 @@ The site is plain HTML and CSS. There is no build step: what's in this repositor
 | SharePoint | Live: 14 guides, 18 scripts (2005–2024) |
 | Azure | Live: 10 guides, 8 scripts |
 | AWS | Live: 10 guides, 8 scripts |
+| Google Cloud (GCP) | Live: 10 guides, 8 scripts |
 | FinOps | In progress (not linked yet) |
 
 ## Folder structure
@@ -33,6 +34,7 @@ notes.ravindran.in/
 │   └── scripts/            One page per script, with the .ps1 next to it
 ├── azure/                  Landing page, guides/, scripts/ and environment/ (same layout as sharepoint/)
 ├── aws/                    Landing page, guides/, scripts/ and environment/ (same layout as azure/)
+├── gcp/                    Landing page, guides/, scripts/ and environment/ (same layout as azure/)
 ├── finops/                 Starter page + empty guides/ and scripts/
 ├── _tools/                 build-sitemap.py (not published)
 └── _templates/             Page templates to copy (not published: GitHub
@@ -100,6 +102,9 @@ Each topic uses fixed example names so readers always know what to replace.
 | AWS | `111122223333` (alias `notes-test`), profile `notes-test`, `us-east-1` | Test account, PowerShell/CLI profile, region |
 | AWS | `vpc-notes-test`, `sg-web`, `ec2-notes-test-01`, `bv-notes-test` | VPC, security group, EC2 instance, backup vault |
 | AWS | `aws.ravindran.in` | Route 53 hosted zone in examples; also the hands-on examples site |
+| GCP | `ravindran.in` org (`123456789012`), `prj-notes-test`, `us-east1` / `us-east1-b` | Organization, test project, region and zone |
+| GCP | `vpc-notes-test`, `vm-notes-test-01`, `sa-app@prj-notes-test.iam.gserviceaccount.com` | VPC, VM, service account |
+| GCP | `gcp.ravindran.in` | Cloud DNS zone in examples |
 
 ## License
 

@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VPC firewall rules and policies | GCP | Notes | Ravindran Mani</title>
+<meta name="description" content="How firewall rules decide, the default network, targeting by service account, firewall policies, risky rules, and checking what&#x27;s allowed.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../gcp/index.html" aria-current="page">GCP</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 4 of 10</p>
+    <ol>
+      <li><a href="#how-vpc-firewall-rules-decide">How VPC firewall rules decide</a></li>
+      <li><a href="#the-default-network">The default network</a></li>
+      <li><a href="#target-with-service-accounts-or-tags">Target with service accounts or tags</a></li>
+      <li><a href="#firewall-policies">Firewall policies</a></li>
+      <li><a href="#rules-that-cause-trouble">Rules that cause trouble</a></li>
+      <li><a href="#a-naming-and-priority-convention">A naming and priority convention</a></li>
+      <li><a href="#check-what-is-actually-allowed">Check what is actually allowed</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">GCP</a> / Guide 4</p>
+    <h1>VPC firewall rules and policies</h1>
+    <p class="lead">How firewall rules decide, the default network, targeting by service account, firewall policies, risky rules, and checking what&#x27;s allowed.</p>
+
+<p>Google Cloud filters traffic to and from VMs with <strong>Cloud Next Generation Firewall (Cloud NGFW)</strong>: classic <strong>VPC firewall rules</strong> on each network, and <strong>firewall policies</strong> that can apply across a whole organisation, folder or set of networks. Most exposure problems come from the <code>default</code> network's rules or one rule that allows SSH or RDP from <code>0.0.0.0/0</code> to every VM.</p>
+<h2 id="how-vpc-firewall-rules-decide">How VPC firewall rules decide</h2>
+<ul>
+<li><strong>Rules belong to a VPC network,</strong> not a subnet or a VM, and apply to the VMs they target (below). There's no separate per-subnet firewall.</li>
+<li><strong>Priority decides.</strong> 0 is the highest and 65535 the lowest; new rules default to 1000. The highest-priority matching rule wins. At equal priority, deny beats allow.</li>
+<li><strong>Rules are stateful.</strong> Replies to allowed connections are allowed automatically.</li>
+<li><strong>Every network has two implied rules</strong> at priority 65535 that you can't see or delete: <em>deny all ingress</em> and <em>allow all egress</em>. Override them with your own rules at a lower number.</li>
+<li><strong>Some traffic is always allowed:</strong> to and from the metadata server (<code>169.254.169.254</code>), and a few platform flows. You can't block them.</li>
+<li><strong>Rules can be disabled</strong> without deleting them, which is useful while troubleshooting and dangerous when forgotten.</li>
+</ul>
+<h2 id="the-default-network">The default network</h2>
+<p>Unless an organisation policy prevents it (<code>compute.skipDefaultNetworkCreation</code>), every new project gets a network called <code>default</code>, with a subnet in every region and four permissive rules:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Rule</th><th>Allows</th><th>From</th></tr>
+</thead>
+<tbody>
+<tr><td><code>default-allow-internal</code></td><td>All TCP, UDP and ICMP</td><td><code>10.128.0.0/9</code> (the network itself)</td></tr>
+<tr><td><code>default-allow-ssh</code></td><td>TCP 22</td><td><code>0.0.0.0/0</code></td></tr>
+<tr><td><code>default-allow-rdp</code></td><td>TCP 3389</td><td><code>0.0.0.0/0</code></td></tr>
+<tr><td><code>default-allow-icmp</code></td><td>ICMP</td><td><code>0.0.0.0/0</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Any VM with a public IP in that network has SSH and RDP open to the internet from the moment it starts. Delete the <code>default</code> network in every project (or at least those three internet rules), use custom-mode VPCs you design yourself, and set the organisation policy so new projects don't get one.</p>
+<h2 id="target-with-service-accounts-or-tags">Target with service accounts or tags</h2>
+<p>A rule applies to the VMs it targets. Three ways to target, best last:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Target</th><th>How it works</th><th>Watch out for</th></tr>
+</thead>
+<tbody>
+<tr><td>All instances</td><td>Every VM in the network</td><td>An "allow from internet" rule with no target opens every VM</td></tr>
+<tr><td><strong>Network tags</strong></td><td>Plain strings on the VM, such as <code>web</code></td><td>Anyone who can edit the VM can add the tag and get the access</td></tr>
+<tr><td><strong>Service accounts</strong></td><td>The VM's attached service account</td><td>Changing it requires stopping the VM and permission to use the account: much harder to abuse</td></tr>
+<tr><td><strong>Secure tags</strong> (firewall policies only)</td><td>IAM-controlled Resource Manager tags bound to VMs</td><td>Only people granted <code>tagUser</code> can attach them</td></tr>
+</tbody>
+</table>
+</div>
+<p>Service accounts and secure tags are the Google Cloud equivalent of Azure's application security groups and AWS's security-group references: rules say "the web tier can reach the app tier on 8080", and scaling the tier needs no rule changes.</p>
+<pre><code class="language-powershell"># Web tier reachable on 443 from the load balancer and health checks only
+gcloud compute firewall-rules create allow-lb-to-web-443 --network=vpc-notes-test --direction=INGRESS `
+    --action=ALLOW --rules=tcp:443 --priority=1000 `
+    --source-ranges=35.191.0.0/16,130.211.0.0/22 `
+    --target-service-accounts=sa-web@prj-notes-test.iam.gserviceaccount.com `
+    --description=&quot;Google front ends and health checks to the web tier (CHG-1042)&quot;
+
+# App tier reachable on 8080 from the web tier only
+gcloud compute firewall-rules create allow-web-to-app-8080 --network=vpc-notes-test --direction=INGRESS `
+    --action=ALLOW --rules=tcp:8080 `
+    --source-service-accounts=sa-web@prj-notes-test.iam.gserviceaccount.com `
+    --target-service-accounts=sa-app@prj-notes-test.iam.gserviceaccount.com
+
+# Turn on logging for a rule (needed for Firewall Insights and troubleshooting)
+gcloud compute firewall-rules update allow-web-to-app-8080 --enable-logging
+</code></pre>
+<p><code>35.191.0.0/16</code> and <code>130.211.0.0/22</code> are Google's load balancer and health check ranges: allow them to the backends of any Google Cloud load balancer, or health checks fail.</p>
+<h2 id="firewall-policies">Firewall policies</h2>
+<p>VPC firewall rules are managed network by network. <strong>Firewall policies</strong> group rules and apply them more widely:</p>
+<ul>
+<li><strong>Hierarchical firewall policies,</strong> attached to the organisation or a folder, apply to every network below. Use them for rules that must hold everywhere: block known-bad ranges, always allow the IAP and health-check ranges, deny RDP and SSH from the internet. A rule can <code>goto_next</code> to let the level below decide.</li>
+<li><strong>Global and regional network firewall policies</strong> attach to one or more VPC networks and support secure tags, FQDN and geolocation objects, and threat intelligence lists (with the Standard tier).</li>
+</ul>
+<p>The default evaluation order for a VM is: hierarchical policies (organisation, then folders), then VPC firewall rules, then global and regional network firewall policies, then the implied rules. A network can be switched to evaluate network firewall policies <em>before</em> VPC firewall rules, which is the usual choice when migrating.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Cloud NGFW tier</th><th>Adds</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Essentials</strong> (no extra charge)</td><td>Rules on IP ranges, ports and protocols; VPC firewall rules; firewall policies with secure tags</td></tr>
+<tr><td><strong>Standard</strong></td><td>FQDN objects, geolocation, Google threat intelligence lists</td></tr>
+<tr><td><strong>Enterprise</strong></td><td>Intrusion prevention (IPS), TLS inspection, URL filtering</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="rules-that-cause-trouble">Rules that cause trouble</h2>
+<p><a href="../scripts/get-gcpfirewallreport.html"><code>Get-GcpFirewallReport.ps1</code></a> looks for these across every project:</p>
+<ul>
+<li><strong>SSH (22) or RDP (3389) open to <code>0.0.0.0/0</code>,</strong> starting with the <code>default</code> network's rules. Use IAP TCP forwarding instead: allow 22 and 3389 from <code>35.235.240.0/20</code> only (<a href="network-perimeter.html#admin-access-without-open-ports">Guide 5</a>).</li>
+<li><strong>Database and remote-management ports open to the internet:</strong> 1433, 3306, 5432, 6379, 27017, 5985/5986 and similar.</li>
+<li><strong>Allow all protocols from anywhere.</strong> Usually added while troubleshooting.</li>
+<li><strong>Internet rules with no target,</strong> which apply to every VM in the network, including ones created next year.</li>
+<li><strong>Wide port ranges</strong> such as <code>0-65535</code> or <code>3000-4000</code>, which quietly include 3389.</li>
+<li><strong>Disabled rules</strong> kept "just in case", and rules that no traffic has matched for months (Firewall Insights shows both).</li>
+</ul>
+<p>Security Command Center's Security Health Analytics reports the same problems continuously (for example <code>OPEN_SSH_PORT</code>, <code>OPEN_RDP_PORT</code> and <code>OPEN_FIREWALL</code>).</p>
+<h2 id="a-naming-and-priority-convention">A naming and priority convention</h2>
+<ul>
+<li><strong>Name rules <code>action-source-to-target-port</code>,</strong> for example <code>allow-web-to-app-8080</code>, and put the reason or ticket in <code>--description</code>.</li>
+<li><strong>Use priority bands:</strong> 100&ndash;999 for explicit denies that must win, 1000&ndash;2999 for application allows, 3000&ndash;3999 for shared services (IAP, health checks, monitoring), and a deny-all ingress at 65000 so the intent is visible rather than implied.</li>
+<li><strong>Deny egress to the internet for sensitive tiers</strong> with a low-priority egress deny, and allow only what they need (Private Google Access for Google APIs).</li>
+<li><strong>Manage rules in Terraform,</strong> so a rule added by hand stands out in the next plan.</li>
+</ul>
+<h2 id="check-what-is-actually-allowed">Check what is actually allowed</h2>
+<ul>
+<li><strong>Connectivity Tests</strong> (Network Intelligence Center) trace a packet between two endpoints through firewall rules and policies, routes and load balancers, and name what blocks it.</li>
+<li><strong>Firewall Insights</strong> shows shadowed rules (never reached because a higher one matches first), overly permissive rules and rules with no hits.</li>
+<li><strong>Firewall rules logging</strong> records each connection a rule allows or denies. Turn it on for internet-facing and deny rules.</li>
+<li><strong>VPC Flow Logs</strong> sample traffic for a subnet (or a whole network), for troubleshooting and security investigations.</li>
+</ul>
+<pre><code class="language-powershell"># Effective firewall rules and policies for one VM's network interface
+gcloud compute instances network-interfaces get-effective-firewalls vm-notes-test-01 --zone=us-east1-b
+
+# Would the internet reach this VM on 3389?
+gcloud network-management connectivity-tests create rdp-from-internet `
+    --source-ip-address=203.0.113.10 --destination-instance=projects/prj-notes-test/zones/us-east1-b/instances/vm-notes-test-01 `
+    --destination-port=3389 --protocol=TCP
+gcloud network-management connectivity-tests describe rdp-from-internet --format=&quot;value(reachabilityDetails.result)&quot;
+</code></pre>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="labels-and-governance.html"><span>Previous guide</span>Labels and governance</a>
+      <a class="next" href="network-perimeter.html"><span>Next guide</span>NAT, Cloud Armor and admin access</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

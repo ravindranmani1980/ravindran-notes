@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security baseline: identity, detection and encryption | GCP | Notes | Ravindran Mani</title>
+<meta name="description" content="2-step verification, service accounts without keys, Security Command Center, audit logs, Cloud KMS and Secret Manager.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../gcp/index.html" aria-current="page">GCP</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 6 of 10</p>
+    <ol>
+      <li><a href="#identity-comes-first">Identity comes first</a></li>
+      <li><a href="#service-accounts-without-keys">Service accounts without keys</a></li>
+      <li><a href="#security-command-center">Security Command Center</a></li>
+      <li><a href="#audit-logs">Audit logs</a></li>
+      <li><a href="#encryption-and-secrets">Encryption and secrets</a></li>
+      <li><a href="#harden-the-vms">Harden the VMs</a></li>
+      <li><a href="#a-security-baseline-checklist">A security baseline checklist</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">GCP</a> / Guide 6</p>
+    <h1>Security baseline: identity, detection and encryption</h1>
+    <p class="lead">2-step verification, service accounts without keys, Security Command Center, audit logs, Cloud KMS and Secret Manager.</p>
+
+<p>Network controls limit where an attacker can go. Most Google Cloud incidents, though, start with an identity: a leaked service account key, a phished administrator, a personal Gmail account that still has Owner on a project. This guide covers the baseline that sits alongside the network: identity, Security Command Center, audit logs, encryption with Cloud KMS, Secret Manager and the logs you'll need on the day something happens.</p>
+<h2 id="identity-comes-first">Identity comes first</h2>
+<ul>
+<li><strong>2-step verification is required.</strong> Google is enforcing 2SV for Google Cloud console and Firebase console access in phases: personal Google accounts first (from May 2025), then Cloud Identity accounts that don't use single sign-on. Federated users satisfy it through their own identity provider's MFA. Don't wait for the deadline: enforce it in the Admin console now, with security keys or passkeys for administrators.</li>
+<li><strong>Sign in through your identity provider.</strong> Federate Cloud Identity or Workspace with Microsoft Entra ID, Okta or similar, so joiners, leavers and MFA are handled in one place. <strong>Workforce Identity Federation</strong> gives console and gcloud access to users from an external identity provider without syncing them into Cloud Identity at all.</li>
+<li><strong>Keep outsiders out.</strong> The <code>iam.allowedPolicyMemberDomains</code> organisation policy stops roles being granted to personal Gmail accounts and other domains.</li>
+<li><strong>No standing admin access.</strong> Privileged Access Manager for Owner and admin roles; two protected super admins (<a href="resource-hierarchy-and-access.html#protect-the-super-admins">Guide 2</a>).</li>
+<li><strong>Review access quarterly.</strong> <a href="../scripts/get-gcpiamreport.html"><code>Get-GcpIamReport.ps1</code></a> lists public grants, basic roles, grants to outside domains, powerful default service accounts and user-managed keys across projects.</li>
+</ul>
+<h2 id="service-accounts-without-keys">Service accounts without keys</h2>
+<p>A downloaded service account key is a password that never expires on its own, works from anywhere, and ends up in repositories and laptops. New organisations block key creation by default; for older ones, set <code>iam.managed.disableServiceAccountKeyCreation</code> and remove the keys you have:</p>
+<ul>
+<li><strong>Workloads on Google Cloud:</strong> attach a dedicated service account (never the Compute Engine default one).</li>
+<li><strong>GKE:</strong> Workload Identity Federation for GKE maps Kubernetes service accounts to IAM.</li>
+<li><strong>Outside Google Cloud:</strong> Workload Identity Federation with the platform's own tokens (GitHub Actions, Azure DevOps, AWS, Azure, or any OIDC or SAML identity provider on-premises).</li>
+<li><strong>People:</strong> impersonation, with <code>--impersonate-service-account</code>.</li>
+</ul>
+<pre><code class="language-powershell"># User-managed keys on every service account in a project, oldest first
+$sas = gcloud iam service-accounts list --project=prj-notes-test --format=json | ConvertFrom-Json
+foreach ($sa in $sas) {
+    gcloud iam service-accounts keys list --iam-account=$($sa.email) --managed-by=user --format=json |
+        ConvertFrom-Json | Select-Object @{n='Account';e={$sa.email}}, @{n='Key';e={($_.name -split '/')[-1]}}, validAfterTime
+}
+</code></pre>
+<h2 id="security-command-center">Security Command Center</h2>
+<p><strong>Security Command Center (SCC)</strong> is Google Cloud's built-in security posture and threat detection service. Activate it at the organisation level so every project is covered.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Tier</th><th>Cost</th><th>What you get</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Standard</strong></td><td>No extra charge</td><td>Basic posture findings (Security Health Analytics for common misconfigurations such as public buckets, open firewall ports and keys), for Google Cloud</td></tr>
+<tr><td><strong>Premium</strong></td><td>Pay as you go or subscription</td><td>Standard plus all Security Health Analytics detectors, Event Threat Detection (from logs), Container and VM Threat Detection, attack path simulation, compliance reports (CIS, PCI DSS, NIST and more)</td></tr>
+<tr><td>Enterprise</td><td>Deprecated</td><td>The multi-cloud tier is being retired (shutting down 21 May 2027) and migrated to Premium</td></tr>
+</tbody>
+</table>
+</div>
+<p>A sensible start: Standard everywhere today; Premium for the organisation once the Standard findings are under control, or straight away if you hold regulated data. Route high and critical findings to people with <strong>notification configs</strong> (Pub/Sub to chat or ticketing), and mute findings that don't apply with a documented mute rule rather than ignoring them.</p>
+<pre><code class="language-powershell"># Active high and critical findings across the organisation, grouped by category
+gcloud scc findings list organizations/123456789012 --location=global `
+    --filter=&quot;state=\&quot;ACTIVE\&quot; AND (severity=\&quot;HIGH\&quot; OR severity=\&quot;CRITICAL\&quot;) AND mute!=\&quot;MUTED\&quot;&quot; --format=json |
+    ConvertFrom-Json | Group-Object { $_.finding.category } | Sort-Object Count -Descending | Select-Object Count, Name
+</code></pre>
+<h2 id="audit-logs">Audit logs</h2>
+<p>Cloud Audit Logs record who did what, where and when:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Log</th><th>Records</th><th>Default</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Admin Activity</strong></td><td>Configuration changes: creating a VM, changing IAM</td><td>Always on, free, kept 400 days</td></tr>
+<tr><td><strong>System Event</strong></td><td>Google's own actions on your resources (live migration)</td><td>Always on, free, kept 400 days</td></tr>
+<tr><td><strong>Data Access</strong></td><td>Reads of configuration and data: who read a secret or an object</td><td><strong>Off</strong> (except BigQuery); charged when on</td></tr>
+<tr><td><strong>Policy Denied</strong></td><td>Calls blocked by VPC Service Controls or organisation policies</td><td>On, can be excluded</td></tr>
+</tbody>
+</table>
+</div>
+<ul>
+<li><strong>Turn on Data Access logs where it matters:</strong> Secret Manager, Cloud KMS, IAM, and Cloud Storage buckets holding sensitive data. Not everywhere: they're billed by volume.</li>
+<li><strong>Keep a copy centrally:</strong> an <strong>aggregated log sink</strong> at the organisation sends audit logs from every project to a locked log bucket (with a retention lock) or to BigQuery in the logging project.</li>
+</ul>
+<pre><code class="language-powershell"># Organisation-wide sink of all audit logs to a central log bucket
+gcloud logging sinks create sink-org-audit `
+    logging.googleapis.com/projects/prj-logging/locations/us/buckets/org-audit `
+    --organization=123456789012 --include-children `
+    --log-filter='logName:&quot;cloudaudit.googleapis.com&quot;'
+</code></pre>
+<h2 id="encryption-and-secrets">Encryption and secrets</h2>
+<p>Everything in Google Cloud is encrypted at rest by default with Google-managed keys. For data where you need control over who can decrypt, or proof that you can revoke access, use <strong>customer-managed encryption keys (CMEK)</strong> in <strong>Cloud KMS</strong>:</p>
+<ul>
+<li><strong>Keep keys in a separate project</strong> (<code>prj-security</code>), so project Owners of the workload can't manage their own keys.</li>
+<li><strong>Set a rotation period</strong> (90 days to a year); old key versions still decrypt old data.</li>
+<li><strong>Grant <code>roles/cloudkms.cryptoKeyEncrypterDecrypter</code></strong> to the service agent of the service that uses the key, on that key only.</li>
+<li><strong>Key destruction is delayed</strong> (30 days by default) and permanent after that. Alert on <code>DestroyCryptoKeyVersion</code>.</li>
+</ul>
+<p>Secrets (database passwords, API keys) belong in <strong>Secret Manager</strong>, not in metadata, environment variables baked into images, or code. Grant <code>roles/secretmanager.secretAccessor</code> on each secret to the service account that needs it, set up rotation with Pub/Sub notifications, and turn on Data Access logs for Secret Manager so every read is recorded.</p>
+<h2 id="harden-the-vms">Harden the VMs</h2>
+<ul>
+<li><strong>Shielded VM</strong> (secure boot, vTPM, integrity monitoring) on every VM: enforce with <code>compute.requireShieldedVm</code>.</li>
+<li><strong>OS Login and IAP,</strong> not SSH keys in metadata and open ports (<a href="network-perimeter.html#admin-access-without-open-ports">Guide 5</a>).</li>
+<li><strong>No external IPs</strong> except where you've decided otherwise; Cloud NAT for outbound.</li>
+<li><strong>Patch with VM Manager</strong> and scan with SCC's VM vulnerability findings (<a href="compute-engine.html">Guide 7</a>).</li>
+<li><strong>Confidential VMs</strong> for workloads that need memory encrypted in use.</li>
+</ul>
+<h2 id="a-security-baseline-checklist">A security baseline checklist</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Area</th><th>Baseline</th><th>How to check</th></tr>
+</thead>
+<tbody>
+<tr><td>Identity</td><td>2SV for everyone; federated sign-in; no basic roles for people; outside domains blocked</td><td><a href="../scripts/get-gcpiamreport.html"><code>Get-GcpIamReport</code></a></td></tr>
+<tr><td>Service accounts</td><td>No user-managed keys; no default service accounts with Editor</td><td><a href="../scripts/get-gcpiamreport.html"><code>Get-GcpIamReport</code></a></td></tr>
+<tr><td>Management ports</td><td>No SSH or RDP from the internet; IAP and OS Login instead</td><td><a href="../scripts/get-gcpfirewallreport.html"><code>Get-GcpFirewallReport</code></a></td></tr>
+<tr><td>Data exposure</td><td>Public access prevention enforced; no public Cloud SQL IPs; VPC Service Controls for sensitive data</td><td><a href="../scripts/get-gcpbucketpublicaccessreport.html"><code>Get-GcpBucketPublicAccessReport</code></a></td></tr>
+<tr><td>Organisation policies</td><td>Secure-by-default set plus locations, external IPs, OS Login, Shielded VM</td><td><code>gcloud org-policies list</code></td></tr>
+<tr><td>Detection</td><td>Security Command Center on at organisation level; findings routed to people</td><td>SCC console</td></tr>
+<tr><td>Logging</td><td>Organisation audit log sink to a locked bucket; Data Access logs for secrets and keys</td><td><code>gcloud logging sinks list --organization</code></td></tr>
+<tr><td>Backup</td><td>Backup vaults with enforced retention for production</td><td><a href="backup-and-recovery.html">Guide 8</a>; <a href="../scripts/get-gcpbackupcoverage.html"><code>Get-GcpBackupCoverage</code></a></td></tr>
+</tbody>
+</table>
+</div>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="network-perimeter.html"><span>Previous guide</span>NAT, Cloud Armor and admin access</a>
+      <a class="next" href="compute-engine.html"><span>Next guide</span>Compute Engine VMs</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

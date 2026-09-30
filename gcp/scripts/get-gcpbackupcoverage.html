@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get-GcpBackupCoverage | Notes | Ravindran Mani</title>
+<meta name="description" content="Shows which Compute Engine VMs and Cloud SQL instances are protected by backups, and which aren&#x27;t.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../gcp/index.html" aria-current="page">GCP</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap">
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">GCP</a> / <a href="../../scripts/index.html">Scripts</a> / Operations</p>
+    <h1 class="script-title">Get-GcpBackupCoverage</h1>
+    <p class="lead">Shows which Compute Engine VMs and Cloud SQL instances are protected by backups, and which aren&#x27;t.</p>
+    <dl class="facts">
+      <div><dt>Runs in</dt><dd>PowerShell with the Google Cloud CLI (gcloud)</dd></div>
+      <div><dt>Safety</dt><dd><span class="flag flag-read">Read-only</span></dd></div>
+    </dl>
+    <p class="actions"><a class="btn btn-primary" href="Get-GcpBackupCoverage.ps1" download>Download Get-GcpBackupCoverage.ps1</a></p>
+
+    <h2 id="what-it-does">What it does</h2>
+    <p>For each project, reports every VM and Cloud SQL instance with its protection:</p>
+<ul><li>VMs: Backup and DR (a backup plan association), Snapshot schedule (every disk has a snapshot schedule), Partial (some disks only), or Not protected</li><li>Cloud SQL: Backup and DR, Backups + PITR (automated backups and point-in-time recovery), Backups only, or Not protected</li></ul>
+<p>For Backup and DR, the time of the last successful backup is shown, and resources whose last backup is older than -StaleDays are marked Stale.</p>
+<p>Read-only: it doesn&#x27;t change anything.</p>
+
+    <h2 id="parameters">Parameters</h2>
+    <div class="table-wrap">
+      <table class="params">
+          <tr><th scope="row"><code>-ProjectId</code><span class="ptype">string[]</span></th><td>Projects to check. Default: every active project you can see.</td></tr>
+          <tr><th scope="row"><code>-ResourceType</code><span class="ptype">string[]</span></th><td>Which resource types to check: VM, CloudSQL. Default: both.</td></tr>
+          <tr><th scope="row"><code>-StaleDays</code><span class="ptype">int</span></th><td>A Backup and DR resource whose last successful backup is older than this is Stale. Default 2.</td></tr>
+          <tr><th scope="row"><code>-UnprotectedOnly</code><span class="ptype">switch</span></th><td>Only list resources that are Not protected, Partial or Stale.</td></tr>
+          <tr><th scope="row"><code>-OutputFile</code><span class="ptype">string</span></th><td>CSV output path.<span class="pdefault">Default: <code>Timestamped file in the current folder</code></span></td></tr>
+      </table>
+    </div>
+
+    <h2 id="examples">Examples</h2>
+    <pre><code class="language-powershell">.\Get-GcpBackupCoverage.ps1</code></pre>
+    <pre><code class="language-powershell">.\Get-GcpBackupCoverage.ps1 -ProjectId prj-notes-test -ResourceType VM -UnprotectedOnly</code></pre>
+
+    <h2 id="notes">Notes</h2>
+    <p>Requires the Google Cloud CLI (gcloud) and viewer access to Compute Engine, Cloud SQL and Backup and DR (roles/backupdr.viewer) in the projects. If the Backup and DR API isn&#x27;t enabled in a project, only snapshot schedules and Cloud SQL backups are counted there. Snapshots taken by other tools aren&#x27;t counted, so check those before acting on the report.</p>
+
+    <h2 id="source">Full script</h2>
+    <!-- Keep this in sync with Get-GcpBackupCoverage.ps1 in this folder. -->
+    <pre><code class="language-powershell">&lt;#
+.SYNOPSIS
+    Shows which Compute Engine VMs and Cloud SQL instances are protected by backups, and which aren&#x27;t.
+
+.DESCRIPTION
+    For each project, reports every VM and Cloud SQL instance with its protection:
+    - VMs: Backup and DR (a backup plan association), Snapshot schedule (every disk has a
+      snapshot schedule), Partial (some disks only), or Not protected
+    - Cloud SQL: Backup and DR, Backups + PITR (automated backups and point-in-time
+      recovery), Backups only, or Not protected
+    For Backup and DR, the time of the last successful backup is shown, and resources whose
+    last backup is older than -StaleDays are marked Stale.
+
+    Read-only: it doesn&#x27;t change anything.
+
+.PARAMETER ProjectId
+    Projects to check. Default: every active project you can see.
+
+.PARAMETER ResourceType
+    Which resource types to check: VM, CloudSQL. Default: both.
+
+.PARAMETER StaleDays
+    A Backup and DR resource whose last successful backup is older than this is Stale. Default 2.
+
+.PARAMETER UnprotectedOnly
+    Only list resources that are Not protected, Partial or Stale.
+
+.PARAMETER OutputFile
+    CSV output path.
+
+.EXAMPLE
+    .\Get-GcpBackupCoverage.ps1
+
+.EXAMPLE
+    .\Get-GcpBackupCoverage.ps1 -ProjectId prj-notes-test -ResourceType VM -UnprotectedOnly
+
+.NOTES
+    Requires the Google Cloud CLI (gcloud) and viewer access to Compute Engine, Cloud SQL and
+    Backup and DR (roles/backupdr.viewer) in the projects. If the Backup and DR API isn&#x27;t
+    enabled in a project, only snapshot schedules and Cloud SQL backups are counted there.
+    Snapshots taken by other tools aren&#x27;t counted, so check those before acting on the report.
+#&gt;
+[CmdletBinding()]
+param(
+    [string[]]$ProjectId,
+    [ValidateSet(&#x27;VM&#x27;, &#x27;CloudSQL&#x27;)][string[]]$ResourceType = @(&#x27;VM&#x27;, &#x27;CloudSQL&#x27;),
+    [ValidateRange(1, 365)][int]$StaleDays = 2,
+    [switch]$UnprotectedOnly,
+    [string]$OutputFile = (Join-Path -Path (Get-Location) -ChildPath (&#x27;GcpBackupCoverage_{0:yyyyMMdd_HHmm}.csv&#x27; -f (Get-Date)))
+)
+
+if (-not (Get-Command gcloud -ErrorAction SilentlyContinue)) { throw &#x27;gcloud not found. Install the Google Cloud CLI and run gcloud auth login.&#x27; }
+
+function Invoke-Gcloud {
+    # Runs gcloud with JSON output and returns the result as objects. Throws on a gcloud error.
+    param([Parameter(Mandatory)][string[]]$Arguments)
+    $output = &amp; gcloud @Arguments --format=json --quiet 2&gt;&amp;1
+    $code = $LASTEXITCODE
+    $text = (@($output | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] }) -join &quot;`n&quot;).Trim()
+    if ($code -ne 0) {
+        $message = (@($output | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] } | ForEach-Object { $_.ToString() }) -join &#x27; &#x27;).Trim()
+        throw &quot;gcloud $($Arguments[0..1] -join &#x27; &#x27;) failed: $message&quot;
+    }
+    if ($text) { foreach ($item in ($text | ConvertFrom-Json)) { $item } }
+}
+
+function Get-TargetProject {
+    # The projects to report on: -ProjectId if given, otherwise every active project you can see
+    param([string[]]$ProjectId)
+    if ($ProjectId) { return $ProjectId }
+    @(Invoke-Gcloud @(&#x27;projects&#x27;, &#x27;list&#x27;, &#x27;--filter=lifecycleState:ACTIVE&#x27;) | ForEach-Object { $_.projectId })
+}
+
+function Get-Leaf {
+    # Last part of a resource URL, for example the zone name from a zone URL
+    param([string]$Url)
+    if ($Url) { ($Url -split &#x27;/&#x27;)[-1] } else { &#x27;&#x27; }
+}
+
+# Latest successful backup time from a backup plan association, or $null
+function Get-LastBackup {
+    param($Association)
+    $times = @($Association.rulesConfigInfo) | Where-Object { $_ -and $_.lastSuccessfulBackupConsistencyTime } |
+        ForEach-Object { [datetime]::Parse($_.lastSuccessfulBackupConsistencyTime, [cultureinfo]::InvariantCulture) }
+    $times | Sort-Object -Descending | Select-Object -First 1
+}
+
+$report = New-Object System.Collections.Generic.List[object]
+$staleCutoff = (Get-Date).AddDays(-$StaleDays)
+
+foreach ($p in Get-TargetProject $ProjectId) {
+    Write-Host &quot;Project $p...&quot; -ForegroundColor Cyan
+
+    $associations = @()
+    try {
+        $associations = @(Invoke-Gcloud @(&#x27;backup-dr&#x27;, &#x27;backup-plan-associations&#x27;, &#x27;list&#x27;, &quot;--project=$p&quot;)) | Where-Object { $_ }
+    } catch {
+        Write-Warning &quot;Backup and DR not readable in $p (API not enabled or no access); counting snapshot schedules and Cloud SQL backups only.&quot;
+    }
+    function Find-Association {
+        param([string]$Pattern)
+        $associations | Where-Object { [string]$_.resource -match $Pattern } | Select-Object -First 1
+    }
+
+    if ($ResourceType -contains &#x27;VM&#x27;) {
+        try {
+            $vms = @(Invoke-Gcloud @(&#x27;compute&#x27;, &#x27;instances&#x27;, &#x27;list&#x27;, &quot;--project=$p&quot;))
+            $disks = @(Invoke-Gcloud @(&#x27;compute&#x27;, &#x27;disks&#x27;, &#x27;list&#x27;, &quot;--project=$p&quot;))
+        } catch {
+            Write-Warning &quot;Skipping VMs in $p`: $($_.Exception.Message)&quot;
+            $vms = @()
+        }
+        $scheduled = @{}
+        foreach ($d in $disks) { if ($d -and $d.resourcePolicies) { $scheduled[([string]$d.selfLink).ToLower()] = $true } }
+
+        foreach ($vm in $vms | Where-Object { $_ }) {
+            $assoc = Find-Association &quot;/instances/($([regex]::Escape($vm.name))|$($vm.id))$&quot;
+            $vmDisks = @($vm.disks | Where-Object { $_ })
+            $covered = @($vmDisks | Where-Object { $scheduled[([string]$_.source).ToLower()] }).Count
+            $last = $null
+            if ($assoc) {
+                $last = Get-LastBackup $assoc
+                $status = if ($last -and $last -lt $staleCutoff) { &#x27;Stale&#x27; } else { &#x27;Backup and DR&#x27; }
+            } elseif ($vmDisks.Count -and $covered -eq $vmDisks.Count) {
+                $status = &#x27;Snapshot schedule&#x27;
+            } elseif ($covered) {
+                $status = &quot;Partial ($covered of $($vmDisks.Count) disks)&quot;
+            } else {
+                $status = &#x27;Not protected&#x27;
+            }
+            if ($UnprotectedOnly -and $status -in &#x27;Backup and DR&#x27;, &#x27;Snapshot schedule&#x27;) { continue }
+            $report.Add([pscustomobject]@{
+                Project = $p; Type = &#x27;VM&#x27;; Name = $vm.name; Location = Get-Leaf $vm.zone; Status = $status
+                LastBackup = $last; Detail = (&#x27;{0} disk(s), {1} with a snapshot schedule&#x27; -f $vmDisks.Count, $covered)
+                Owner = $vm.labels.owner
+            })
+        }
+    }
+
+    if ($ResourceType -contains &#x27;CloudSQL&#x27;) {
+        try {
+            $sqls = @(Invoke-Gcloud @(&#x27;sql&#x27;, &#x27;instances&#x27;, &#x27;list&#x27;, &quot;--project=$p&quot;))
+        } catch {
+            Write-Warning &quot;Skipping Cloud SQL in $p`: $($_.Exception.Message)&quot;
+            $sqls = @()
+        }
+        foreach ($db in $sqls | Where-Object { $_ -and $_.instanceType -ne &#x27;READ_REPLICA_INSTANCE&#x27; }) {
+            $cfg = $db.settings.backupConfiguration
+            $pitr = [bool]($cfg.pointInTimeRecoveryEnabled -or $cfg.binaryLogEnabled)
+            $assoc = Find-Association &quot;sqladmin.*/instances/$([regex]::Escape($db.name))$&quot;
+            $last = $null
+            if ($assoc) {
+                $last = Get-LastBackup $assoc
+                $status = if ($last -and $last -lt $staleCutoff) { &#x27;Stale&#x27; } else { &#x27;Backup and DR&#x27; }
+            } elseif ($cfg.enabled -and $pitr) { $status = &#x27;Backups + PITR&#x27; }
+            elseif ($cfg.enabled) { $status = &#x27;Backups only&#x27; }
+            else { $status = &#x27;Not protected&#x27; }
+            if ($UnprotectedOnly -and $status -in &#x27;Backup and DR&#x27;, &#x27;Backups + PITR&#x27;) { continue }
+            $retained = $cfg.backupRetentionSettings.retainedBackups
+            $report.Add([pscustomobject]@{
+                Project = $p; Type = &#x27;Cloud SQL&#x27;; Name = $db.name; Location = $db.region; Status = $status
+                LastBackup = $last; Detail = (&#x27;{0}, backups {1}, PITR {2}{3}&#x27; -f $db.databaseVersion, $(if ($cfg.enabled) { &#x27;on&#x27; } else { &#x27;off&#x27; }), $(if ($pitr) { &#x27;on&#x27; } else { &#x27;off&#x27; }), $(if ($retained) { &quot;, keeps $retained&quot; } else { &#x27;&#x27; }))
+                Owner = $db.settings.userLabels.owner
+            })
+        }
+    }
+}
+
+$order = @{ &#x27;Not protected&#x27; = 0; &#x27;Stale&#x27; = 1; &#x27;Backups only&#x27; = 2 }
+$report | Sort-Object @{e = { if ($order.ContainsKey($_.Status)) { $order[$_.Status] } elseif ($_.Status -like &#x27;Partial*&#x27;) { 1 } else { 3 } }}, Project, Type, Name |
+    Export-Csv -Path $OutputFile -NoTypeInformation -Encoding UTF8
+$report | Group-Object Type, Status | Select-Object @{n=&#x27;Type, status&#x27;;e={$_.Name}}, Count | Format-Table -AutoSize | Out-Host
+Write-Host &quot;Resources reported: $($report.Count). Report: $OutputFile&quot; -ForegroundColor Green
+</code></pre>
+
+    <nav class="pager" aria-label="More scripts">
+      <a class="prev" href="get-gcpbucketpublicaccessreport.html"><span>Previous script</span>Get-GcpBucketPublicAccessReport</a>
+      <a class="next" href="invoke-gcpvmpowerschedule.html"><span>Next script</span>Invoke-GcpVMPowerSchedule</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

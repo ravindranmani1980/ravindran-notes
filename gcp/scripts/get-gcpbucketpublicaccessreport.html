@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get-GcpBucketPublicAccessReport | Notes | Ravindran Mani</title>
+<meta name="description" content="Checks every Cloud Storage bucket for public access, and reports public access prevention, uniform access, versioning and soft delete.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../gcp/index.html" aria-current="page">GCP</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap">
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">GCP</a> / <a href="../../scripts/index.html">Scripts</a> / Network and data security</p>
+    <h1 class="script-title">Get-GcpBucketPublicAccessReport</h1>
+    <p class="lead">Checks every Cloud Storage bucket for public access, and reports public access prevention, uniform access, versioning and soft delete.</p>
+    <dl class="facts">
+      <div><dt>Runs in</dt><dd>PowerShell with the Google Cloud CLI (gcloud)</dd></div>
+      <div><dt>Safety</dt><dd><span class="flag flag-read">Read-only</span></dd></div>
+    </dl>
+    <p class="actions"><a class="btn btn-primary" href="Get-GcpBucketPublicAccessReport.ps1" download>Download Get-GcpBucketPublicAccessReport.ps1</a></p>
+
+    <h2 id="what-it-does">What it does</h2>
+    <p>For each project, reads the effective storage.publicAccessPrevention organisation policy, then for every bucket reports:</p>
+<ul><li>Whether its IAM policy grants any role to allUsers or allAuthenticatedUsers</li><li>Public access prevention (enforced on the bucket, by organisation policy, or not at all)</li><li>Uniform bucket-level access, object versioning, soft delete retention and location</li></ul>
+<p>Flags each bucket:</p>
+<ul><li>High: public grant in IAM and public access prevention not in force</li><li>Medium: public access prevention not in force (no public grant yet)</li><li>Low: a public grant that public access prevention is blocking (clean it up); uniform access off (object ACLs possible); no versioning and no soft delete</li></ul>
+<p>Read-only: it doesn&#x27;t change any settings.</p>
+
+    <h2 id="parameters">Parameters</h2>
+    <div class="table-wrap">
+      <table class="params">
+          <tr><th scope="row"><code>-ProjectId</code><span class="ptype">string[]</span></th><td>Projects to check. Default: every active project you can see.</td></tr>
+          <tr><th scope="row"><code>-ProblemsOnly</code><span class="ptype">switch</span></th><td>Only list buckets with at least one finding.</td></tr>
+          <tr><th scope="row"><code>-OutputFile</code><span class="ptype">string</span></th><td>CSV output path.<span class="pdefault">Default: <code>Timestamped file in the current folder</code></span></td></tr>
+      </table>
+    </div>
+
+    <h2 id="examples">Examples</h2>
+    <pre><code class="language-powershell">.\Get-GcpBucketPublicAccessReport.ps1</code></pre>
+    <pre><code class="language-powershell">.\Get-GcpBucketPublicAccessReport.ps1 -ProjectId prj-notes-test, prj-web-prod -ProblemsOnly -OutputFile .\buckets.csv</code></pre>
+
+    <h2 id="notes">Notes</h2>
+    <p>Requires the Google Cloud CLI (gcloud), roles/storage.admin or roles/viewer plus storage.buckets.getIamPolicy on the buckets, and orgpolicy.policies.list on the projects (roles/orgpolicy.policyViewer). A bucket meant to be public (a static website) should normally sit behind a load balancer with Cloud CDN instead.</p>
+
+    <h2 id="source">Full script</h2>
+    <!-- Keep this in sync with Get-GcpBucketPublicAccessReport.ps1 in this folder. -->
+    <pre><code class="language-powershell">&lt;#
+.SYNOPSIS
+    Checks every Cloud Storage bucket for public access, and reports public access prevention, uniform access, versioning and soft delete.
+
+.DESCRIPTION
+    For each project, reads the effective storage.publicAccessPrevention organisation policy,
+    then for every bucket reports:
+    - Whether its IAM policy grants any role to allUsers or allAuthenticatedUsers
+    - Public access prevention (enforced on the bucket, by organisation policy, or not at all)
+    - Uniform bucket-level access, object versioning, soft delete retention and location
+    Flags each bucket:
+    - High: public grant in IAM and public access prevention not in force
+    - Medium: public access prevention not in force (no public grant yet)
+    - Low: a public grant that public access prevention is blocking (clean it up); uniform
+      access off (object ACLs possible); no versioning and no soft delete
+
+    Read-only: it doesn&#x27;t change any settings.
+
+.PARAMETER ProjectId
+    Projects to check. Default: every active project you can see.
+
+.PARAMETER ProblemsOnly
+    Only list buckets with at least one finding.
+
+.PARAMETER OutputFile
+    CSV output path.
+
+.EXAMPLE
+    .\Get-GcpBucketPublicAccessReport.ps1
+
+.EXAMPLE
+    .\Get-GcpBucketPublicAccessReport.ps1 -ProjectId prj-notes-test, prj-web-prod -ProblemsOnly -OutputFile .\buckets.csv
+
+.NOTES
+    Requires the Google Cloud CLI (gcloud), roles/storage.admin or roles/viewer plus
+    storage.buckets.getIamPolicy on the buckets, and orgpolicy.policies.list on the projects
+    (roles/orgpolicy.policyViewer). A bucket meant to be public (a static website) should
+    normally sit behind a load balancer with Cloud CDN instead.
+#&gt;
+[CmdletBinding()]
+param(
+    [string[]]$ProjectId,
+    [switch]$ProblemsOnly,
+    [string]$OutputFile = (Join-Path -Path (Get-Location) -ChildPath (&#x27;GcpBucketPublicAccessReport_{0:yyyyMMdd_HHmm}.csv&#x27; -f (Get-Date)))
+)
+
+if (-not (Get-Command gcloud -ErrorAction SilentlyContinue)) { throw &#x27;gcloud not found. Install the Google Cloud CLI and run gcloud auth login.&#x27; }
+
+function Invoke-Gcloud {
+    # Runs gcloud with JSON output and returns the result as objects. Throws on a gcloud error.
+    param([Parameter(Mandatory)][string[]]$Arguments)
+    $output = &amp; gcloud @Arguments --format=json --quiet 2&gt;&amp;1
+    $code = $LASTEXITCODE
+    $text = (@($output | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] }) -join &quot;`n&quot;).Trim()
+    if ($code -ne 0) {
+        $message = (@($output | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] } | ForEach-Object { $_.ToString() }) -join &#x27; &#x27;).Trim()
+        throw &quot;gcloud $($Arguments[0..1] -join &#x27; &#x27;) failed: $message&quot;
+    }
+    if ($text) { foreach ($item in ($text | ConvertFrom-Json)) { $item } }
+}
+
+function Get-TargetProject {
+    # The projects to report on: -ProjectId if given, otherwise every active project you can see
+    param([string[]]$ProjectId)
+    if ($ProjectId) { return $ProjectId }
+    @(Invoke-Gcloud @(&#x27;projects&#x27;, &#x27;list&#x27;, &#x27;--filter=lifecycleState:ACTIVE&#x27;) | ForEach-Object { $_.projectId })
+}
+
+function Get-Leaf {
+    # Last part of a resource URL, for example the zone name from a zone URL
+    param([string]$Url)
+    if ($Url) { ($Url -split &#x27;/&#x27;)[-1] } else { &#x27;&#x27; }
+}
+
+$report = New-Object System.Collections.Generic.List[object]
+$rank = @{ &#x27;High&#x27; = 0; &#x27;Medium&#x27; = 1; &#x27;Low&#x27; = 2; &#x27;&#x27; = 3 }
+
+foreach ($p in Get-TargetProject $ProjectId) {
+    Write-Host &quot;Project $p...&quot; -ForegroundColor Cyan
+    try {
+        $buckets = @(Invoke-Gcloud @(&#x27;storage&#x27;, &#x27;buckets&#x27;, &#x27;list&#x27;, &quot;--project=$p&quot;))
+    } catch {
+        Write-Warning &quot;Skipping $p`: $($_.Exception.Message)&quot;
+        continue
+    }
+    if (-not $buckets) { continue }
+
+    # Is public access prevention enforced for the whole project by organisation policy?
+    $orgEnforced = $false
+    try {
+        $policy = Invoke-Gcloud @(&#x27;org-policies&#x27;, &#x27;describe&#x27;, &#x27;storage.publicAccessPrevention&#x27;, &quot;--project=$p&quot;, &#x27;--effective&#x27;)
+        $orgEnforced = [bool](@($policy.spec.rules) | Where-Object { $_.enforce -eq $true -or $_.enforce -eq &#x27;true&#x27; })
+    } catch {
+        Write-Warning &quot;Can&#x27;t read the organisation policy for $p; treating public access prevention as not enforced by policy.&quot;
+    }
+
+    foreach ($b in $buckets) {
+        $findings = New-Object System.Collections.Generic.List[object]
+        $name = $b.name
+
+        $publicMembers = @()
+        try {
+            $iam = Invoke-Gcloud @(&#x27;storage&#x27;, &#x27;buckets&#x27;, &#x27;get-iam-policy&#x27;, &quot;gs://$name&quot;)
+            $publicMembers = @(@($iam.bindings) | Where-Object { $_ } | ForEach-Object {
+                $role = $_.role; @($_.members) | Where-Object { $_ -in &#x27;allUsers&#x27;, &#x27;allAuthenticatedUsers&#x27; } | ForEach-Object { &quot;$_ ($role)&quot; } })
+        } catch {
+            $findings.Add(@(&#x27;Medium&#x27;, &quot;Could not read IAM policy: $($_.Exception.Message)&quot;))
+        }
+
+        $pap = [string]$b.public_access_prevention
+        $papInForce = $pap -eq &#x27;enforced&#x27; -or $orgEnforced
+        $papText = if ($pap -eq &#x27;enforced&#x27;) { &#x27;Enforced on bucket&#x27; } elseif ($orgEnforced) { &#x27;Enforced by org policy&#x27; } else { &#x27;Not enforced&#x27; }
+
+        $soft = $b.soft_delete_policy
+        $softSeconds = if ($soft) { [double]$(if ($soft.retentionDurationSeconds) { $soft.retentionDurationSeconds } else { $soft.retention_duration_seconds }) } else { 0 }
+        $softDays = [math]::Round($softSeconds / 86400, 1)
+        $versioning = [bool]$b.versioning_enabled
+        $ubla = [bool]$b.uniform_bucket_level_access
+
+        if ($publicMembers -and -not $papInForce) { $findings.Add(@(&#x27;High&#x27;, (&#x27;Public: &#x27; + ($publicMembers -join &#x27;, &#x27;)))) }
+        elseif ($publicMembers) { $findings.Add(@(&#x27;Low&#x27;, (&#x27;Public grant blocked by public access prevention: &#x27; + ($publicMembers -join &#x27;, &#x27;)))) }
+        if (-not $papInForce -and -not $publicMembers) { $findings.Add(@(&#x27;Medium&#x27;, &#x27;Public access prevention not enforced&#x27;)) }
+        if (-not $ubla) { $findings.Add(@(&#x27;Low&#x27;, &#x27;Uniform bucket-level access off (object ACLs possible)&#x27;)) }
+        if (-not $versioning -and $softDays -le 0) { $findings.Add(@(&#x27;Low&#x27;, &#x27;No versioning and no soft delete&#x27;)) }
+
+        if ($ProblemsOnly -and -not $findings.Count) { continue }
+        $top = $findings | Sort-Object { $rank[$_[0]] } | Select-Object -First 1
+        $report.Add([pscustomobject]@{
+            Severity               = if ($top) { $top[0] } else { &#x27;&#x27; }
+            Project                = $p
+            Bucket                 = $name
+            Location               = $b.location
+            Findings               = ($findings | ForEach-Object { $_[1] }) -join &#x27;; &#x27;
+            PublicAccessPrevention = $papText
+            UniformAccess          = $ubla
+            Versioning             = $versioning
+            SoftDeleteDays         = $softDays
+            Owner                  = if ($b.labels) { $b.labels.owner } else { &#x27;&#x27; }
+        })
+    }
+}
+
+$report = $report | Sort-Object @{e = { $rank[$_.Severity] }}, Project, Bucket
+$report | Export-Csv -Path $OutputFile -NoTypeInformation -Encoding UTF8
+$report | Where-Object Severity | Group-Object Severity | Select-Object @{n=&#x27;Severity&#x27;;e={$_.Name}}, Count | Format-Table -AutoSize | Out-Host
+Write-Host &quot;Buckets reported: $(@($report).Count). Report: $OutputFile&quot; -ForegroundColor Green
+</code></pre>
+
+    <nav class="pager" aria-label="More scripts">
+      <a class="prev" href="get-gcpfirewallreport.html"><span>Previous script</span>Get-GcpFirewallReport</a>
+      <a class="next" href="get-gcpbackupcoverage.html"><span>Next script</span>Get-GcpBackupCoverage</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

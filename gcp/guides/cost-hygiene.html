@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cost hygiene | GCP | Notes | Ravindran Mani</title>
+<meta name="description" content="Billing reports and export, budgets, the monthly clean-up checklist, committed use discounts and Spot VMs.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../gcp/index.html" aria-current="page">GCP</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 10 of 10</p>
+    <ol>
+      <li><a href="#see-where-the-money-goes">See where the money goes</a></li>
+      <li><a href="#set-budgets-and-alerts">Set budgets and alerts</a></li>
+      <li><a href="#the-monthly-clean-up-checklist">The monthly clean-up checklist</a></li>
+      <li><a href="#pay-less-for-what-you-keep">Pay less for what you keep</a></li>
+      <li><a href="#storage-and-network">Storage and network</a></li>
+      <li><a href="#make-it-routine">Make it routine</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">GCP</a> / Guide 10</p>
+    <h1>Cost hygiene</h1>
+    <p class="lead">Billing reports and export, budgets, the monthly clean-up checklist, committed use discounts and Spot VMs.</p>
+
+<p>Google Cloud bills rarely grow because of one big mistake. They grow from many small ones: a VM nobody stopped, disks left behind, reserved IP addresses, logs kept forever, data crossing regions. Cost hygiene is a monthly routine that finds them, plus paying less for what you keep.</p>
+<h2 id="see-where-the-money-goes">See where the money goes</h2>
+<ul>
+<li><strong>Billing reports</strong> (Billing &gt; Reports): group by <em>Project</em>, then <em>Service</em> and <em>SKU</em>, then by your <code>costcenter</code> and <code>application</code> labels. Compare the last three months; changes matter more than totals.</li>
+<li><strong>SKU</strong> explains surprises: network egress between regions and to the internet, Cloud NAT data processing, external IP addresses and log ingestion often appear near the top and are easy to miss.</li>
+<li><strong>Billing export to BigQuery</strong> (standard and detailed usage cost, plus pricing) for line-item analysis and showback reports. Turn it on from day one: it isn't retroactive (<a href="labels-and-governance.html#labels-in-cost-reports">Guide 3</a>).</li>
+<li><strong>FinOps hub</strong> in the console brings together savings recommendations, commitment utilisation and waste across the billing account.</li>
+</ul>
+<pre><code class="language-sql">-- Last month's net cost by project and service (BigQuery billing export)
+SELECT
+  project.id AS project,
+  service.description AS service,
+  ROUND(SUM(cost) + SUM(IFNULL((SELECT SUM(c.amount) FROM UNNEST(credits) c), 0)), 2) AS net_cost
+FROM `prj-billing-export.billing.gcp_billing_export_v1_012345_6789AB_CDEF01`
+WHERE invoice.month = FORMAT_DATE('%Y%m', DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
+GROUP BY project, service
+ORDER BY net_cost DESC
+LIMIT 25
+</code></pre>
+<h2 id="set-budgets-and-alerts">Set budgets and alerts</h2>
+<ul>
+<li><strong>A budget per project</strong> (or per folder or label), with alerts at 50%, 90% and 100% of actual spend and at 100% of forecast. Forecast alerts give you time to act before the month ends.</li>
+<li><strong>Budgets don't stop spending.</strong> They only notify. For sandbox projects, send budget notifications to Pub/Sub and have a Cloud Run function stop VMs or disable billing on the project when the budget is exceeded, knowing that disabling billing shuts services down.</li>
+<li><strong>Anomaly detection</strong> in Billing flags unusual spend spikes by project and service. Check that the right people get the emails.</li>
+</ul>
+<pre><code class="language-powershell"># Budget of $500 a month on one project, with alerts at 50%, 90%, 100% and forecast 100%
+gcloud billing budgets create --billing-account=012345-6789AB-CDEF01 --display-name=&quot;prj-notes-test monthly&quot; `
+    --budget-amount=500USD --filter-projects=projects/prj-notes-test `
+    --threshold-rule=percent=0.5 --threshold-rule=percent=0.9 --threshold-rule=percent=1.0 `
+    --threshold-rule=percent=1.0,basis=forecasted-spend
+</code></pre>
+<h2 id="the-monthly-clean-up-checklist">The monthly clean-up checklist</h2>
+<p><a href="../scripts/find-gcporphanedresources.html"><code>Find-GcpOrphanedResources.ps1</code></a> covers most of this list across every project:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Look for</th><th>Why it costs</th></tr>
+</thead>
+<tbody>
+<tr><td>Unattached persistent disks</td><td>Charged per GB-month whether attached or not</td></tr>
+<tr><td>Old snapshots and custom images nobody uses</td><td>Charged per GB stored</td></tr>
+<tr><td>Reserved external IP addresses not in use</td><td>Unused static IPs are charged at a higher rate than ones in use</td></tr>
+<tr><td>VMs stopped for weeks</td><td>No compute charge, but disks and reserved IPs still bill; snapshot and delete</td></tr>
+<tr><td>Load balancer backend services with no backends</td><td>Forwarding rules are charged hourly, doing nothing</td></tr>
+<tr><td>Idle Cloud SQL instances</td><td>Stop non-production instances out of hours (storage still bills)</td></tr>
+<tr><td>Log buckets with long retention, and verbose logs</td><td>Ingestion and storage (<a href="monitoring-and-alerts.html#keep-an-eye-on-logging-costs">Guide 9</a>)</td></tr>
+<tr><td>Forgotten projects</td><td>Old proofs of concept with running resources; the <em>unattended project</em> recommender finds them</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Recommender</strong> (Active Assist) does much of the finding for you: idle VMs, idle persistent disks, idle IP addresses, idle Cloud SQL instances, machine type rightsizing and unattended projects, each with an estimated saving. Review them in the FinOps hub or the Recommendation Hub monthly.</p>
+<pre><code class="language-powershell"># Idle disk recommendations for one zone
+gcloud recommender recommendations list --project=prj-notes-test --location=us-east1-b `
+    --recommender=google.compute.disk.IdleResourceRecommender `
+    --format=&quot;table(description, primaryImpact.costProjection.cost.units)&quot;
+</code></pre>
+<h2 id="pay-less-for-what-you-keep">Pay less for what you keep</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Option</th><th>How it works</th><th>Use for</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Sustained use discounts</strong></td><td>Automatic, for eligible machine series running much of the month</td><td>Nothing to do; know which series get them</td></tr>
+<tr><td><strong>Resource-based committed use discounts</strong></td><td>Commit to vCPUs, memory, GPUs or local SSD in a region for 1 or 3 years</td><td>Steady, predictable VM fleets that won't change region</td></tr>
+<tr><td><strong>Compute flexible CUDs</strong> (spend-based)</td><td>Commit to an hourly spend for 1 or 3 years across Compute Engine, GKE and Cloud Run, any region and machine family</td><td>Steady spend that moves between services and regions</td></tr>
+<tr><td><strong>Spend-based CUDs for other services</strong></td><td>Commit to spend on Cloud SQL, Memorystore, Cloud Run and others</td><td>Databases and managed services you'll keep</td></tr>
+<tr><td><strong>Spot VMs</strong></td><td>Much cheaper, but can be stopped at any time</td><td>Batch, CI, stateless and fault-tolerant work</td></tr>
+</tbody>
+</table>
+</div>
+<ul>
+<li><strong>Rightsize first, then commit.</strong> A commitment on an oversized fleet locks in the waste.</li>
+<li><strong>Commit to the floor,</strong> not the average: cover the usage that's there at 3 a.m. on a Sunday, and let on-demand and Spot handle the rest. The CUD recommendations in the console do the maths.</li>
+<li><strong>Share commitments across the billing account</strong> (CUD sharing), so a discount bought in one project covers matching use in others, and track utilisation monthly.</li>
+<li>Google changed how spend-based CUDs appear on the bill (discounts applied to the price instead of credits). If you have reports built on the billing export, check them against Google's data model notes for the change.</li>
+</ul>
+<h2 id="storage-and-network">Storage and network</h2>
+<ul>
+<li><strong>Cloud Storage Autoclass</strong> moves objects between Standard, Nearline, Coldline and Archive by access pattern; lifecycle rules do it on a schedule for data you know is cold, and delete old versions.</li>
+<li><strong>Egress</strong> is charged when data leaves a zone, region or Google's network. Keep chatty services in one region, use Private Google Access and Cloud CDN, and watch cross-region replication you didn't mean to set up.</li>
+<li><strong>Cloud NAT</strong> charges per gigabyte processed; traffic to Google APIs should use Private Google Access instead of going through NAT.</li>
+<li><strong>Persistent disk type:</strong> balanced rather than SSD where latency allows; don't over-provision Hyperdisk IOPS.</li>
+</ul>
+<h2 id="make-it-routine">Make it routine</h2>
+<ul>
+<li><strong>A monthly cost review</strong> with the owners of the top ten cost items: what changed, what can go, what to commit to.</li>
+<li><strong>Stop schedules for non-production</strong> (<a href="../scripts/invoke-gcpvmpowerschedule.html"><code>Invoke-GcpVMPowerSchedule.ps1</code></a>, or native instance schedules) and budgets on every sandbox project.</li>
+<li><strong>Label compliance</strong> as a standing item: unlabelled cost is cost nobody owns (<a href="../scripts/get-gcpunlabeledresources.html"><code>Get-GcpUnlabeledResources.ps1</code></a>).</li>
+<li><strong>Show the savings.</strong> A monthly note on what was removed and what it saved keeps the routine funded.</li>
+</ul>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="monitoring-and-alerts.html"><span>Previous guide</span>Monitoring and alerts</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

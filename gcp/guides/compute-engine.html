@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Compute Engine VMs | GCP | Notes | Ravindran Mani</title>
+<meta name="description" content="Machine types, disks, availability, patching with VM Manager, the Ops Agent, and saving money on VMs.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../gcp/index.html" aria-current="page">GCP</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 7 of 10</p>
+    <ol>
+      <li><a href="#know-what-you-have">Know what you have</a></li>
+      <li><a href="#choose-the-machine-type">Choose the machine type</a></li>
+      <li><a href="#disks">Disks</a></li>
+      <li><a href="#availability">Availability</a></li>
+      <li><a href="#patching-with-vm-manager">Patching with VM Manager</a></li>
+      <li><a href="#monitoring-agents">Monitoring agents</a></li>
+      <li><a href="#save-money-on-compute-engine">Save money on Compute Engine</a></li>
+      <li><a href="#troubleshooting-without-ssh-or-rdp">Troubleshooting without SSH or RDP</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">GCP</a> / Guide 7</p>
+    <h1>Compute Engine VMs</h1>
+    <p class="lead">Machine types, disks, availability, patching with VM Manager, the Ops Agent, and saving money on VMs.</p>
+
+<p>Compute Engine is where most Google Cloud operations work still happens, and often where most of the bill is. This guide covers the day-to-day: knowing what's running, choosing machine types and disks, availability, patching, monitoring, and spending less.</p>
+<h2 id="know-what-you-have">Know what you have</h2>
+<p>Start with an inventory across every project. <a href="../scripts/get-gcpvminventory.html"><code>Get-GcpVMInventory.ps1</code></a> lists every VM with machine type, status, IPs, disks, service account, Shielded VM and OS Login settings, and the owner and cost labels. Quick checks from the shell:</p>
+<pre><code class="language-powershell"># Running VMs in a project
+gcloud compute instances list --project=prj-notes-test --filter=&quot;status=RUNNING&quot; `
+    --format=&quot;table(name, zone.basename(), machineType.basename(), networkInterfaces[0].networkIP, labels.owner)&quot;
+
+# VMs stopped for more than 30 days still pay for their disks and any reserved IPs
+$cutoff = (Get-Date).AddDays(-30).ToString('yyyy-MM-dd')
+gcloud compute instances list --filter=&quot;status=TERMINATED AND lastStopTimestamp&lt;$cutoff&quot; `
+    --format=&quot;table(name, zone.basename(), lastStopTimestamp)&quot;
+</code></pre>
+<p>(<code>TERMINATED</code> is Google's name for a stopped VM. It can be started again.)</p>
+<h2 id="choose-the-machine-type">Choose the machine type</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Series</th><th>Good for</th></tr>
+</thead>
+<tbody>
+<tr><td><code>e2</code></td><td>Cost-optimised general purpose: small and medium app servers, dev and test. Shared-core types (<code>e2-micro</code>, <code>e2-small</code>) for tiny workloads</td></tr>
+<tr><td><code>n4</code>, <code>n2</code>, <code>n2d</code></td><td>Balanced general purpose for most production workloads</td></tr>
+<tr><td><code>c4</code>, <code>c3</code>, <code>c4a</code></td><td>Compute-heavy and latency-sensitive work; <code>c4a</code> uses Google's Arm-based Axion processors</td></tr>
+<tr><td><code>m3</code>, <code>x4</code></td><td>Memory-heavy: SAP HANA, large in-memory databases</td></tr>
+<tr><td><code>a3</code>, <code>g2</code></td><td>GPUs for machine learning and graphics</td></tr>
+</tbody>
+</table>
+</div>
+<ul>
+<li><strong>Custom machine types</strong> (on E2, N2, N4 and others) let you pick vCPUs and memory separately, so a workload that needs 6 vCPUs and 20 GB doesn't pay for 8 vCPUs and 32 GB.</li>
+<li><strong>Arm (Axion)</strong> machine types are usually cheaper for Linux workloads that run on Arm: most open-source stacks and containers do.</li>
+<li><strong>Rightsize with data.</strong> Compute Engine's <strong>machine type recommendations</strong> (Recommender) suggest smaller types from 8 days of utilisation. Install the Ops Agent so memory is included, not just CPU.</li>
+</ul>
+<h2 id="disks">Disks</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Type</th><th>Use for</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Balanced persistent disk</strong> (<code>pd-balanced</code>)</td><td>The default for boot disks and most data disks</td></tr>
+<tr><td>SSD persistent disk (<code>pd-ssd</code>)</td><td>Databases that need low latency on older machine series</td></tr>
+<tr><td><strong>Hyperdisk</strong> (Balanced, Throughput, Extreme)</td><td>Newer machine series (C3, C4, N4 and later), where IOPS and throughput are provisioned separately from size</td></tr>
+<tr><td>Regional persistent disk / Hyperdisk Balanced High Availability</td><td>Synchronous replication across two zones, for stateful failover</td></tr>
+<tr><td>Standard persistent disk (<code>pd-standard</code>)</td><td>Large, rarely read data; slow as a boot disk</td></tr>
+</tbody>
+</table>
+</div>
+<p>Disks can be resized upwards online, but never shrunk, so start smaller. Delete the unattached disks and old snapshots <a href="../scripts/find-gcporphanedresources.html"><code>Find-GcpOrphanedResources.ps1</code></a> finds, and set <strong>auto-delete</strong> on disks that shouldn't outlive their VM.</p>
+<h2 id="availability">Availability</h2>
+<ul>
+<li><strong>Live migration</strong> moves most VMs to other hosts during Google's maintenance without a reboot. Set the maintenance policy to <code>MIGRATE</code> (the default for most types); GPU VMs and some others must restart instead.</li>
+<li><strong>A single VM lives in one zone.</strong> For anything that must stay up, run a <strong>managed instance group (MIG)</strong> behind a load balancer, preferably a <strong>regional MIG</strong> spread across three zones.</li>
+<li><strong>Use MIGs even for a fixed size:</strong> autohealing with a health check recreates a failed VM automatically, and rolling updates replace VMs from a new instance template without downtime.</li>
+<li><strong>Instance templates</strong> describe how a VM is built (image, machine type, service account, Shielded VM, labels, startup script). Keep them in Terraform and build every VM from one.</li>
+<li><strong>Stateful servers</strong> that can't be load-balanced need backups (<a href="backup-and-recovery.html">Guide 8</a>) and, for fast failover, regional disks or database replication.</li>
+</ul>
+<h2 id="patching-with-vm-manager">Patching with VM Manager</h2>
+<p><strong>VM Manager</strong> handles OS patch management, OS inventory and OS configuration through the OS Config agent, which is preinstalled on most Google-provided images. Turn it on for the project (or organisation) and:</p>
+<ul>
+<li><strong>Patch compliance</strong> shows which VMs are missing critical and security updates, by OS.</li>
+<li><strong>Patch deployments</strong> run on a schedule against VMs selected by label and zone, for example production weekly on Sunday night, test on Wednesday, with a rollout that patches one zone at a time.</li>
+<li><strong>Pre- and post-patch scripts</strong> stop and start services, or take the VM out of a load balancer.</li>
+<li><strong>Replace rather than patch</strong> where you can: MIGs rolled onto a newly patched image built by a pipeline.</li>
+</ul>
+<pre><code class="language-powershell"># Weekly patch job for VMs labelled environment=prod, one zone at a time
+gcloud compute os-config patch-deployments create prod-weekly --file=.\prod-weekly.yaml
+
+# Which VMs report to VM Manager (OS inventory present)
+gcloud compute os-config inventories list --location=us-east1-b --format=&quot;table(name.segment(5), osInfo.shortName, osInfo.version, updateTime)&quot;
+</code></pre>
+<h2 id="monitoring-agents">Monitoring agents</h2>
+<p>Compute Engine sends CPU, network and disk operations to Cloud Monitoring without an agent, but not memory or disk space: those need the <strong>Ops Agent</strong>, which collects both metrics and logs (Windows event logs, syslog, and application logs for common software such as Apache, IIS, MySQL and SQL Server). Install it across a project with an OS policy in VM Manager, or with the agent policy command, so new VMs get it automatically. <a href="monitoring-and-alerts.html">Guide 9</a> covers the alerts to set on it.</p>
+<h2 id="save-money-on-compute-engine">Save money on Compute Engine</h2>
+<ul>
+<li><strong>Sustained use discounts</strong> apply automatically to N1, N2, N2D and some other series when a VM runs for a large part of the month. Nothing to buy; newer series such as E2, N4 and C4 don't get them but have lower list prices.</li>
+<li><strong>Stop non-production VMs out of hours.</strong> A VM running 12 hours on weekdays costs about 36% of one running all month. Compute Engine <strong>instance schedules</strong> do this natively per project; <a href="../scripts/invoke-gcpvmpowerschedule.html"><code>Invoke-GcpVMPowerSchedule.ps1</code></a> does it by label across projects. Stopped VMs still pay for disks.</li>
+<li><strong>Rightsize, then commit</strong> with committed use discounts (<a href="cost-hygiene.html">Guide 10</a>).</li>
+<li><strong>Spot VMs</strong> cost a fraction of the on-demand price for work that can be interrupted: batch, CI runners, stateless workers in a MIG.</li>
+<li><strong>Windows and SQL Server licences</strong> are a large part of the price. Check whether bring-your-own-licence on sole-tenant nodes or a smaller SQL edition applies.</li>
+</ul>
+<h2 id="troubleshooting-without-ssh-or-rdp">Troubleshooting without SSH or RDP</h2>
+<ul>
+<li><strong>Serial port output</strong> (<code>gcloud compute instances get-serial-port-output</code>) shows the boot log, which explains most VMs that won't come up.</li>
+<li><strong>Screenshot</strong> (the VM's details page) shows the console screen, useful for Windows.</li>
+<li><strong>Interactive serial console</strong> gives a text login to fix a broken network or SSH configuration. It's off by default; turn it on per VM only when needed, and keep the organisation policy that disables it elsewhere.</li>
+<li><strong>Connectivity Tests</strong> answer "is it the firewall?" in a minute (<a href="vpc-firewall-rules.html#check-what-is-actually-allowed">Guide 4</a>).</li>
+<li><strong>Troubleshoot SSH</strong> in the console runs a set of checks (firewall, IAM, OS Login, guest agent) and tells you which one fails.</li>
+</ul>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="security-baseline.html"><span>Previous guide</span>Security baseline: identity, detection and encryption</a>
+      <a class="next" href="backup-and-recovery.html"><span>Next guide</span>Backup and recovery</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

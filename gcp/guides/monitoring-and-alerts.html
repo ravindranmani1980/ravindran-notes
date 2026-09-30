@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monitoring and alerts | GCP | Notes | Ravindran Mani</title>
+<meta name="description" content="Cloud Monitoring and Logging building blocks, log queries worth keeping, and alerts people act on.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../gcp/index.html" aria-current="page">GCP</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 9 of 10</p>
+    <ol>
+      <li><a href="#the-building-blocks">The building blocks</a></li>
+      <li><a href="#set-up-the-foundation">Set up the foundation</a></li>
+      <li><a href="#log-queries-worth-keeping">Log queries worth keeping</a></li>
+      <li><a href="#alerts-people-act-on">Alerts people act on</a></li>
+      <li><a href="#keep-an-eye-on-logging-costs">Keep an eye on logging costs</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">GCP</a> / Guide 9</p>
+    <h1>Monitoring and alerts</h1>
+    <p class="lead">Cloud Monitoring and Logging building blocks, log queries worth keeping, and alerts people act on.</p>
+
+<p>Monitoring in Google Cloud is <strong>Cloud Monitoring</strong> for metrics and alerts and <strong>Cloud Logging</strong> for logs, together called Google Cloud Observability. The goal isn't more dashboards; it's a small number of alerts that people trust and act on, and logs that are there when you need them.</p>
+<h2 id="the-building-blocks">The building blocks</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Piece</th><th>What it does</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Metrics</strong></td><td>Numbers over time. Google Cloud services publish them for free; the Ops Agent adds memory, disk and application metrics</td></tr>
+<tr><td><strong>Metrics scope</strong></td><td>Which projects one project's Monitoring can see. Put production projects in the scope of a central monitoring project</td></tr>
+<tr><td><strong>Log buckets and sinks</strong></td><td>Where logs are stored and for how long; sinks route logs to buckets, BigQuery, Cloud Storage or Pub/Sub</td></tr>
+<tr><td><strong>Alerting policies</strong></td><td>Conditions on metrics, logs (log-based alerts) or PromQL, with notification channels</td></tr>
+<tr><td><strong>Notification channels</strong></td><td>Email, SMS, Google Chat, Slack, PagerDuty, Pub/Sub or a webhook for your ticketing system</td></tr>
+<tr><td><strong>Uptime checks</strong></td><td>HTTP, HTTPS or TCP checks from locations around the world</td></tr>
+<tr><td><strong>Personalized Service Health</strong></td><td>Google's own incidents that affect your projects</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="set-up-the-foundation">Set up the foundation</h2>
+<ul>
+<li><strong>A central monitoring project</strong> whose metrics scope includes every production project, so one set of dashboards and alerts covers everything.</li>
+<li><strong>Notification channels per audience,</strong> for example an email group for the operations team and PagerDuty for on-call. Alerts point at channels, never at individual people's addresses.</li>
+<li><strong>The Ops Agent on every VM,</strong> installed by policy (<a href="compute-engine.html#monitoring-agents">Guide 7</a>).</li>
+<li><strong>Know your log retention.</strong> Each project has a <code>_Required</code> bucket (audit logs, kept 400 days, free and unchangeable) and a <code>_Default</code> bucket (everything else, 30 days by default). Change <code>_Default</code> retention if you need more, or route important logs to a custom bucket with its own retention.</li>
+<li><strong>Upgrade log buckets to Log Analytics</strong> to query logs with SQL and join them with other data in BigQuery.</li>
+</ul>
+<pre><code class="language-powershell"># Retention of the log buckets in a project
+gcloud logging buckets list --project=prj-notes-test --format=&quot;table(name.basename(), location, retentionDays, analyticsEnabled)&quot;
+
+# Keep _Default logs for 60 days, and turn on Log Analytics
+gcloud logging buckets update _Default --location=global --retention-days=60 --enable-analytics --project=prj-notes-test
+</code></pre>
+<h2 id="log-queries-worth-keeping">Log queries worth keeping</h2>
+<p>Save these as <strong>saved queries</strong> in Logs Explorer so the whole team has them. They use the Logging query language.</p>
+<p><strong>Errors from VMs</strong> (set the time range with the picker):</p>
+<pre><code>resource.type=&quot;gce_instance&quot;
+severity&gt;=ERROR
+</code></pre>
+<p><strong>Who changed IAM policies:</strong></p>
+<pre><code>logName:&quot;cloudaudit.googleapis.com%2Factivity&quot;
+protoPayload.methodName=&quot;SetIamPolicy&quot;
+</code></pre>
+<p><strong>Firewall rule changes:</strong></p>
+<pre><code>logName:&quot;cloudaudit.googleapis.com%2Factivity&quot;
+resource.type=&quot;gce_firewall_rule&quot;
+protoPayload.methodName=~&quot;(insert|patch|delete)$&quot;
+</code></pre>
+<p><strong>Connections denied by firewall rules</strong> (for rules with logging on):</p>
+<pre><code>logName:&quot;compute.googleapis.com%2Ffirewall&quot;
+jsonPayload.disposition=&quot;DENIED&quot;
+</code></pre>
+<p><strong>Service account key creation</strong> (should be rare or never):</p>
+<pre><code>protoPayload.methodName=&quot;google.iam.admin.v1.CreateServiceAccountKey&quot;
+</code></pre>
+<p>In a Log Analytics bucket, the same data can be summarised with SQL, for example the top callers of a sensitive API over the last week.</p>
+<h2 id="alerts-people-act-on">Alerts people act on</h2>
+<p>An alert that fires every day gets ignored, and then the real one does too. A few rules:</p>
+<ul>
+<li><strong>Alert on symptoms users feel,</strong> not every metric: load balancer 5xx responses and latency, failed uptime checks, backlog in queues, not CPU at 80% on one VM of ten.</li>
+<li><strong>Use a duration.</strong> "Above threshold for 5 minutes" stops single spikes from waking people up.</li>
+<li><strong>Every alerting policy has documentation</strong> (a runbook link and an owner) in its documentation field, which appears in the notification.</li>
+<li><strong>Use log-based alerts</strong> for events rather than metrics: IAM changes on production projects, service account key creation, super admin sign-ins.</li>
+</ul>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Alert</th><th>Metric</th><th>Typical threshold</th></tr>
+</thead>
+<tbody>
+<tr><td>Disk nearly full</td><td><code>agent.googleapis.com/disk/percent_used</code> (Ops Agent)</td><td>&gt; 85% for 15 minutes</td></tr>
+<tr><td>Memory pressure</td><td><code>agent.googleapis.com/memory/percent_used</code> (Ops Agent)</td><td>&gt; 90% for 15 minutes</td></tr>
+<tr><td>Website errors</td><td><code>loadbalancing.googleapis.com/https/request_count</code> filtered to 5xx</td><td>Above normal for 5 minutes</td></tr>
+<tr><td>Site down</td><td>Uptime check</td><td>Failing from 2 or more regions</td></tr>
+<tr><td>Cloud SQL storage</td><td><code>cloudsql.googleapis.com/database/disk/utilization</code></td><td>&gt; 85%</td></tr>
+<tr><td>VM stopped unexpectedly</td><td>Log-based: <code>compute.instances.stop</code> or guest shutdown on production VMs</td><td>Any, outside maintenance windows</td></tr>
+</tbody>
+</table>
+</div>
+<pre><code class="language-powershell"># Notification channels and alerting policies in the monitoring project
+gcloud beta monitoring channels list --project=prj-monitoring --format=&quot;table(displayName, type, enabled)&quot;
+gcloud alpha monitoring policies list --project=prj-monitoring --format=&quot;table(displayName, enabled, conditions[0].displayName)&quot;
+
+# Create an alerting policy from a JSON or YAML definition kept in source control
+gcloud alpha monitoring policies create --policy-from-file=.\alert-disk-85.yaml --project=prj-monitoring
+</code></pre>
+<h2 id="keep-an-eye-on-logging-costs">Keep an eye on logging costs</h2>
+<ul>
+<li><strong>Ingestion is what costs.</strong> Check which logs are biggest (Logs Storage page, or the <code>logging.googleapis.com/billing/bytes_ingested</code> metric) and cut debug logging in production.</li>
+<li><strong>Exclusion filters</strong> on the <code>_Default</code> sink drop logs you never read (load balancer logs for health checks, verbose VPC Flow Logs in test). Excluded logs aren't charged.</li>
+<li><strong>Sample VPC Flow Logs</strong> (for example 10%) and aggregate them over longer intervals except where you need every flow.</li>
+<li><strong>Data Access audit logs</strong> are charged: turn them on where they matter, not everywhere (<a href="security-baseline.html#audit-logs">Guide 6</a>).</li>
+<li><strong>Route long-term logs to Cloud Storage</strong> (cheap archive classes) or BigQuery rather than keeping everything in log buckets for years.</li>
+</ul>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="backup-and-recovery.html"><span>Previous guide</span>Backup and recovery</a>
+      <a class="next" href="cost-hygiene.html"><span>Next guide</span>Cost hygiene</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

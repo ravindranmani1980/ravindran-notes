@@ -2,417 +2,527 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://notes.ravindran.in/</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/about.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/aws/</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/azure/</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gcp/</loc>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/scripts/</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/aws/environment/</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/aws/guides/</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/aws/guides/account-structure-and-access.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/aws/guides/backup-and-recovery.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/aws/guides/cost-hygiene.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/aws/guides/ec2.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/aws/guides/getting-started.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/aws/guides/monitoring-and-alerts.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/aws/guides/network-perimeter.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/aws/guides/security-baseline.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/aws/guides/security-groups-and-nacls.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/aws/guides/tagging-and-governance.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/aws/scripts/</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/aws/scripts/find-awsorphanedresources.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/aws/scripts/get-awsbackupcoverage.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/aws/scripts/get-awsec2inventory.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/aws/scripts/get-awsiamcredentialreport.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/aws/scripts/get-awss3publicaccessreport.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/aws/scripts/get-awssecuritygroupreport.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/aws/scripts/get-awsuntaggedresources.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/aws/scripts/invoke-awsec2powerschedule.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/azure/environment/</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/azure/guides/</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/azure/guides/backup-and-recovery.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/azure/guides/cost-hygiene.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/azure/guides/getting-started.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/azure/guides/monitoring-and-alerts.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/azure/guides/network-perimeter.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/azure/guides/network-security-groups.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/azure/guides/security-baseline.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/azure/guides/structure-and-access.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/azure/guides/tagging-and-policy.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/azure/guides/virtual-machines.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/azure/scripts/</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/azure/scripts/find-azorphanedresources.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/azure/scripts/get-azbackupcoverage.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/azure/scripts/get-aznsgcoverage.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/azure/scripts/get-aznsgrulereport.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/azure/scripts/get-azroleassignmentreport.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/azure/scripts/get-azuntaggedresources.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/azure/scripts/get-azvminventory.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/azure/scripts/invoke-azvmpowerschedule.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gcp/environment/</loc>
+    <lastmod>2026-09-30</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gcp/guides/</loc>
+    <lastmod>2026-09-30</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gcp/guides/backup-and-recovery.html</loc>
+    <lastmod>2026-09-30</lastmod>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gcp/guides/compute-engine.html</loc>
+    <lastmod>2026-09-30</lastmod>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gcp/guides/cost-hygiene.html</loc>
+    <lastmod>2026-09-30</lastmod>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gcp/guides/getting-started.html</loc>
+    <lastmod>2026-09-30</lastmod>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gcp/guides/labels-and-governance.html</loc>
+    <lastmod>2026-09-30</lastmod>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gcp/guides/monitoring-and-alerts.html</loc>
+    <lastmod>2026-09-30</lastmod>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gcp/guides/network-perimeter.html</loc>
+    <lastmod>2026-09-30</lastmod>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gcp/guides/resource-hierarchy-and-access.html</loc>
+    <lastmod>2026-09-30</lastmod>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gcp/guides/security-baseline.html</loc>
+    <lastmod>2026-09-30</lastmod>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gcp/guides/vpc-firewall-rules.html</loc>
+    <lastmod>2026-09-30</lastmod>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gcp/scripts/</loc>
+    <lastmod>2026-09-30</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gcp/scripts/find-gcporphanedresources.html</loc>
+    <lastmod>2026-09-30</lastmod>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gcp/scripts/get-gcpbackupcoverage.html</loc>
+    <lastmod>2026-09-30</lastmod>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gcp/scripts/get-gcpbucketpublicaccessreport.html</loc>
+    <lastmod>2026-09-30</lastmod>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gcp/scripts/get-gcpfirewallreport.html</loc>
+    <lastmod>2026-09-30</lastmod>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gcp/scripts/get-gcpiamreport.html</loc>
+    <lastmod>2026-09-30</lastmod>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gcp/scripts/get-gcpunlabeledresources.html</loc>
+    <lastmod>2026-09-30</lastmod>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gcp/scripts/get-gcpvminventory.html</loc>
+    <lastmod>2026-09-30</lastmod>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gcp/scripts/invoke-gcpvmpowerschedule.html</loc>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/environment/</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/guides/</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/guides/architecture.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/guides/blob-cache.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/guides/getting-started.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/guides/library-schemas.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/guides/migration-tips.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/guides/on-premises-tips.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/guides/performance.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/guides/reporting-and-bi.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/guides/search.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/guides/security-patches.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/guides/services-and-server-roles.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/guides/sharepoint-online-tips.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/guides/single-sign-on.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/guides/troubleshooting.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/scripts/</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/scripts/find-migrationblockers.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/scripts/get-spfarminventory.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/scripts/get-splargelists.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/scripts/get-splogsbycorrelation.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/scripts/get-spoexternalusersreport.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/scripts/get-spolistsnearthreshold.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/scripts/get-spositeinventory.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/scripts/get-spouniquepermissions.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/scripts/get-sppatchstatus.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/scripts/get-spservicematrix.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/scripts/get-spsitestoragereport.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/scripts/invoke-sppostpatchconfig.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/scripts/invoke-spwarmup.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/scripts/remove-spooldfileversions.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/scripts/restore-sporecyclebinbyuser.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/scripts/set-spblobcache.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/scripts/set-spobjectcacheaccounts.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://notes.ravindran.in/sharepoint/scripts/test-spupgradereadiness.html</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-09-30</lastmod>
     <priority>0.6</priority>
   </url>
 </urlset>

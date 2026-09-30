@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Find-GcpOrphanedResources | Notes | Ravindran Mani</title>
+<meta name="description" content="Finds orphaned Google Cloud resources that cost money or clutter: unattached disks, unused static IPs, old snapshots and more.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../gcp/index.html" aria-current="page">GCP</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap">
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">GCP</a> / <a href="../../scripts/index.html">Scripts</a> / Inventory and clean-up</p>
+    <h1 class="script-title">Find-GcpOrphanedResources</h1>
+    <p class="lead">Finds orphaned Google Cloud resources that cost money or clutter: unattached disks, unused static IPs, old snapshots and more.</p>
+    <dl class="facts">
+      <div><dt>Runs in</dt><dd>PowerShell with the Google Cloud CLI (gcloud)</dd></div>
+      <div><dt>Safety</dt><dd><span class="flag flag-read">Read-only</span></dd></div>
+    </dl>
+    <p class="actions"><a class="btn btn-primary" href="Find-GcpOrphanedResources.ps1" download>Download Find-GcpOrphanedResources.ps1</a></p>
+
+    <h2 id="what-it-does">What it does</h2>
+    <p>Checks every project for:</p>
+<ul><li>Persistent disks that aren&#x27;t attached to any VM</li><li>Reserved external IP addresses that aren&#x27;t in use</li><li>Snapshots older than -SnapshotAgeDays</li><li>VMs stopped (TERMINATED) for more than -StoppedDays days</li><li>Load balancer backend services with no backends</li></ul>
+<p>Read-only: it doesn&#x27;t delete anything. Review the list with the resource owners, then delete what&#x27;s no longer needed.</p>
+
+    <h2 id="parameters">Parameters</h2>
+    <div class="table-wrap">
+      <table class="params">
+          <tr><th scope="row"><code>-ProjectId</code><span class="ptype">string[]</span></th><td>Projects to check. Default: every active project you can see.</td></tr>
+          <tr><th scope="row"><code>-SnapshotAgeDays</code><span class="ptype">int</span></th><td>Report snapshots older than this many days. Default 90.</td></tr>
+          <tr><th scope="row"><code>-StoppedDays</code><span class="ptype">int</span></th><td>Report VMs stopped for longer than this many days. Default 30.</td></tr>
+          <tr><th scope="row"><code>-OutputFile</code><span class="ptype">string</span></th><td>CSV output path.<span class="pdefault">Default: <code>Timestamped file in the current folder</code></span></td></tr>
+      </table>
+    </div>
+
+    <h2 id="examples">Examples</h2>
+    <pre><code class="language-powershell">.\Find-GcpOrphanedResources.ps1</code></pre>
+    <pre><code class="language-powershell">.\Find-GcpOrphanedResources.ps1 -ProjectId prj-notes-test -SnapshotAgeDays 30 -OutputFile .\orphans.csv</code></pre>
+
+    <h2 id="notes">Notes</h2>
+    <p>Requires the Google Cloud CLI (gcloud) and roles/compute.viewer (or roles/viewer) on the projects. Some &quot;orphans&quot; are intentional (a disk kept after a VM was deleted, a reserved IP a partner has allow-listed, a snapshot kept for compliance): check the labels and ask the owner before deleting. Recommender&#x27;s idle-resource recommendations are a useful second opinion.</p>
+
+    <h2 id="source">Full script</h2>
+    <!-- Keep this in sync with Find-GcpOrphanedResources.ps1 in this folder. -->
+    <pre><code class="language-powershell">&lt;#
+.SYNOPSIS
+    Finds orphaned Google Cloud resources that cost money or clutter: unattached disks, unused static IPs, old snapshots and more.
+
+.DESCRIPTION
+    Checks every project for:
+    - Persistent disks that aren&#x27;t attached to any VM
+    - Reserved external IP addresses that aren&#x27;t in use
+    - Snapshots older than -SnapshotAgeDays
+    - VMs stopped (TERMINATED) for more than -StoppedDays days
+    - Load balancer backend services with no backends
+
+    Read-only: it doesn&#x27;t delete anything. Review the list with the resource owners,
+    then delete what&#x27;s no longer needed.
+
+.PARAMETER ProjectId
+    Projects to check. Default: every active project you can see.
+
+.PARAMETER SnapshotAgeDays
+    Report snapshots older than this many days. Default 90.
+
+.PARAMETER StoppedDays
+    Report VMs stopped for longer than this many days. Default 30.
+
+.PARAMETER OutputFile
+    CSV output path.
+
+.EXAMPLE
+    .\Find-GcpOrphanedResources.ps1
+
+.EXAMPLE
+    .\Find-GcpOrphanedResources.ps1 -ProjectId prj-notes-test -SnapshotAgeDays 30 -OutputFile .\orphans.csv
+
+.NOTES
+    Requires the Google Cloud CLI (gcloud) and roles/compute.viewer (or roles/viewer) on the
+    projects. Some &quot;orphans&quot; are intentional (a disk kept after a VM was deleted, a reserved
+    IP a partner has allow-listed, a snapshot kept for compliance): check the labels and ask
+    the owner before deleting. Recommender&#x27;s idle-resource recommendations are a useful
+    second opinion.
+#&gt;
+[CmdletBinding()]
+param(
+    [string[]]$ProjectId,
+    [ValidateRange(1, 3650)][int]$SnapshotAgeDays = 90,
+    [ValidateRange(1, 3650)][int]$StoppedDays = 30,
+    [string]$OutputFile = (Join-Path -Path (Get-Location) -ChildPath (&#x27;GcpOrphanedResources_{0:yyyyMMdd_HHmm}.csv&#x27; -f (Get-Date)))
+)
+
+if (-not (Get-Command gcloud -ErrorAction SilentlyContinue)) { throw &#x27;gcloud not found. Install the Google Cloud CLI and run gcloud auth login.&#x27; }
+
+function Invoke-Gcloud {
+    # Runs gcloud with JSON output and returns the result as objects. Throws on a gcloud error.
+    param([Parameter(Mandatory)][string[]]$Arguments)
+    $output = &amp; gcloud @Arguments --format=json --quiet 2&gt;&amp;1
+    $code = $LASTEXITCODE
+    $text = (@($output | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] }) -join &quot;`n&quot;).Trim()
+    if ($code -ne 0) {
+        $message = (@($output | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] } | ForEach-Object { $_.ToString() }) -join &#x27; &#x27;).Trim()
+        throw &quot;gcloud $($Arguments[0..1] -join &#x27; &#x27;) failed: $message&quot;
+    }
+    if ($text) { foreach ($item in ($text | ConvertFrom-Json)) { $item } }
+}
+
+function Get-TargetProject {
+    # The projects to report on: -ProjectId if given, otherwise every active project you can see
+    param([string[]]$ProjectId)
+    if ($ProjectId) { return $ProjectId }
+    @(Invoke-Gcloud @(&#x27;projects&#x27;, &#x27;list&#x27;, &#x27;--filter=lifecycleState:ACTIVE&#x27;) | ForEach-Object { $_.projectId })
+}
+
+function Get-Leaf {
+    # Last part of a resource URL, for example the zone name from a zone URL
+    param([string]$Url)
+    if ($Url) { ($Url -split &#x27;/&#x27;)[-1] } else { &#x27;&#x27; }
+}
+
+$report = New-Object System.Collections.Generic.List[object]
+function Add-Finding {
+    param($Finding, $Project, $Location, $Name, $Detail, $Labels)
+    $report.Add([pscustomobject]@{
+        Finding = $Finding; Project = $Project; Location = $Location; Name = $Name; Detail = $Detail; Owner = $Labels.owner
+    })
+}
+function ConvertTo-Date {
+    param([string]$Value)
+    if ($Value) { [datetime]::Parse($Value, [cultureinfo]::InvariantCulture) } else { $null }
+}
+
+$snapshotCutoff = (Get-Date).AddDays(-$SnapshotAgeDays)
+$stoppedCutoff = (Get-Date).AddDays(-$StoppedDays)
+
+foreach ($p in Get-TargetProject $ProjectId) {
+    Write-Host &quot;Project $p...&quot; -ForegroundColor Cyan
+    try {
+        $disks = @(Invoke-Gcloud @(&#x27;compute&#x27;, &#x27;disks&#x27;, &#x27;list&#x27;, &quot;--project=$p&quot;))
+    } catch {
+        Write-Warning &quot;Skipping $p`: $($_.Exception.Message)&quot;
+        continue
+    }
+
+    # Unattached disks
+    foreach ($d in $disks | Where-Object { -not $_.users }) {
+        $detail = &#x27;{0}, {1} GB, created {2:yyyy-MM-dd}&#x27; -f (Get-Leaf $d.type), $d.sizeGb, (ConvertTo-Date $d.creationTimestamp)
+        if ($d.lastDetachTimestamp) { $detail += &#x27;, detached {0:yyyy-MM-dd}&#x27; -f (ConvertTo-Date $d.lastDetachTimestamp) }
+        Add-Finding &#x27;Unattached disk&#x27; $p (Get-Leaf $(if ($d.zone) { $d.zone } else { $d.region })) $d.name $detail $d.labels
+    }
+
+    # Reserved external IPs not in use
+    foreach ($a in @(Invoke-Gcloud @(&#x27;compute&#x27;, &#x27;addresses&#x27;, &#x27;list&#x27;, &quot;--project=$p&quot;)) |
+             Where-Object { $_.status -eq &#x27;RESERVED&#x27; -and $_.addressType -ne &#x27;INTERNAL&#x27; }) {
+        Add-Finding &#x27;Unused static external IP&#x27; $p $(if ($a.region) { Get-Leaf $a.region } else { &#x27;global&#x27; }) $a.name $a.address $a.labels
+    }
+
+    # Old snapshots
+    foreach ($s in @(Invoke-Gcloud @(&#x27;compute&#x27;, &#x27;snapshots&#x27;, &#x27;list&#x27;, &quot;--project=$p&quot;)) |
+             Where-Object { (ConvertTo-Date $_.creationTimestamp) -lt $snapshotCutoff }) {
+        $stored = if ($s.storageBytes) { [math]::Round([double]$s.storageBytes / 1GB, 1) } else { 0 }
+        $detail = &#x27;from {0} ({1} GB disk), {2} GB stored, created {3:yyyy-MM-dd}&#x27; -f (Get-Leaf $s.sourceDisk), $s.diskSizeGb, $stored, (ConvertTo-Date $s.creationTimestamp)
+        if ($s.autoCreated) { $detail += &#x27;, from a snapshot schedule&#x27; }
+        Add-Finding &#x27;Old snapshot&#x27; $p (@($s.storageLocations) -join &#x27;,&#x27;) $s.name $detail $s.labels
+    }
+
+    # VMs stopped for a long time
+    foreach ($vm in @(Invoke-Gcloud @(&#x27;compute&#x27;, &#x27;instances&#x27;, &#x27;list&#x27;, &quot;--project=$p&quot;, &#x27;--filter=status=TERMINATED&#x27;))) {
+        $since = ConvertTo-Date $vm.lastStopTimestamp
+        if ($since -and $since -lt $stoppedCutoff) {
+            $gb = [int](@($vm.disks) | ForEach-Object { [int]$_.diskSizeGb } | Measure-Object -Sum).Sum
+            Add-Finding &#x27;Long-stopped VM&#x27; $p (Get-Leaf $vm.zone) $vm.name (&#x27;{0}, stopped since {1:yyyy-MM-dd}, {2} GB of disks&#x27; -f (Get-Leaf $vm.machineType), $since, $gb) $vm.labels
+        }
+    }
+
+    # Backend services with no backends
+    foreach ($b in @(Invoke-Gcloud @(&#x27;compute&#x27;, &#x27;backend-services&#x27;, &#x27;list&#x27;, &quot;--project=$p&quot;)) | Where-Object { -not $_.backends }) {
+        Add-Finding &#x27;Backend service with no backends&#x27; $p $(if ($b.region) { Get-Leaf $b.region } else { &#x27;global&#x27; }) $b.name `
+            (&#x27;{0}, {1}&#x27; -f $b.loadBalancingScheme, $b.protocol) $null
+    }
+}
+
+$report | Sort-Object Finding, Project, Name | Export-Csv -Path $OutputFile -NoTypeInformation -Encoding UTF8
+$report | Group-Object Finding | Select-Object @{n=&#x27;Finding&#x27;;e={$_.Name}}, Count | Format-Table -AutoSize | Out-Host
+Write-Host &quot;Findings: $($report.Count). Report: $OutputFile&quot; -ForegroundColor Green
+</code></pre>
+
+    <nav class="pager" aria-label="More scripts">
+      <span></span>
+      <a class="next" href="get-gcpvminventory.html"><span>Next script</span>Get-GcpVMInventory</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

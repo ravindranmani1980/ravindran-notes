@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Backup and recovery | GCP | Notes | Ravindran Mani</title>
+<meta name="description" content="Snapshot schedules, Backup and DR vaults, Cloud SQL and Cloud Storage protection, restores and disaster recovery.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../gcp/index.html" aria-current="page">GCP</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 8 of 10</p>
+    <ol>
+      <li><a href="#backup-versus-disaster-recovery">Backup versus disaster recovery</a></li>
+      <li><a href="#find-what-is-not-protected">Find what is not protected</a></li>
+      <li><a href="#snapshots-and-snapshot-schedules">Snapshots and snapshot schedules</a></li>
+      <li><a href="#backup-and-dr-service">Backup and DR Service</a></li>
+      <li><a href="#cloud-sql-and-cloud-storage">Cloud SQL and Cloud Storage</a></li>
+      <li><a href="#watch-for-failed-backups">Watch for failed backups</a></li>
+      <li><a href="#restoring">Restoring</a></li>
+      <li><a href="#test-restores-on-a-schedule">Test restores on a schedule</a></li>
+      <li><a href="#disaster-recovery">Disaster recovery</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">GCP</a> / Guide 8</p>
+    <h1>Backup and recovery</h1>
+    <p class="lead">Snapshot schedules, Backup and DR vaults, Cloud SQL and Cloud Storage protection, restores and disaster recovery.</p>
+
+<p>Google Cloud keeps your data durable, but it doesn't keep it safe from you: a deleted disk, a script run against the wrong project, or ransomware using stolen admin credentials. That's what backups are for. This guide covers snapshots, the Backup and DR Service with backup vaults, Cloud SQL and Cloud Storage protection, restores, and disaster recovery.</p>
+<h2 id="backup-versus-disaster-recovery">Backup versus disaster recovery</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th></th><th>Backup</th><th>Disaster recovery</th></tr>
+</thead>
+<tbody>
+<tr><td>Protects against</td><td>Deletion, corruption, ransomware, bad changes</td><td>Losing a zone or region for a stateful system</td></tr>
+<tr><td>Recovery point</td><td>Hours (the last backup)</td><td>Seconds to minutes (replication)</td></tr>
+<tr><td>Recovery time</td><td>Minutes to hours, per resource</td><td>Minutes, for a whole application</td></tr>
+<tr><td>Google Cloud feature</td><td>Snapshots, Backup and DR Service, Cloud SQL backups</td><td>Regional disks, cross-region replicas, multi-region designs</td></tr>
+</tbody>
+</table>
+</div>
+<p>You need both for important systems. Replication alone faithfully copies a deletion to the other side.</p>
+<h2 id="find-what-is-not-protected">Find what is not protected</h2>
+<p><a href="../scripts/get-gcpbackupcoverage.html"><code>Get-GcpBackupCoverage.ps1</code></a> checks every VM in each project for a Backup and DR backup plan or a snapshot schedule on all of its disks, and every Cloud SQL instance for automated backups and point-in-time recovery:</p>
+<pre><code class="language-powershell">.\Get-GcpBackupCoverage.ps1 -ProjectId prj-notes-test -UnprotectedOnly
+</code></pre>
+<h2 id="snapshots-and-snapshot-schedules">Snapshots and snapshot schedules</h2>
+<p>A <strong>snapshot</strong> is an incremental, crash-consistent copy of a persistent disk or Hyperdisk, stored in multi-regional or regional Cloud Storage. A <strong>snapshot schedule</strong> (a resource policy) takes them automatically and deletes them after the retention you set:</p>
+<pre><code class="language-powershell"># Daily at 03:00 UTC, kept 14 days, stored in the US multi-region
+gcloud compute resource-policies create snapshot-schedule sched-daily-14d --region=us-east1 `
+    --daily-schedule --start-time=03:00 --max-retention-days=14 --storage-location=us `
+    --on-source-disk-delete=keep-auto-snapshots
+
+# Attach it to a VM's disk
+gcloud compute disks add-resource-policies vm-notes-test-01 --zone=us-east1-b --resource-policies=sched-daily-14d
+</code></pre>
+<p>Snapshots are simple and cheap, but anyone with enough rights in the project can delete them. For production, use backup vaults (below). Enable <strong>guest flush</strong> (application-consistent snapshots with VSS on Windows, or pre/post scripts on Linux) for databases running on VMs.</p>
+<h2 id="backup-and-dr-service">Backup and DR Service</h2>
+<p><strong>Backup and DR Service</strong> is Google Cloud's managed backup service for Compute Engine VMs and disks, Cloud SQL, AlloyDB, Filestore, and databases running on VMs (SQL Server, Oracle, SAP HANA and more). The pieces:</p>
+<ul>
+<li><strong>Backup vault:</strong> Google-managed storage for backups, in a separate backup project if you like. It enforces a <strong>minimum retention</strong>: backups can't be deleted before it ends, by anyone, which is what protects them from ransomware and malicious admins. Retention can be locked so it can't be shortened.</li>
+<li><strong>Backup plan:</strong> the rules (hourly to yearly backups, backup window, retention) and the vault they go to.</li>
+<li><strong>Backup plan association:</strong> links a VM, disk or database to a plan.</li>
+</ul>
+<pre><code class="language-powershell"># Vaults and plans in a project
+gcloud backup-dr backup-vaults list --project=prj-notes-backup --location=us-east1
+gcloud backup-dr backup-plans list --project=prj-notes-backup --location=us-east1
+
+# What is protected, and the state of its last backup
+gcloud backup-dr backup-plan-associations list --project=prj-notes-test --format=json | ConvertFrom-Json |
+    Select-Object resource, resourceType, @{n='LastBackup';e={ $_.rulesConfigInfo[0].lastBackupState }}
+</code></pre>
+<p>Good practice: vaults in a <strong>dedicated backup project</strong> that workload teams have no roles in, enforced retention that matches your policy (for example 30 days for daily backups), and a separate vault in another region for copies of critical systems.</p>
+<h2 id="cloud-sql-and-cloud-storage">Cloud SQL and Cloud Storage</h2>
+<ul>
+<li><strong>Cloud SQL:</strong> turn on automated daily backups and <strong>point-in-time recovery</strong> for every production instance; keep 7 to 35 days. Retain backups after instance deletion (the <em>retained backups</em> setting) so deleting the database doesn't delete its backups too. Add Backup and DR for longer, vault-protected retention.</li>
+<li><strong>Cloud Storage soft delete</strong> keeps deleted objects recoverable for 7 days by default on new buckets (configurable up to 90). Keep it on for important data.</li>
+<li><strong>Object versioning</strong> keeps previous versions when objects are overwritten; pair it with a lifecycle rule that deletes old versions after a while.</li>
+<li><strong>Bucket Lock</strong> (a locked retention policy) makes objects immutable for a set period: the Cloud Storage answer to compliance storage.</li>
+<li><strong>Dual-region or multi-region buckets</strong> keep data readable if a region is lost.</li>
+</ul>
+<pre><code class="language-powershell"># Cloud SQL instances without backups or point-in-time recovery
+gcloud sql instances list --project=prj-notes-test --format=json | ConvertFrom-Json | ForEach-Object {
+    [pscustomobject]@{
+        Instance = $_.name
+        Backups  = [bool]$_.settings.backupConfiguration.enabled
+        PITR     = [bool]($_.settings.backupConfiguration.pointInTimeRecoveryEnabled -or $_.settings.backupConfiguration.binaryLogEnabled)
+    }
+}
+</code></pre>
+<h2 id="watch-for-failed-backups">Watch for failed backups</h2>
+<p>A backup nobody checks isn't a backup. Backup and DR writes job logs to Cloud Logging and exposes metrics in Cloud Monitoring: create an alerting policy on failed backup jobs, and a weekly report of resources whose last successful backup is more than a day old. For snapshot schedules, alert on errors from <code>compute.googleapis.com</code> with the method <code>CreateSnapshot</code> in the audit logs.</p>
+<h2 id="restoring">Restoring</h2>
+<ul>
+<li><strong>VM from a snapshot:</strong> create a disk from the snapshot, then a VM from the disk (or attach it to an existing VM to copy files). Restore into an isolated network first if you're recovering from an incident.</li>
+<li><strong>VM from Backup and DR:</strong> restore to a new VM in the same or another project and zone, or restore individual disks.</li>
+<li><strong>Cloud SQL:</strong> restore a backup to the same or a new instance, or clone to a point in time (a new instance at any second in the recovery window).</li>
+<li><strong>Record what isn't in the backup:</strong> network tags, service account, firewall rules and IP addresses. Keep them in Terraform, or in the runbook.</li>
+</ul>
+<h2 id="test-restores-on-a-schedule">Test restores on a schedule</h2>
+<p>Restore one critical system a month into a test project, check that the application starts and the data is there, time it, and delete it. Script it (the gcloud commands above, plus a check) so it's cheap to repeat. Keep the results: they're the evidence auditors ask for, and the real recovery time you can promise.</p>
+<h2 id="disaster-recovery">Disaster recovery</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Pattern</th><th>Recovery time</th><th>Cost</th><th>How in Google Cloud</th></tr>
+</thead>
+<tbody>
+<tr><td>Backup and restore</td><td>Hours</td><td>Lowest</td><td>Multi-region snapshots or vault copies; rebuild from Terraform</td></tr>
+<tr><td>Cold / pilot light</td><td>Tens of minutes</td><td>Low</td><td>Cloud SQL cross-region replica, dual-region buckets; VMs created on failover</td></tr>
+<tr><td>Warm standby</td><td>Minutes</td><td>Medium</td><td>A small running copy in a second region, scaled up on failover</td></tr>
+<tr><td>Active/active</td><td>Near zero</td><td>Highest</td><td>Regional MIGs in two regions behind a global load balancer; Spanner or multi-region databases</td></tr>
+</tbody>
+</table>
+</div>
+<p>Zonal failures are the more common event: regional MIGs, regional disks and Cloud SQL high availability (a standby in another zone) handle them automatically. Run a regional failover drill at least twice a year; the first one always finds something.</p>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="compute-engine.html"><span>Previous guide</span>Compute Engine VMs</a>
+      <a class="next" href="monitoring-and-alerts.html"><span>Next guide</span>Monitoring and alerts</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resource hierarchy and access | GCP | Notes | Ravindran Mani</title>
+<meta name="description" content="Organization, folders and projects, organisation policies, IAM, service accounts, and protecting the super admins.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../gcp/index.html" aria-current="page">GCP</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 2 of 10</p>
+    <ol>
+      <li><a href="#the-hierarchy">The hierarchy</a></li>
+      <li><a href="#a-practical-layout">A practical layout</a></li>
+      <li><a href="#organisation-policies">Organisation policies</a></li>
+      <li><a href="#access-with-iam">Access with IAM</a></li>
+      <li><a href="#service-accounts">Service accounts</a></li>
+      <li><a href="#protect-the-super-admins">Protect the super admins</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">GCP</a> / Guide 2</p>
+    <h1>Resource hierarchy and access</h1>
+    <p class="lead">Organization, folders and projects, organisation policies, IAM, service accounts, and protecting the super admins.</p>
+
+<p>In Google Cloud, the <strong>project</strong> is where resources live and where APIs, quotas and billing are attached, and the organisation, folders and projects above it are where policy and access are set once and inherited. A good structure uses one project per workload and environment, folders for the things that share rules, and groups for every permission.</p>
+<h2 id="the-hierarchy">The hierarchy</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Level</th><th>What it is</th><th>Used for</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Organization</strong></td><td>The root, tied to your Cloud Identity or Google Workspace domain</td><td>Organisation policies, organisation-wide IAM, billing ownership</td></tr>
+<tr><td><strong>Folders</strong></td><td>Groups of projects (and other folders), up to 10 levels deep</td><td>Policy and access for a business unit or environment</td></tr>
+<tr><td><strong>Projects</strong></td><td>The container for resources</td><td>APIs, quotas, billing account link, IAM for one workload</td></tr>
+<tr><td><strong>Resources</strong></td><td>VMs, buckets, databases</td><td>Labels group them for cost and ownership</td></tr>
+</tbody>
+</table>
+</div>
+<p>IAM policies and organisation policies set at one level are inherited by everything below. IAM is additive: a role granted on a folder can't be taken away on a project inside it (except with an IAM deny policy).</p>
+<p>A project has three identifiers: a <strong>name</strong> you can change, a <strong>project ID</strong> that is globally unique and permanent, and a <strong>project number</strong> that Google assigns. Scripts and service accounts use the ID, so choose it carefully: <code>prj-notes-test</code> reads better in five years than <code>my-project-8812</code>.</p>
+<h2 id="a-practical-layout">A practical layout</h2>
+<pre><code>ravindran.in (organization)
+├── fldr-common                shared services
+│   ├── prj-logging            log sinks, audit log buckets, locked down
+│   ├── prj-security           Security Command Center, KMS keys, secrets for platform tools
+│   ├── prj-network-hub        Shared VPC host project, Cloud NAT, interconnect, DNS
+│   └── prj-billing-export     BigQuery dataset for the billing export
+├── fldr-prod
+│   ├── prj-payroll-prod
+│   └── prj-web-prod
+├── fldr-nonprod
+│   ├── prj-payroll-test
+│   └── prj-notes-test
+└── fldr-sandbox               personal experiments, with budgets and a stricter org policy
+</code></pre>
+<ul>
+<li><strong>One project per workload per environment.</strong> Production and test in one project means test credentials reach production data, and cost reports can't tell them apart.</li>
+<li><strong>Shared VPC</strong> lets a central network team own the VPC in a host project while workload projects (service projects) create VMs in its subnets. Networking stays consistent; workload teams don't need network admin rights.</li>
+<li><strong>Google's security foundations blueprint</strong> (and the Cloud Foundation Toolkit's Terraform) creates this kind of layout with sensible defaults. Use it, or at least read it, before building your own.</li>
+</ul>
+<h2 id="organisation-policies">Organisation policies</h2>
+<p>An <strong>organisation policy</strong> sets a limit that nobody in the projects below can exceed, not even an Owner. Organisations created since 3 May 2024 start "secure by default" with these enforced:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Constraint</th><th>Effect</th></tr>
+</thead>
+<tbody>
+<tr><td><code>iam.managed.disableServiceAccountKeyCreation</code></td><td>No downloadable service account keys</td></tr>
+<tr><td><code>iam.disableServiceAccountKeyUpload</code></td><td>No uploading your own public keys to service accounts</td></tr>
+<tr><td><code>iam.automaticIamGrantsForDefaultServiceAccounts</code></td><td>Default service accounts don't get the Editor role automatically</td></tr>
+<tr><td><code>iam.allowedPolicyMemberDomains</code></td><td>Only identities from your own domains can be granted roles</td></tr>
+<tr><td><code>essentialcontacts.managed.allowedContactDomains</code></td><td>Platform notifications only go to your own domains</td></tr>
+<tr><td><code>compute.managed.restrictProtocolForwardingCreationForTypes</code></td><td>Protocol forwarding on internal IPs only</td></tr>
+<tr><td><code>storage.uniformBucketLevelAccess</code></td><td>Buckets use IAM only, no per-object ACLs</td></tr>
+</tbody>
+</table>
+</div>
+<p>Older organisations should set the same ones. <a href="labels-and-governance.html">Guide 3</a> covers the other constraints worth adding and how to test them with dry run.</p>
+<pre><code class="language-powershell"># Which organisation policies are set on a project (inherited ones included)
+gcloud org-policies list --project=prj-notes-test --show-unset=false
+
+# The effective value of one constraint
+gcloud org-policies describe iam.allowedPolicyMemberDomains --project=prj-notes-test --effective
+</code></pre>
+<h2 id="access-with-iam">Access with IAM</h2>
+<p>An IAM grant is <strong>principal + role + resource</strong>. Rules worth writing down:</p>
+<ul>
+<li><strong>Grant to groups, never to individual users.</strong> Joiners and leavers then happen in your identity system, not in dozens of projects.</li>
+<li><strong>Avoid the basic roles</strong> (Owner, Editor, Viewer) for day-to-day access. Editor can change almost anything in a project; Owner can also change who has access. Use predefined roles such as <code>roles/compute.instanceAdmin.v1</code> or <code>roles/storage.objectViewer</code>, and custom roles where none fits.</li>
+<li><strong>Grant at the lowest level that works:</strong> a bucket rather than the project, a project rather than the folder.</li>
+<li><strong>Use IAM Conditions</strong> for time-bound or scoped access, for example a grant that expires at the end of a project.</li>
+<li><strong>Use Privileged Access Manager</strong> for admin roles: people request <code>roles/owner</code> or a production admin role for a few hours, with a justification and optional approval, and it's logged.</li>
+<li><strong>Act on IAM Recommender.</strong> It flags roles that haven't been used in 90 days and suggests smaller ones. <a href="../scripts/get-gcpiamreport.html"><code>Get-GcpIamReport.ps1</code></a> lists the risky grants across projects.</li>
+</ul>
+<pre><code class="language-powershell"># Who has what on a project
+gcloud projects get-iam-policy prj-notes-test --format=json | ConvertFrom-Json |
+    Select-Object -ExpandProperty bindings | ForEach-Object {
+        $b = $_; $b.members | ForEach-Object { [pscustomobject]@{ Role = $b.role; Member = $_ } }
+    } | Sort-Object Role | Format-Table
+
+# Grant a group a predefined role
+gcloud projects add-iam-policy-binding prj-notes-test `
+    --member=&quot;group:gcp-notes-operators@ravindran.in&quot; --role=&quot;roles/compute.instanceAdmin.v1&quot;
+</code></pre>
+<h2 id="service-accounts">Service accounts</h2>
+<p>Service accounts are identities for workloads, and they're the most common way access leaks in Google Cloud. Rules:</p>
+<ul>
+<li><strong>One service account per workload,</strong> with only the roles it needs. Don't use the Compute Engine default service account (<code><em>number</em>-compute@developer.gserviceaccount.com</code>): in older projects it has Editor on the whole project.</li>
+<li><strong>No keys.</strong> Attach service accounts to resources, use Workload Identity Federation from outside Google Cloud, and impersonation for people (<a href="getting-started.html#tip-6-use-service-accounts-for-automation">Guide 1</a>).</li>
+<li><strong>Be careful who can act as a service account.</strong> <code>roles/iam.serviceAccountUser</code> and <code>roles/iam.serviceAccountTokenCreator</code> granted at project level let someone use <em>every</em> service account in the project, including powerful ones. Grant them on the specific account instead.</li>
+<li><strong>Disable, then delete.</strong> Disable unused service accounts first; if nothing breaks in a few weeks, delete them. Deleted accounts can be restored for 30 days.</li>
+</ul>
+<h2 id="protect-the-super-admins">Protect the super admins</h2>
+<p>The <strong>super admin</strong> accounts of your Cloud Identity or Workspace domain can grant themselves anything in the organisation. Keep two, used for nothing else, with hardware security keys, and don't give them day-to-day Google Cloud roles. Grant the organisation administrator role (<code>roles/resourcemanager.organizationAdmin</code>) to a small group instead, and alert on every super admin sign-in.</p>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="getting-started.html"><span>Previous guide</span>Getting started</a>
+      <a class="next" href="labels-and-governance.html"><span>Next guide</span>Labels and governance</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

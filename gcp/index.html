@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GCP | Notes | Ravindran Mani</title>
+<meta name="description" content="Google Cloud resource hierarchy, IAM and governance, network and identity security, Compute Engine, backup, monitoring and cost.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../index.html">Home</a></li>
+        <li><a href="../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../azure/index.html">Azure</a></li>
+        <li><a href="../aws/index.html">AWS</a></li>
+        <li><a href="../gcp/index.html" aria-current="page">GCP</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../scripts/index.html">Scripts</a></li>
+        <li><a href="../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<section class="topic-head">
+<div class="wrap">
+<p class="crumbs"><a href="../index.html">Notes</a> / GCP</p>
+<h1>Google Cloud (GCP)</h1>
+<p class="lead">Running Google Cloud well day to day: a hierarchy and organisation policies that scale, labels that keep costs owned, networks and identities locked down, Compute Engine, backups and monitoring that hold up, and a bill that stays under control. 10 guides and 8 PowerShell scripts.</p>
+</div>
+</section>
+<section aria-labelledby="span-h" class="span">
+<div class="wrap">
+<h2 id="span-h">How Google Cloud is organised</h2>
+<p class="muted span-intro">IAM and organisation policies set at one level are inherited by everything beneath it. The project is where resources, APIs and billing live.</p>
+<ol class="releases releases-5">
+<li><span class="year">Organization</span><span class="rel">Cloud Identity or Workspace domain</span></li>
+<li><span class="year">Folders</span><span class="rel">Policy and access for groups of projects</span></li>
+<li><span class="year">Projects</span><span class="rel">APIs, quotas, billing link</span></li>
+<li><span class="year">VPC networks</span><span class="rel">Global networks, regional subnets</span></li>
+<li><span class="year">Resources</span><span class="rel">Grouped by labels</span></li>
+</ol>
+</div>
+</section>
+<section aria-labelledby="explore-h" class="block"><div class="wrap"><div class="col-head wide"><h2 id="explore-h">Explore Google Cloud notes</h2><p class="muted">Open only the section you need.</p></div><ul class="topic-list"><li><a class="topic-row" href="guides/"><span class="tname">Guides</span><span class="tdesc">10 practical guides covering the hierarchy, governance, security, operations and cost.</span><span class="st st-live">Open</span></a></li><li><a class="topic-row" href="scripts/"><span class="tname">Scripts</span><span class="tdesc">8 documented PowerShell scripts (using gcloud) for inventory, clean-up, governance, security and operations.</span><span class="st st-live">Open</span></a></li><li><a class="topic-row" href="environment/"><span class="tname">Example environment</span><span class="tdesc">Example names used consistently throughout the Google Cloud examples.</span><span class="st">Reference</span></a></li></ul></div></section>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../assets/site.js"></script>
+</body>
+</html>
