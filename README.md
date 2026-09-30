@@ -27,7 +27,7 @@ notes.ravindran.in/
 │   ├── site.js             Mobile menu, copy buttons, guide contents highlight
 │   ├── prism.js            PowerShell syntax highlighting (self-hosted)
 │   └── favicon.svg
-├── scripts/index.html      Every script on the site, by topic
+├── scripts/index.html      Scripts hub: one row per topic with its script count
 ├── sharepoint/
 │   ├── index.html          Topic page: timeline, guides, scripts, test URLs
 │   ├── guides/             One page per guide
@@ -74,7 +74,7 @@ Open `index.html` in a browser. All links are relative, so the site works straig
 
 **A guide:** copy `_templates/guide.html` to `<topic>/guides/<name>.html`, fill it in, then add it to the guide list on `<topic>/index.html` and update the previous/next links on its neighbours.
 
-**A script:** put the `.ps1` in `<topic>/scripts/`, copy `_templates/script.html` next to it, and fill it in. Add it to `<topic>/index.html` and to `scripts/index.html`. If it's about cost, also list it in the FinOps section. When you change a script, update both the `.ps1` and the code on its page.
+**A script:** put the `.ps1` in `<topic>/scripts/`, copy `_templates/script.html` next to it, and fill it in. Add it to `<topic>/scripts/index.html` and update that topic's count on `scripts/index.html`. If it's about cost, also list it in the FinOps section. When you change a script, update both the `.ps1` and the code on its page.
 
 **Taking a topic live (for example AWS):**
 

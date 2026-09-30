@@ -39,197 +39,20 @@
 <main id="main">
 <div class="wrap page-head">
   <h1>Scripts</h1>
-  <p class="lead">Every PowerShell script on this site, by topic. Each page explains what the script does, its parameters and examples, and has the full source to copy or download.</p>
+  <p class="lead">Every PowerShell script on this site, by topic. Pick a topic to see its scripts; each script page explains what it does, its parameters and examples, and has the full source to copy or download.</p>
 </div>
 
-<div class="wrap all-scripts">
-  <section class="topic-scripts" aria-labelledby="t-sharepoint">
-    <h2 id="t-sharepoint"><a href="../sharepoint/index.html">SharePoint</a></h2>
-    <div class="script-columns">
-    <section class="script-group">
-      <h3>SharePoint Server</h3>
-      <ul class="script-list">
-      <li><a class="script-link" href="../sharepoint/scripts/get-spfarminventory.html">Get-SPFarmInventory</a>
-        <p>Builds a CSV inventory of a SharePoint Server farm.</p></li>
-      <li><a class="script-link" href="../sharepoint/scripts/get-splargelists.html">Get-SPLargeLists</a>
-        <p>Finds lists and libraries that are approaching or over the list view threshold.</p></li>
-      <li><a class="script-link" href="../sharepoint/scripts/get-splogsbycorrelation.html">Get-SPLogsByCorrelation</a>
-        <p>Collects ULS log entries for a correlation ID from the whole farm.</p></li>
-      <li><a class="script-link" href="../sharepoint/scripts/get-sppatchstatus.html">Get-SPPatchStatus</a>
-        <p>Verifies that every server in the farm is on the same SharePoint build after patching.</p></li>
-      <li><a class="script-link" href="../sharepoint/scripts/get-spservicematrix.html">Get-SPServiceMatrix</a>
-        <p>Shows which SharePoint services run on which servers, as a matrix.</p></li>
-      <li><a class="script-link" href="../sharepoint/scripts/get-spsitestoragereport.html">Get-SPSiteStorageReport</a>
-        <p>Reports storage, quota use and staleness for every site collection.</p></li>
-      <li><a class="script-link" href="../sharepoint/scripts/invoke-sppostpatchconfig.html">Invoke-SPPostPatchConfig</a>
-        <p>Runs the SharePoint configuration step (PSConfig) on this server after installing an update.</p></li>
-      <li><a class="script-link" href="../sharepoint/scripts/invoke-spwarmup.html">Invoke-SPWarmup</a>
-        <p>Warms up SharePoint web applications by requesting their pages after an app pool recycle.</p></li>
-      <li><a class="script-link" href="../sharepoint/scripts/set-spblobcache.html">Set-SPBlobCache</a>
-        <p>Shows, enables, disables or flushes the BLOB cache for a web application.</p></li>
-      <li><a class="script-link" href="../sharepoint/scripts/set-spobjectcacheaccounts.html">Set-SPObjectCacheAccounts</a>
-        <p>Shows or sets the object cache super user and super reader accounts for a web application.</p></li>
-      <li><a class="script-link" href="../sharepoint/scripts/test-spupgradereadiness.html">Test-SPUpgradeReadiness</a>
-        <p>Runs Test-SPContentDatabase and produces one readable report for upgrade planning.</p></li>
-      </ul>
-    </section>
-    <section class="script-group">
-      <h3>SharePoint Online</h3>
-      <ul class="script-list">
-      <li><a class="script-link" href="../sharepoint/scripts/get-spoexternalusersreport.html">Get-SPOExternalUsersReport</a>
-        <p>Lists guest (external) users on every SharePoint Online site that allows sharing.</p></li>
-      <li><a class="script-link" href="../sharepoint/scripts/get-spolistsnearthreshold.html">Get-SPOListsNearThreshold</a>
-        <p>Finds large lists and libraries in a SharePoint Online site and shows their indexes.</p></li>
-      <li><a class="script-link" href="../sharepoint/scripts/get-spositeinventory.html">Get-SPOSiteInventory</a>
-        <p>Tenant-wide SharePoint Online site inventory: storage, sharing, staleness, hubs.</p></li>
-      <li><a class="script-link" href="../sharepoint/scripts/get-spouniquepermissions.html">Get-SPOUniquePermissions</a>
-        <p>Reports where permission inheritance is broken in a SharePoint Online site.</p></li>
-      <li><a class="script-link" href="../sharepoint/scripts/remove-spooldfileversions.html">Remove-SPOOldFileVersions</a>
-        <p>Trims old file versions in a document library, keeping the newest N versions.</p></li>
-      <li><a class="script-link" href="../sharepoint/scripts/restore-sporecyclebinbyuser.html">Restore-SPORecycleBinByUser</a>
-        <p>Restores items that one user deleted in a time window (mass-deletion recovery).</p></li>
-      </ul>
-    </section>
-    <section class="script-group">
-      <h3>Migration</h3>
-      <ul class="script-list">
-      <li><a class="script-link" href="../sharepoint/scripts/find-migrationblockers.html">Find-MigrationBlockers</a>
-        <p>Scans a file share (or any folder) for problems that block or complicate a move to SharePoint Online / OneDrive.</p></li>
-      </ul>
-    </section>
-    </div>
-  </section>
-
-  <section class="topic-scripts" aria-labelledby="t-azure">
-    <h2 id="t-azure"><a href="../azure/index.html">Azure</a></h2>
-    <div class="script-columns">
-    <section class="script-group">
-      <h3>Inventory and clean-up</h3>
-      <ul class="script-list">
-      <li><a class="script-link" href="../azure/scripts/find-azorphanedresources.html">Find-AzOrphanedResources</a>
-        <p>Finds orphaned Azure resources that cost money or clutter: unattached disks, unused public IPs and more.</p></li>
-      <li><a class="script-link" href="../azure/scripts/get-azvminventory.html">Get-AzVMInventory</a>
-        <p>Lists every Azure VM in every subscription you can see, with size, power state, disks, IPs and tags.</p></li>
-      </ul>
-    </section>
-    <section class="script-group">
-      <h3>Governance</h3>
-      <ul class="script-list">
-      <li><a class="script-link" href="../azure/scripts/get-azroleassignmentreport.html">Get-AzRoleAssignmentReport</a>
-        <p>Reports Azure RBAC role assignments in every subscription and flags the risky ones.</p></li>
-      <li><a class="script-link" href="../azure/scripts/get-azuntaggedresources.html">Get-AzUntaggedResources</a>
-        <p>Lists Azure resources (and optionally resource groups) that are missing required tags.</p></li>
-      </ul>
-    </section>
-    <section class="script-group">
-      <h3>Network security</h3>
-      <ul class="script-list">
-      <li><a class="script-link" href="../azure/scripts/get-aznsgcoverage.html">Get-AzNsgCoverage</a>
-        <p>Finds gaps in network security group coverage: subnets and network interfaces with no NSG, and unused application security groups.</p></li>
-      <li><a class="script-link" href="../azure/scripts/get-aznsgrulereport.html">Get-AzNsgRuleReport</a>
-        <p>Reports network security group rules in every subscription and flags the risky ones, such as RDP or SSH open to the internet.</p></li>
-      </ul>
-    </section>
-    <section class="script-group">
-      <h3>Operations</h3>
-      <ul class="script-list">
-      <li><a class="script-link" href="../azure/scripts/get-azbackupcoverage.html">Get-AzBackupCoverage</a>
-        <p>Shows which Azure VMs are protected by Azure Backup, and which aren&#x27;t.</p></li>
-      <li><a class="script-link" href="../azure/scripts/invoke-azvmpowerschedule.html">Invoke-AzVMPowerSchedule</a>
-        <p>Starts or stops (deallocates) Azure VMs that carry a schedule tag. Designed for Azure Automation.</p></li>
-      </ul>
-    </section>
-    </div>
-  </section>
-
-  <section class="topic-scripts" aria-labelledby="t-aws">
-    <h2 id="t-aws"><a href="../aws/index.html">AWS</a></h2>
-    <div class="script-columns">
-    <section class="script-group">
-      <h3>Inventory and clean-up</h3>
-      <ul class="script-list">
-      <li><a class="script-link" href="../aws/scripts/find-awsorphanedresources.html">Find-AwsOrphanedResources</a>
-        <p>Finds orphaned AWS resources that cost money or clutter: unattached EBS volumes, unused Elastic IPs, idle load balancers and more.</p></li>
-      <li><a class="script-link" href="../aws/scripts/get-awsec2inventory.html">Get-AwsEC2Inventory</a>
-        <p>Lists every EC2 instance in every enabled region, with type, state, IPs, volumes, IMDS setting and tags.</p></li>
-      </ul>
-    </section>
-    <section class="script-group">
-      <h3>Governance</h3>
-      <ul class="script-list">
-      <li><a class="script-link" href="../aws/scripts/get-awsiamcredentialreport.html">Get-AwsIamCredentialReport</a>
-        <p>Reports IAM users and the root user from the IAM credential report, and flags the risky ones: no MFA, old or unused access keys.</p></li>
-      <li><a class="script-link" href="../aws/scripts/get-awsuntaggedresources.html">Get-AwsUntaggedResources</a>
-        <p>Lists AWS resources that are missing required tags, or have them spelled with the wrong case.</p></li>
-      </ul>
-    </section>
-    <section class="script-group">
-      <h3>Network and data security</h3>
-      <ul class="script-list">
-      <li><a class="script-link" href="../aws/scripts/get-awssecuritygroupreport.html">Get-AwsSecurityGroupReport</a>
-        <p>Reports security group rules in every region and flags the risky ones, such as SSH or RDP open to the internet.</p></li>
-      <li><a class="script-link" href="../aws/scripts/get-awss3publicaccessreport.html">Get-AwsS3PublicAccessReport</a>
-        <p>Checks every S3 bucket for public access, and reports Block Public Access, policy status, ACLs, encryption and versioning.</p></li>
-      </ul>
-    </section>
-    <section class="script-group">
-      <h3>Operations</h3>
-      <ul class="script-list">
-      <li><a class="script-link" href="../aws/scripts/get-awsbackupcoverage.html">Get-AwsBackupCoverage</a>
-        <p>Shows which EC2 instances, RDS databases, DynamoDB tables and EFS file systems are protected by AWS Backup, and which aren&#x27;t.</p></li>
-      <li><a class="script-link" href="../aws/scripts/invoke-awsec2powerschedule.html">Invoke-AwsEC2PowerSchedule</a>
-        <p>Starts or stops EC2 instances that carry a schedule tag. Run it on a schedule from EC2, Lambda or Systems Manager.</p></li>
-      </ul>
-    </section>
-    </div>
-  </section>
-
-  <section class="topic-scripts" aria-labelledby="t-gcp">
-    <h2 id="t-gcp"><a href="../gcp/index.html">Google Cloud</a></h2>
-    <div class="script-columns">
-    <section class="script-group">
-      <h3>Inventory and clean-up</h3>
-      <ul class="script-list">
-      <li><a class="script-link" href="../gcp/scripts/find-gcporphanedresources.html">Find-GcpOrphanedResources</a>
-        <p>Finds orphaned Google Cloud resources that cost money or clutter: unattached disks, unused static IPs, old snapshots and more.</p></li>
-      <li><a class="script-link" href="../gcp/scripts/get-gcpvminventory.html">Get-GcpVMInventory</a>
-        <p>Lists every Compute Engine VM in every project you can see, with machine type, status, IPs, disks, service account and labels.</p></li>
-      </ul>
-    </section>
-    <section class="script-group">
-      <h3>Governance</h3>
-      <ul class="script-list">
-      <li><a class="script-link" href="../gcp/scripts/get-gcpiamreport.html">Get-GcpIamReport</a>
-        <p>Reports risky IAM grants and service account keys in every project: public access, basic roles, outside domains and user-managed keys.</p></li>
-      <li><a class="script-link" href="../gcp/scripts/get-gcpunlabeledresources.html">Get-GcpUnlabeledResources</a>
-        <p>Lists Google Cloud resources that are missing required labels, or have them under a slightly different name.</p></li>
-      </ul>
-    </section>
-    <section class="script-group">
-      <h3>Network and data security</h3>
-      <ul class="script-list">
-      <li><a class="script-link" href="../gcp/scripts/get-gcpfirewallreport.html">Get-GcpFirewallReport</a>
-        <p>Reports VPC firewall rules in every project and flags the risky ones, such as SSH or RDP open to the internet.</p></li>
-      <li><a class="script-link" href="../gcp/scripts/get-gcpbucketpublicaccessreport.html">Get-GcpBucketPublicAccessReport</a>
-        <p>Checks every Cloud Storage bucket for public access, and reports public access prevention, uniform access, versioning and soft delete.</p></li>
-      </ul>
-    </section>
-    <section class="script-group">
-      <h3>Operations</h3>
-      <ul class="script-list">
-      <li><a class="script-link" href="../gcp/scripts/get-gcpbackupcoverage.html">Get-GcpBackupCoverage</a>
-        <p>Shows which Compute Engine VMs and Cloud SQL instances are protected by backups, and which aren&#x27;t.</p></li>
-      <li><a class="script-link" href="../gcp/scripts/invoke-gcpvmpowerschedule.html">Invoke-GcpVMPowerSchedule</a>
-        <p>Starts or stops Compute Engine VMs that carry a schedule label. Run it on a schedule from Cloud Scheduler, a VM or a pipeline.</p></li>
-      </ul>
-    </section>
-    </div>
-  </section>
-
-  <!-- Add a section per topic when it goes live, copying the SharePoint section above.
-       For FinOps, list the cost-related scripts again here, for example Find-AzOrphanedResources,
-       Get-AzUntaggedResources and Invoke-AzVMPowerSchedule from the Azure folder. -->
+<section aria-labelledby="topics-h" class="block">
+<div class="wrap">
+<div class="col-head wide">
+<h2 id="topics-h">Scripts by topic</h2>
+<p class="muted">42 scripts in all. Reports are read-only; scripts that make changes support <code style="white-space:nowrap">-WhatIf</code>.</p>
 </div>
+<ul class="topic-list"><li><a class="topic-row" href="../sharepoint/scripts/index.html"><span class="tname">SharePoint</span><span class="tdesc">SharePoint Server, SharePoint Online and migration scripts: farm inventory, patching, large lists, permissions, storage and more.</span><span class="st st-live">18 scripts</span></a></li><li><a class="topic-row" href="../azure/scripts/index.html"><span class="tname">Azure</span><span class="tdesc">Inventory and clean-up, tagging and access reviews, NSG rules and coverage, backup coverage and VM start/stop.</span><span class="st st-live">8 scripts</span></a></li><li><a class="topic-row" href="../aws/scripts/index.html"><span class="tname">AWS</span><span class="tdesc">EC2 inventory and clean-up, IAM credentials and tagging, security groups, S3 public access, backup coverage and EC2 start/stop.</span><span class="st st-live">8 scripts</span></a></li><li><a class="topic-row" href="../gcp/scripts/index.html"><span class="tname">Google Cloud</span><span class="tdesc">VM inventory and clean-up, IAM and labels, firewall rules, bucket public access, backup coverage and VM start/stop (using gcloud).</span><span class="st st-live">8 scripts</span></a></li></ul>
+</div>
+</section>
+<!-- Add a row per topic when it goes live. For FinOps, link a page that lists the cost-related
+     scripts from each cloud (for example Find-AzOrphanedResources, Find-AwsOrphanedResources). -->
 </main>
 <footer class="site-footer">
   <div class="wrap footer-row">
