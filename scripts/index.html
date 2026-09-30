@@ -25,6 +25,7 @@
         <li><a href="../sharepoint/index.html">SharePoint</a></li>
         <li><a href="../azure/index.html">Azure</a></li>
         <li><a href="../aws/index.html">AWS</a></li>
+        <li><a href="../gcp/index.html">GCP</a></li>
         <!-- Add each topic here when it goes live, for example:
         <li><a href="../finops/index.html">FinOps</a></li>
         -->
@@ -178,6 +179,48 @@
         <p>Shows which EC2 instances, RDS databases, DynamoDB tables and EFS file systems are protected by AWS Backup, and which aren&#x27;t.</p></li>
       <li><a class="script-link" href="../aws/scripts/invoke-awsec2powerschedule.html">Invoke-AwsEC2PowerSchedule</a>
         <p>Starts or stops EC2 instances that carry a schedule tag. Run it on a schedule from EC2, Lambda or Systems Manager.</p></li>
+      </ul>
+    </section>
+    </div>
+  </section>
+
+  <section class="topic-scripts" aria-labelledby="t-gcp">
+    <h2 id="t-gcp"><a href="../gcp/index.html">Google Cloud</a></h2>
+    <div class="script-columns">
+    <section class="script-group">
+      <h3>Inventory and clean-up</h3>
+      <ul class="script-list">
+      <li><a class="script-link" href="../gcp/scripts/find-gcporphanedresources.html">Find-GcpOrphanedResources</a>
+        <p>Finds orphaned Google Cloud resources that cost money or clutter: unattached disks, unused static IPs, old snapshots and more.</p></li>
+      <li><a class="script-link" href="../gcp/scripts/get-gcpvminventory.html">Get-GcpVMInventory</a>
+        <p>Lists every Compute Engine VM in every project you can see, with machine type, status, IPs, disks, service account and labels.</p></li>
+      </ul>
+    </section>
+    <section class="script-group">
+      <h3>Governance</h3>
+      <ul class="script-list">
+      <li><a class="script-link" href="../gcp/scripts/get-gcpiamreport.html">Get-GcpIamReport</a>
+        <p>Reports risky IAM grants and service account keys in every project: public access, basic roles, outside domains and user-managed keys.</p></li>
+      <li><a class="script-link" href="../gcp/scripts/get-gcpunlabeledresources.html">Get-GcpUnlabeledResources</a>
+        <p>Lists Google Cloud resources that are missing required labels, or have them under a slightly different name.</p></li>
+      </ul>
+    </section>
+    <section class="script-group">
+      <h3>Network and data security</h3>
+      <ul class="script-list">
+      <li><a class="script-link" href="../gcp/scripts/get-gcpfirewallreport.html">Get-GcpFirewallReport</a>
+        <p>Reports VPC firewall rules in every project and flags the risky ones, such as SSH or RDP open to the internet.</p></li>
+      <li><a class="script-link" href="../gcp/scripts/get-gcpbucketpublicaccessreport.html">Get-GcpBucketPublicAccessReport</a>
+        <p>Checks every Cloud Storage bucket for public access, and reports public access prevention, uniform access, versioning and soft delete.</p></li>
+      </ul>
+    </section>
+    <section class="script-group">
+      <h3>Operations</h3>
+      <ul class="script-list">
+      <li><a class="script-link" href="../gcp/scripts/get-gcpbackupcoverage.html">Get-GcpBackupCoverage</a>
+        <p>Shows which Compute Engine VMs and Cloud SQL instances are protected by backups, and which aren&#x27;t.</p></li>
+      <li><a class="script-link" href="../gcp/scripts/invoke-gcpvmpowerschedule.html">Invoke-GcpVMPowerSchedule</a>
+        <p>Starts or stops Compute Engine VMs that carry a schedule label. Run it on a schedule from Cloud Scheduler, a VM or a pipeline.</p></li>
       </ul>
     </section>
     </div>
