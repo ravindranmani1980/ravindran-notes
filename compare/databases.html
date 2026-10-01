@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Databases compared | Cloud Compare | Notes | Ravindran Mani</title>
+<meta name="description" content="Relational and non-relational database services in Google Cloud, AWS and Azure side by side: managed engines, cloud-native and distributed SQL, NoSQL by data model, and recent changes.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../index.html">Home</a></li>
+        <li><a href="../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../azure/index.html">Azure</a></li>
+        <li><a href="../aws/index.html">AWS</a></li>
+        <li><a href="../gcp/index.html">GCP</a></li>
+        <li><a href="../compare/index.html" aria-current="page">Cloud Compare</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../scripts/index.html">Scripts</a></li>
+        <li><a href="../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Cloud Compare</p>
+    <ol>
+      <li><a href="#at-a-glance">At a glance</a></li>
+      <li><a href="#relational-managed-engines">Relational: managed engines</a></li>
+      <li><a href="#relational-cloud-native-and-distributed">Relational: cloud-native and distributed</a></li>
+      <li><a href="#non-relational-by-data-model">Non-relational: by data model</a></li>
+      <li><a href="#the-flagship-nosql-services-compared">The flagship NoSQL services compared</a></li>
+      <li><a href="#recent-changes-to-know">Recent changes to know</a></li>
+      <li><a href="#choosing-a-database">Choosing a database</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="index.html">Cloud Compare</a> / Databases compared</p>
+    <h1>Databases compared</h1>
+    <p class="lead">Relational and non-relational database services in Google Cloud, AWS and Azure side by side: managed engines, cloud-native and distributed SQL, NoSQL by data model, and recent changes.</p>
+
+<p>Each cloud offers the same families of databases: managed versions of the familiar relational engines, its own cloud-native relational service built for scale, and a set of non-relational (NoSQL) services for documents, key-value data, caching, graphs and time series. The names rarely line up, so this page maps them side by side, first relational, then non-relational.</p>
+<h2 id="at-a-glance">At a glance</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Category</th><th>Google Cloud</th><th>AWS</th><th>Azure</th></tr>
+</thead>
+<tbody>
+<tr><td colspan="4"><strong>Relational (SQL)</strong></td></tr>
+<tr><td>Managed MySQL, PostgreSQL, SQL Server</td><td>Cloud SQL</td><td>Amazon RDS</td><td>Azure Database for MySQL / PostgreSQL (Flexible Server); Azure SQL Database and SQL Managed Instance</td></tr>
+<tr><td>Cloud-native, high-performance relational</td><td>AlloyDB for PostgreSQL</td><td>Amazon Aurora (MySQL and PostgreSQL compatible)</td><td>Azure SQL Database Hyperscale; Azure HorizonDB (PostgreSQL, preview)</td></tr>
+<tr><td>Globally distributed SQL</td><td>Spanner</td><td>Aurora DSQL</td><td>Azure Cosmos DB for PostgreSQL (retiring) &rarr; Azure Database for PostgreSQL elastic clusters</td></tr>
+<tr><td>Oracle Database</td><td>Oracle Database@Google Cloud; Bare Metal Solution</td><td>RDS for Oracle; Oracle Database@AWS</td><td>Oracle Database@Azure</td></tr>
+<tr><td colspan="4"><strong>Non-relational (NoSQL)</strong></td></tr>
+<tr><td>Key-value and wide-column</td><td>Bigtable</td><td>DynamoDB; Amazon Keyspaces (Cassandra)</td><td>Azure Cosmos DB (NoSQL, Cassandra, Table APIs); Azure Table Storage</td></tr>
+<tr><td>Document</td><td>Firestore</td><td>DynamoDB</td><td>Azure Cosmos DB for NoSQL</td></tr>
+<tr><td>MongoDB-compatible</td><td>Firestore with MongoDB compatibility</td><td>Amazon DocumentDB</td><td>Azure DocumentDB; Azure Cosmos DB for MongoDB (RU)</td></tr>
+<tr><td>In-memory cache (Redis, Valkey, Memcached)</td><td>Memorystore</td><td>ElastiCache; MemoryDB (durable)</td><td>Azure Managed Redis</td></tr>
+<tr><td>Graph</td><td>Spanner Graph</td><td>Amazon Neptune</td><td>Azure Cosmos DB for Apache Gremlin</td></tr>
+<tr><td>Time series</td><td>Bigtable; BigQuery</td><td>Timestream for InfluxDB</td><td>Azure Data Explorer</td></tr>
+<tr><td>Search and vector</td><td>Vertex AI Vector Search; vector support in AlloyDB, Cloud SQL, Spanner, Firestore</td><td>Amazon OpenSearch Service; vector support in Aurora, RDS PostgreSQL, DynamoDB via zero-ETL</td><td>Azure AI Search; vector support in Cosmos DB, Azure SQL, PostgreSQL</td></tr>
+<tr><td colspan="4"><strong>For context: analytics</strong></td></tr>
+<tr><td>Data warehouse</td><td>BigQuery</td><td>Amazon Redshift</td><td>Microsoft Fabric (Data Warehouse); Azure Synapse Analytics</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="relational-managed-engines">Relational: managed engines</h2>
+<p>The quickest way to the cloud for an existing database is the same engine, managed: the provider runs patching, backups, high availability and replicas; you keep your schema and drivers.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Engine</th><th>Google Cloud</th><th>AWS</th><th>Azure</th></tr>
+</thead>
+<tbody>
+<tr><td>MySQL</td><td>Cloud SQL for MySQL</td><td>RDS for MySQL; Aurora MySQL</td><td>Azure Database for MySQL &ndash; Flexible Server</td></tr>
+<tr><td>PostgreSQL</td><td>Cloud SQL for PostgreSQL; AlloyDB</td><td>RDS for PostgreSQL; Aurora PostgreSQL</td><td>Azure Database for PostgreSQL &ndash; Flexible Server</td></tr>
+<tr><td>SQL Server</td><td>Cloud SQL for SQL Server</td><td>RDS for SQL Server</td><td>Azure SQL Database, Azure SQL Managed Instance, SQL Server on Azure VMs</td></tr>
+<tr><td>MariaDB</td><td>&ndash;</td><td>RDS for MariaDB</td><td>&ndash; (Azure Database for MariaDB retired September 2025; use MySQL Flexible Server)</td></tr>
+<tr><td>Oracle</td><td>Oracle Database@Google Cloud (Exadata, Autonomous)</td><td>RDS for Oracle; RDS Custom; Oracle Database@AWS</td><td>Oracle Database@Azure</td></tr>
+<tr><td>IBM Db2</td><td>&ndash;</td><td>RDS for Db2</td><td>&ndash;</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Operations</th><th>Cloud SQL</th><th>Amazon RDS</th><th>Azure (Flexible Server, Azure SQL)</th></tr>
+</thead>
+<tbody>
+<tr><td>High availability</td><td>Regional instance: standby in another zone, automatic failover</td><td>Multi-AZ instance or Multi-AZ cluster (two readable standbys)</td><td>Zone-redundant HA (Flexible Server); zone-redundant Business Critical / Hyperscale (Azure SQL)</td></tr>
+<tr><td>Read scaling</td><td>Read replicas, including cross-region</td><td>Read replicas, including cross-region</td><td>Read replicas (Flexible Server); readable secondaries, geo-replicas (Azure SQL)</td></tr>
+<tr><td>Point-in-time restore</td><td>Up to 35 days (Enterprise Plus edition)</td><td>Up to 35 days</td><td>Up to 35 days</td></tr>
+<tr><td>Editions or tiers</td><td>Enterprise and Enterprise Plus editions</td><td>Instance classes; Multi-AZ options</td><td>Burstable, General Purpose, Memory Optimized / Business Critical (Flexible); General Purpose, Business Critical, Hyperscale (Azure SQL)</td></tr>
+<tr><td>Serverless option</td><td>&ndash; (AlloyDB and Spanner scale more flexibly)</td><td>Aurora Serverless v2</td><td>Azure SQL Database serverless</td></tr>
+<tr><td>Private access</td><td>Private IP via private services access or Private Service Connect</td><td>In your VPC subnets</td><td>VNet integration or private endpoint</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="relational-cloud-native-and-distributed">Relational: cloud-native and distributed</h2>
+<p>Each provider has rebuilt the relational database around its own storage layer, separating compute from storage so it can scale reads, recover faster and fail over in seconds. And each has a database that keeps SQL and transactions while spreading data across regions.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th></th><th>Google Cloud</th><th>AWS</th><th>Azure</th></tr>
+</thead>
+<tbody>
+<tr><td>Cloud-native engine</td><td><strong>AlloyDB for PostgreSQL</strong>: columnar engine for analytics on live data; AlloyDB Omni runs the same engine anywhere</td><td><strong>Aurora</strong>: MySQL and PostgreSQL compatible, shared storage across three AZs, up to 15 read replicas, Global Database</td><td><strong>Azure SQL Database Hyperscale</strong> (SQL Server engine) today; <strong>Azure HorizonDB</strong> (PostgreSQL, in preview) as the Aurora/AlloyDB equivalent</td></tr>
+<tr><td>Globally distributed SQL</td><td><strong>Spanner</strong>: strongly consistent across regions, up to 99.999% availability; GoogleSQL and PostgreSQL dialects; also graph, full-text and vector search</td><td><strong>Aurora DSQL</strong> (generally available since May 2025): serverless, PostgreSQL compatible, active-active across regions</td><td>Distributed PostgreSQL (Citus): <strong>Azure Database for PostgreSQL elastic clusters</strong>, replacing Azure Cosmos DB for PostgreSQL (retiring 31 March 2029)</td></tr>
+<tr><td>When to choose it</td><td>PostgreSQL that has outgrown Cloud SQL (AlloyDB); global transactional systems (Spanner)</td><td>MySQL or PostgreSQL that has outgrown RDS (Aurora); multi-region active-active (DSQL)</td><td>SQL Server workloads at scale (Hyperscale); large PostgreSQL (HorizonDB once generally available)</td></tr>
+<tr><td>Watch for</td><td>Spanner's schema and query patterns differ from a single-node database: design keys to avoid hotspots</td><td>DSQL supports a subset of PostgreSQL features and uses optimistic concurrency: test the application</td><td>Check HorizonDB's preview limits before production use</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="non-relational-by-data-model">Non-relational: by data model</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Data model</th><th>Google Cloud</th><th>AWS</th><th>Azure</th><th>Typical use</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Key-value / document, serverless</strong></td><td>Firestore</td><td>DynamoDB</td><td>Azure Cosmos DB for NoSQL</td><td>User profiles, carts, sessions, mobile and web app back ends</td></tr>
+<tr><td><strong>Wide-column</strong></td><td>Bigtable (HBase API, SQL queries)</td><td>Amazon Keyspaces (Cassandra API)</td><td>Cosmos DB for Apache Cassandra; Azure Managed Instance for Apache Cassandra</td><td>Very high write rates: IoT, telemetry, ad tech, personalisation</td></tr>
+<tr><td><strong>MongoDB-compatible</strong></td><td>Firestore with MongoDB compatibility</td><td>Amazon DocumentDB</td><td>Azure DocumentDB (formerly vCore-based Cosmos DB for MongoDB); Cosmos DB for MongoDB (RU)</td><td>Moving MongoDB applications without rewriting them</td></tr>
+<tr><td><strong>In-memory</strong></td><td>Memorystore for Valkey, Redis Cluster, Redis, Memcached</td><td>ElastiCache (Valkey, Redis OSS, Memcached); MemoryDB (durable, multi-AZ)</td><td>Azure Managed Redis</td><td>Caching, session state, leaderboards, rate limiting</td></tr>
+<tr><td><strong>Graph</strong></td><td>Spanner Graph (ISO GQL)</td><td>Amazon Neptune (Gremlin, openCypher, SPARQL); Neptune Analytics</td><td>Cosmos DB for Apache Gremlin</td><td>Fraud rings, recommendations, network and identity relationships</td></tr>
+<tr><td><strong>Time series</strong></td><td>Bigtable, or BigQuery for analysis</td><td>Timestream for InfluxDB</td><td>Azure Data Explorer</td><td>Metrics, sensor data, logs over time</td></tr>
+<tr><td><strong>Simple tables at low cost</strong></td><td>Firestore in Datastore mode</td><td>DynamoDB on-demand</td><td>Azure Table Storage; Cosmos DB for Table</td><td>Lookups, configuration, small apps</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="the-flagship-nosql-services-compared">The flagship NoSQL services compared</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th></th><th>Firestore</th><th>DynamoDB</th><th>Azure Cosmos DB</th></tr>
+</thead>
+<tbody>
+<tr><td>Model</td><td>Documents in collections</td><td>Items in tables (key-value and document)</td><td>Multi-model: NoSQL (JSON), MongoDB, Cassandra, Gremlin, Table APIs</td></tr>
+<tr><td>Capacity model</td><td>Serverless, pay per read, write and storage</td><td>On-demand or provisioned capacity</td><td>Serverless, provisioned or autoscale request units (RU/s)</td></tr>
+<tr><td>Multi-region</td><td>Multi-region locations, strongly consistent</td><td>Global tables (active-active; strong consistency option for multi-region)</td><td>Multi-region writes; five consistency levels from strong to eventual</td></tr>
+<tr><td>Queries</td><td>Indexed queries, aggregations; real-time listeners for apps</td><td>Key and index lookups; PartiQL; zero-ETL to OpenSearch and Redshift for search and analytics</td><td>SQL-like queries over JSON; vector and full-text search</td></tr>
+<tr><td>Strength</td><td>Mobile and web apps with offline sync (Firebase)</td><td>Predictable single-digit millisecond latency at any scale</td><td>Choice of API and consistency, global distribution</td></tr>
+<tr><td>Watch for</td><td>Hot documents and collection limits on write rate</td><td>Design the partition and sort keys around access patterns up front</td><td>RU cost grows with poorly partitioned or unindexed queries</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="recent-changes-to-know">Recent changes to know</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Cloud</th><th>Change</th></tr>
+</thead>
+<tbody>
+<tr><td>AWS</td><td>Amazon QLDB was discontinued on 31 July 2025 (AWS suggests Aurora PostgreSQL with audit tables).</td></tr>
+<tr><td>AWS</td><td>Timestream for LiveAnalytics closed to new customers on 20 June 2025; new time-series work goes to Timestream for InfluxDB.</td></tr>
+<tr><td>AWS</td><td>Aurora DSQL became generally available in May 2025.</td></tr>
+<tr><td>Azure</td><td>Azure Database for MariaDB retired on 19 September 2025; MySQL Single Server was retired earlier in favour of Flexible Server.</td></tr>
+<tr><td>Azure</td><td>vCore-based Cosmos DB for MongoDB is now <strong>Azure DocumentDB</strong> (generally available November 2025), built on the open-source DocumentDB project.</td></tr>
+<tr><td>Azure</td><td>Azure Cache for Redis retires: Enterprise tiers on 31 March 2027, Basic/Standard/Premium on 30 September 2028. Move to Azure Managed Redis.</td></tr>
+<tr><td>Azure</td><td>Azure Cosmos DB for PostgreSQL retires on 31 March 2029; move to Azure Database for PostgreSQL elastic clusters.</td></tr>
+<tr><td>Google Cloud</td><td>Firestore with MongoDB compatibility became generally available in 2025.</td></tr>
+<tr><td>All three</td><td>Valkey (the open-source Redis fork) is offered alongside or instead of Redis in managed caches.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="choosing-a-database">Choosing a database</h2>
+<ul>
+<li><strong>Moving an existing database:</strong> start with the same engine, managed (Cloud SQL, RDS, Azure Database / Azure SQL). It's the least change and the easiest rollback.</li>
+<li><strong>PostgreSQL or MySQL that needs more:</strong> AlloyDB, Aurora, or (for SQL Server) Azure SQL Hyperscale. Same drivers, more scale and faster failover.</li>
+<li><strong>Global, always-on transactions:</strong> Spanner or Aurora DSQL. Expect to adapt schema and transactions; the payoff is multi-region writes without building replication yourself.</li>
+<li><strong>New app with simple, high-volume access patterns:</strong> Firestore, DynamoDB or Cosmos DB. Model the data around how it's read, not as normalised tables.</li>
+<li><strong>Caching:</strong> Memorystore, ElastiCache or Azure Managed Redis in front of any of the above; MemoryDB if the cache must also be the durable store.</li>
+<li><strong>Analytics:</strong> keep it out of the transactional database. BigQuery, Redshift and Fabric each have zero-ETL or federated links to their cloud's operational databases.</li>
+</ul>
+<p>Whatever you choose, the operational baseline is the same in all three: private connectivity only, automated backups with point-in-time recovery, high availability across zones for production, encryption with customer-managed keys where required, and the backups covered by your backup checks (<a href="../gcp/guides/backup-and-recovery.html">Google Cloud</a>, <a href="../aws/guides/backup-and-recovery.html">AWS</a>, <a href="../azure/guides/backup-and-recovery.html">Azure</a>).</p>
+
+    <p class="muted">Compared as of October 2026. Service names, tiers and retirement dates change; check the provider's documentation before deciding.</p>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../assets/prism.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>
