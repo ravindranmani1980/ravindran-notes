@@ -99,6 +99,7 @@ h3 { font-size: 1.15rem; margin: 0 0 0.4rem; }
   border-bottom: 1px solid var(--nav-line);
 }
 .site-header :focus-visible { outline-color: var(--nav-accent); }
+.brand { white-space: nowrap; }
 .header-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 4rem; }
 .brand { display: flex; flex-direction: column; text-decoration: none; color: var(--nav-bright); line-height: 1.2; }
 .brand:hover { color: var(--nav-bright); }
@@ -124,7 +125,7 @@ h3 { font-size: 1.15rem; margin: 0 0 0.4rem; }
   padding: 0.5rem 0.75rem; border-radius: 4px; cursor: pointer;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 920px) {
   .menu-toggle { display: block; }
   .site-nav { display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--nav-solid); border-bottom: 1px solid var(--nav-line); }
   .site-nav.open { display: block; }
