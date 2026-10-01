@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Networking compared | Compare | Notes | Ravindran Mani</title>
+<meta name="description" content="VPC networks, VPCs and VNets side by side: subnets, routing, NAT, peering, hybrid links, load balancers, DNS and private access in Google Cloud, AWS and Azure.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../index.html">Home</a></li>
+        <li><a href="../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../azure/index.html">Azure</a></li>
+        <li><a href="../aws/index.html">AWS</a></li>
+        <li><a href="../gcp/index.html">GCP</a></li>
+        <li><a href="../compare/index.html" aria-current="page">Compare</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../scripts/index.html">Scripts</a></li>
+        <li><a href="../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Compare</p>
+    <ol>
+      <li><a href="#the-private-network">The private network</a></li>
+      <li><a href="#routing-and-internet-access">Routing and internet access</a></li>
+      <li><a href="#connecting-networks">Connecting networks</a></li>
+      <li><a href="#load-balancing-and-delivery">Load balancing and delivery</a></li>
+      <li><a href="#dns">DNS</a></li>
+      <li><a href="#private-access-to-cloud-services">Private access to cloud services</a></li>
+      <li><a href="#visibility-and-troubleshooting">Visibility and troubleshooting</a></li>
+      <li><a href="#design-tips-that-carry-across">Design tips that carry across</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="index.html">Compare</a> / Networking compared</p>
+    <h1>Networking compared</h1>
+    <p class="lead">VPC networks, VPCs and VNets side by side: subnets, routing, NAT, peering, hybrid links, load balancers, DNS and private access in Google Cloud, AWS and Azure.</p>
+
+<p>The three clouds build networks from the same ideas (private address space, subnets, routes, gateways, load balancers, DNS), but they draw the boundaries differently. The biggest difference: a Google Cloud VPC network is <strong>global</strong>, while AWS VPCs and Azure virtual networks are <strong>regional</strong>. Most other differences follow from that.</p>
+<p>The guides behind each column: <a href="../gcp/guides/vpc-firewall-rules.html">Google Cloud</a>, <a href="../aws/guides/security-groups-and-nacls.html">AWS</a> and <a href="../azure/guides/network-security-groups.html">Azure</a>. For protection (firewalls, WAF, DDoS), see <a href="network-security.html">Network protection compared</a>.</p>
+<h2 id="the-private-network">The private network</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Concept</th><th>Google Cloud</th><th>AWS</th><th>Azure</th></tr>
+</thead>
+<tbody>
+<tr><td>Private network</td><td><strong>VPC network</strong>, global: one network spans every region</td><td><strong>VPC</strong>, one region</td><td><strong>Virtual network (VNet)</strong>, one region</td></tr>
+<tr><td>Subnet scope</td><td>One region, all its zones</td><td>One Availability Zone</td><td>One region, all its zones</td></tr>
+<tr><td>Address space</td><td>Defined per subnet; add ranges any time</td><td>CIDR blocks on the VPC, subnets carved from them</td><td>Address spaces on the VNet, subnets carved from them</td></tr>
+<tr><td>Ready-made network</td><td><code>default</code> auto-mode network in each new project (turn off by org policy)</td><td>Default VPC in each region of each account</td><td>None</td></tr>
+<tr><td>Container for the network</td><td>Project (or a Shared VPC host project)</td><td>Account</td><td>Subscription and resource group</td></tr>
+<tr><td>Share one network with other teams</td><td><strong>Shared VPC</strong>: service projects use the host project's subnets</td><td><strong>VPC sharing</strong> through AWS RAM: other accounts use your subnets</td><td>Usually not shared: each team gets its own VNet, peered to a hub</td></tr>
+<tr><td>Reserved addresses per subnet</td><td>4</td><td>5</td><td>5</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>What it means in practice.</strong> In Google Cloud, a multi-region application can live in one network with one set of firewall rules, and VMs in different regions talk over internal IPs with no peering. In AWS and Azure, the same design needs a network per region, connected by peering or a transit service. In AWS, put a subnet in each Availability Zone you use; in Google Cloud and Azure, one subnet already covers every zone in its region.</p>
+<h2 id="routing-and-internet-access">Routing and internet access</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Concept</th><th>Google Cloud</th><th>AWS</th><th>Azure</th></tr>
+</thead>
+<tbody>
+<tr><td>Routes</td><td>Network-wide routes (system, custom static, dynamic, policy-based), optionally scoped by network tag</td><td>Route table per subnet</td><td>System routes plus a route table (UDR) per subnet</td></tr>
+<tr><td>Dynamic routing (BGP)</td><td>Cloud Router</td><td>Virtual private gateway or Transit Gateway</td><td>VPN / ExpressRoute gateway; Azure Route Server</td></tr>
+<tr><td>Inbound from the internet</td><td>External IP on the VM or load balancer</td><td>Internet gateway on the VPC, plus a public or Elastic IP</td><td>Public IP on the VM or load balancer</td></tr>
+<tr><td>Outbound for private VMs</td><td><strong>Cloud NAT</strong> (regional, software-defined, no appliance)</td><td><strong>NAT gateway</strong> (per AZ)</td><td><strong>NAT Gateway</strong> (per subnet); new VNets have no default outbound access</td></tr>
+<tr><td>Outbound IPv6 only</td><td>Firewall rules on IPv6</td><td>Egress-only internet gateway</td><td>NSG rules on IPv6</td></tr>
+<tr><td>Block all internet exposure centrally</td><td>Org policies (no external IPs) and hierarchical firewall policies</td><td>VPC Block Public Access; SCPs</td><td>Azure Policy (deny public IPs); private subnets</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="connecting-networks">Connecting networks</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Concept</th><th>Google Cloud</th><th>AWS</th><th>Azure</th></tr>
+</thead>
+<tbody>
+<tr><td>Peering two networks</td><td>VPC Network Peering</td><td>VPC peering (same or other region)</td><td>VNet peering (regional or global)</td></tr>
+<tr><td>Transitive?</td><td>No</td><td>No</td><td>No (unless routed through a hub appliance or Virtual WAN)</td></tr>
+<tr><td>Hub and spoke at scale</td><td>Network Connectivity Center</td><td><strong>Transit Gateway</strong>; AWS Cloud WAN for global</td><td><strong>Virtual WAN</strong>, or a hub VNet; Azure Virtual Network Manager for topologies</td></tr>
+<tr><td>Site-to-site VPN</td><td>HA VPN (Cloud VPN)</td><td>Site-to-Site VPN</td><td>VPN Gateway</td></tr>
+<tr><td>Private dedicated link</td><td>Cloud Interconnect (Dedicated or Partner)</td><td>Direct Connect</td><td>ExpressRoute</td></tr>
+<tr><td>Cloud-to-cloud link</td><td>Cross-Cloud Interconnect (to AWS, Azure, Oracle, Alibaba)</td><td>Direct Connect through a partner or colocation provider</td><td>Via ExpressRoute partners</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="load-balancing-and-delivery">Load balancing and delivery</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Need</th><th>Google Cloud</th><th>AWS</th><th>Azure</th></tr>
+</thead>
+<tbody>
+<tr><td>Global HTTP(S) entry point with one anycast IP</td><td><strong>Global external Application Load Balancer</strong></td><td>CloudFront in front of ALBs; Global Accelerator for one static anycast IP</td><td><strong>Front Door</strong></td></tr>
+<tr><td>Regional HTTP(S) load balancer</td><td>Regional external / internal Application Load Balancer</td><td>Application Load Balancer</td><td>Application Gateway</td></tr>
+<tr><td>Layer 4 (TCP/UDP)</td><td>Passthrough or proxy Network Load Balancer</td><td>Network Load Balancer</td><td>Azure Load Balancer</td></tr>
+<tr><td>Insert third-party appliances</td><td>Internal passthrough NLB as next hop; Packet Mirroring</td><td>Gateway Load Balancer</td><td>Gateway Load Balancer</td></tr>
+<tr><td>Global DNS-based balancing</td><td>Cloud DNS routing policies</td><td>Route 53 routing policies</td><td>Traffic Manager</td></tr>
+<tr><td>CDN</td><td>Cloud CDN, Media CDN</td><td>CloudFront</td><td>Front Door (the classic Azure CDN offerings are being retired)</td></tr>
+<tr><td>Where the WAF attaches</td><td>Cloud Armor on the load balancer's backend service</td><td>AWS WAF on CloudFront, ALB, API Gateway and others</td><td>Azure WAF on Front Door or Application Gateway</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="dns">DNS</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Concept</th><th>Google Cloud</th><th>AWS</th><th>Azure</th></tr>
+</thead>
+<tbody>
+<tr><td>Public zones</td><td>Cloud DNS public zones</td><td>Route 53 public hosted zones</td><td>Azure DNS zones</td></tr>
+<tr><td>Private zones</td><td>Cloud DNS private zones, visible to chosen VPC networks</td><td>Route 53 private hosted zones, associated with VPCs</td><td>Private DNS zones, linked to VNets</td></tr>
+<tr><td>Hybrid DNS with on-premises</td><td>Forwarding zones, DNS server policies (inbound forwarding)</td><td>Route 53 Resolver inbound and outbound endpoints</td><td>Azure DNS Private Resolver</td></tr>
+<tr><td>Example zone used in these notes</td><td><code>gcp.ravindran.in</code></td><td><code>aws.ravindran.in</code></td><td>&ndash;</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="private-access-to-cloud-services">Private access to cloud services</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Need</th><th>Google Cloud</th><th>AWS</th><th>Azure</th></tr>
+</thead>
+<tbody>
+<tr><td>Reach the provider's APIs without public IPs</td><td><strong>Private Google Access</strong> (subnet setting, free)</td><td><strong>Gateway endpoints</strong> (S3, DynamoDB, free) or interface endpoints</td><td><strong>Service endpoints</strong> (free) or private endpoints</td></tr>
+<tr><td>Give a service a private IP in your network</td><td><strong>Private Service Connect</strong> endpoints; private services access for Cloud SQL and similar</td><td><strong>Interface endpoints</strong> (PrivateLink)</td><td><strong>Private endpoints</strong> (Private Link)</td></tr>
+<tr><td>Publish your own service privately to other networks</td><td>Private Service Connect service attachment</td><td>PrivateLink endpoint service</td><td>Private Link service</td></tr>
+<tr><td>DNS for private access</td><td>Automatic for PSC; private zones for Google APIs</td><td>Private DNS on the interface endpoint</td><td>Private DNS zones such as <code>privatelink.blob.core.windows.net</code> (the usual source of problems)</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="visibility-and-troubleshooting">Visibility and troubleshooting</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Need</th><th>Google Cloud</th><th>AWS</th><th>Azure</th></tr>
+</thead>
+<tbody>
+<tr><td>Flow records</td><td>VPC Flow Logs (per subnet or network)</td><td>VPC Flow Logs (VPC, subnet or interface)</td><td>Virtual network flow logs (NSG flow logs retire 30 Sep 2027)</td></tr>
+<tr><td>"Why can't A reach B?"</td><td>Connectivity Tests</td><td>Reachability Analyzer</td><td>Network Watcher: IP flow verify, connection troubleshoot</td></tr>
+<tr><td>Find unintended exposure</td><td>Firewall Insights; Security Command Center</td><td>Network Access Analyzer</td><td>Defender for Cloud network recommendations</td></tr>
+<tr><td>Copy packets to a tool</td><td>Packet Mirroring</td><td>Traffic Mirroring</td><td>Network Watcher packet capture; virtual network TAP</td></tr>
+<tr><td>Effective rules on one VM</td><td><code>gcloud compute instances network-interfaces get-effective-firewalls</code></td><td>Security groups on the interface (no single effective view with NACLs)</td><td><code>Get-AzEffectiveNetworkSecurityGroup</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="design-tips-that-carry-across">Design tips that carry across</h2>
+<ul>
+<li><strong>Plan address space once, for every cloud and on-premises.</strong> Overlapping ranges are the one networking mistake that's really expensive to fix later. These notes use <code>10.10.0.0/16</code> (Azure), <code>10.20.0.0/16</code> (AWS) and <code>10.30.0.0/16</code> (Google Cloud) for that reason.</li>
+<li><strong>Hub and spoke everywhere.</strong> Shared services (DNS, egress, inspection, hybrid links) in a hub; workloads in spokes. Shared VPC, Transit Gateway and Virtual WAN are each cloud's way of doing it.</li>
+<li><strong>Private by default.</strong> No public IPs on servers, outbound through managed NAT, platform services through private endpoints. Each cloud has a policy to enforce it.</li>
+<li><strong>Turn on flow logs and keep a connectivity-test habit.</strong> All three have a tool that answers "is it the firewall?" in a minute.</li>
+</ul>
+
+    <p class="muted">Compared as of October 2026. Service names, tiers and prices change; check the provider's documentation before deciding.</p>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../assets/prism.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

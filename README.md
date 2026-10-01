@@ -34,6 +34,7 @@ notes.ravindran.in/
 │   └── scripts/            One page per script, with the .ps1 next to it
 ├── azure/                  Landing page, guides/, scripts/ and environment/ (same layout as sharepoint/)
 ├── aws/                    Landing page, guides/, scripts/ and environment/ (same layout as azure/)
+├── compare/                Google Cloud, AWS and Azure compared (networking, protection, WAF/DDoS)
 ├── gcp/                    Landing page, guides/, scripts/ and environment/ (same layout as azure/)
 ├── finops/                 Starter page + empty guides/ and scripts/
 ├── _tools/                 build-sitemap.py (not published)

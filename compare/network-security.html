@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Network protection compared | Compare | Notes | Ravindran Mani</title>
+<meta name="description" content="Firewall rules, security groups and NSGs; managed firewalls; WAF and DDoS; private access; and admin access without open ports, across Google Cloud, AWS and Azure.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../index.html">Home</a></li>
+        <li><a href="../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../azure/index.html">Azure</a></li>
+        <li><a href="../aws/index.html">AWS</a></li>
+        <li><a href="../gcp/index.html">GCP</a></li>
+        <li><a href="../compare/index.html" aria-current="page">Compare</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../scripts/index.html">Scripts</a></li>
+        <li><a href="../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Compare</p>
+    <ol>
+      <li><a href="#the-layers-at-a-glance">The layers at a glance</a></li>
+      <li><a href="#filters-on-each-server">Filters on each server</a></li>
+      <li><a href="#managed-firewalls">Managed firewalls</a></li>
+      <li><a href="#web-and-ddos-protection">Web and DDoS protection</a></li>
+      <li><a href="#private-access-and-data-exfiltration">Private access and data exfiltration</a></li>
+      <li><a href="#admin-access-without-open-ports">Admin access without open ports</a></li>
+      <li><a href="#detection-and-visibility">Detection and visibility</a></li>
+      <li><a href="#a-common-baseline-for-all-three">A common baseline for all three</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="index.html">Compare</a> / Network protection compared</p>
+    <h1>Network protection compared</h1>
+    <p class="lead">Firewall rules, security groups and NSGs; managed firewalls; WAF and DDoS; private access; and admin access without open ports, across Google Cloud, AWS and Azure.</p>
+
+<p>All three clouds protect networks in the same layers: filters on each server, a managed firewall where traffic converges, a web application firewall in front of websites, DDoS protection on public addresses, private access to platform services, and admin access without open ports. The names differ, and so do a few important details, such as where a rule can be set once for the whole organisation.</p>
+<p>For the network building blocks themselves, see <a href="networking.html">Networking compared</a>. For a detailed look at the web application firewall layer, starting from Google Cloud Armor, see <a href="waf-and-ddos.html">Cloud Armor, AWS WAF and Azure WAF</a>.</p>
+<h2 id="the-layers-at-a-glance">The layers at a glance</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Layer</th><th>Google Cloud</th><th>AWS</th><th>Azure</th></tr>
+</thead>
+<tbody>
+<tr><td>Stateful filter on each server</td><td><strong>VPC firewall rules</strong> and network firewall policies</td><td><strong>Security groups</strong></td><td><strong>Network security groups (NSGs)</strong></td></tr>
+<tr><td>Subnet-level filter</td><td>None separate (rules apply network-wide, by target)</td><td>Network ACLs (stateless)</td><td>NSG associated with the subnet</td></tr>
+<tr><td>Group servers by role in rules</td><td>Service accounts, secure tags, network tags</td><td>Security group references</td><td>Application security groups</td></tr>
+<tr><td>Organisation-wide rules no project can override</td><td><strong>Hierarchical firewall policies</strong></td><td>Firewall Manager security group policies; SCPs for guardrails</td><td><strong>Security admin rules</strong> (Azure Virtual Network Manager)</td></tr>
+<tr><td>Managed firewall (FQDN filtering, IDS/IPS)</td><td>Cloud NGFW Standard / Enterprise; Secure Web Proxy</td><td>AWS Network Firewall</td><td>Azure Firewall (Basic, Standard, Premium)</td></tr>
+<tr><td>DNS-layer filtering</td><td>Cloud NGFW FQDN objects; Cloud DNS response policies</td><td>Route 53 Resolver DNS Firewall</td><td>DNS security policy; Azure Firewall DNS proxy</td></tr>
+<tr><td>Web application firewall</td><td><strong>Cloud Armor</strong></td><td><strong>AWS WAF</strong></td><td><strong>Azure WAF</strong> (Front Door, Application Gateway)</td></tr>
+<tr><td>DDoS, included at no charge</td><td>Infrastructure protection; Cloud Armor Standard on load balancers</td><td>Shield Standard</td><td>DDoS infrastructure protection</td></tr>
+<tr><td>DDoS, paid tier</td><td>Cloud Armor Enterprise</td><td>Shield Advanced</td><td>DDoS Network Protection or IP Protection</td></tr>
+<tr><td>Central policy management</td><td>Organisation and folder policies; Cloud Armor policies per project</td><td>AWS Firewall Manager</td><td>Azure Firewall Manager; Azure Policy</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="filters-on-each-server">Filters on each server</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th></th><th>GCP firewall rules</th><th>AWS security groups</th><th>Azure NSGs</th></tr>
+</thead>
+<tbody>
+<tr><td>Belongs to</td><td>The VPC network</td><td>The VPC; attached to interfaces</td><td>Associated with subnets and/or NICs</td></tr>
+<tr><td>Deny rules</td><td>Yes</td><td>No (allow only)</td><td>Yes</td></tr>
+<tr><td>Order</td><td>Priority 0&ndash;65535, lowest number wins</td><td>All rules evaluated together</td><td>Priority 100&ndash;4096, lowest number wins</td></tr>
+<tr><td>Default inbound</td><td>Deny (implied rule)</td><td>Deny</td><td>Allow from the VNet and load balancer; deny the rest</td></tr>
+<tr><td>Default outbound</td><td>Allow (implied rule)</td><td>Allow</td><td>Allow</td></tr>
+<tr><td>Stateful</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>Pitfall to check first</td><td>The <code>default</code> network's SSH/RDP rules from <code>0.0.0.0/0</code></td><td>One permissive group added "temporarily"; the default group</td><td>Subnet and NIC NSGs that both have to allow</td></tr>
+<tr><td>Report in these notes</td><td><a href="../gcp/scripts/get-gcpfirewallreport.html"><code>Get-GcpFirewallReport</code></a></td><td><a href="../aws/scripts/get-awssecuritygroupreport.html"><code>Get-AwsSecurityGroupReport</code></a></td><td><a href="../azure/scripts/get-aznsgrulereport.html"><code>Get-AzNsgRuleReport</code></a></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="managed-firewalls">Managed firewalls</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th></th><th>Cloud NGFW (Google Cloud)</th><th>AWS Network Firewall</th><th>Azure Firewall</th></tr>
+</thead>
+<tbody>
+<tr><td>How traffic reaches it</td><td>Built into the network fabric; no routing changes. Enterprise tier uses firewall endpoints per zone</td><td>Firewall endpoints in dedicated subnets; route tables send traffic through them</td><td>Deployed in <code>AzureFirewallSubnet</code>; route tables (UDR) send traffic through it</td></tr>
+<tr><td>Rules by domain name</td><td>Standard tier (FQDN objects)</td><td>Yes (domain lists, Suricata rules)</td><td>Standard and Premium (application rules, FQDN tags)</td></tr>
+<tr><td>Threat intelligence</td><td>Standard tier</td><td>AWS managed threat signatures</td><td>Standard and Premium</td></tr>
+<tr><td>Intrusion prevention (IPS)</td><td>Enterprise tier</td><td>Yes (stateful Suricata rules, managed groups)</td><td>Premium (IDPS)</td></tr>
+<tr><td>TLS inspection</td><td>Enterprise tier</td><td>Yes</td><td>Premium</td></tr>
+<tr><td>Policy object</td><td>Firewall policies (hierarchical, global, regional) with security profiles</td><td>Firewall policy, rule groups</td><td>Firewall Policy (parent and child)</td></tr>
+</tbody>
+</table>
+</div>
+<p>A notable difference: Google Cloud's basic firewall (Essentials) needs no appliance or routing at all, so there's no Google Cloud equivalent of the "hub firewall every packet must route through" until you need IPS or TLS inspection. In AWS and Azure, a managed firewall is always an extra hop you design routing around.</p>
+<h2 id="web-and-ddos-protection">Web and DDoS protection</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th></th><th>Google Cloud</th><th>AWS</th><th>Azure</th></tr>
+</thead>
+<tbody>
+<tr><td>WAF service</td><td>Cloud Armor security policies</td><td>AWS WAF protection packs (web ACLs)</td><td>Azure WAF policies</td></tr>
+<tr><td>Attaches to</td><td>Backend services of Application Load Balancers and Network Load Balancers; Cloud CDN</td><td>CloudFront, ALB, API Gateway, AppSync, Cognito, App Runner, Verified Access, Amplify</td><td>Front Door, Application Gateway, Application Gateway for Containers</td></tr>
+<tr><td>Managed rules</td><td>Preconfigured rules from the OWASP Core Rule Set</td><td>AWS managed rule groups, Marketplace rule groups</td><td>Default Rule Set (DRS), based on the OWASP CRS</td></tr>
+<tr><td>Bots</td><td>Bot management with reCAPTCHA</td><td>Bot Control; Fraud Control (account takeover, fake sign-ups)</td><td>Bot Manager rule set</td></tr>
+<tr><td>L7 DDoS assistance</td><td>Adaptive Protection (Enterprise)</td><td>Shield Advanced automatic application-layer mitigation</td><td>Front Door and WAF rate limiting; DDoS Protection for L3/L4</td></tr>
+<tr><td>Paid DDoS tier</td><td>Cloud Armor Enterprise: Paygo or Annual</td><td>Shield Advanced: about $3,000 a month per organisation, 1-year term</td><td>DDoS Network Protection (per 100 public IPs) or IP Protection (per IP)</td></tr>
+</tbody>
+</table>
+</div>
+<p>The full comparison, with features, pricing and how to move rules between them, is in <a href="waf-and-ddos.html">Cloud Armor, AWS WAF and Azure WAF</a>.</p>
+<h2 id="private-access-and-data-exfiltration">Private access and data exfiltration</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Need</th><th>Google Cloud</th><th>AWS</th><th>Azure</th></tr>
+</thead>
+<tbody>
+<tr><td>Platform services without public endpoints</td><td>Private Service Connect; Private Google Access</td><td>VPC endpoints (PrivateLink)</td><td>Private endpoints; public network access disabled</td></tr>
+<tr><td>Stop data leaving through the provider's APIs, even with valid credentials</td><td><strong>VPC Service Controls</strong> perimeters</td><td>VPC endpoint policies plus resource-based policies and RCPs with <code>aws:SourceVpce</code> / <code>aws:PrincipalOrgID</code> conditions</td><td>Network security perimeter (for supported PaaS services); private endpoints with service firewalls</td></tr>
+<tr><td>Block public storage</td><td>Public access prevention (org policy)</td><td>S3 Block Public Access (account level)</td><td>Storage accounts with blob public access disallowed (Azure Policy)</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="admin-access-without-open-ports">Admin access without open ports</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th></th><th>Google Cloud</th><th>AWS</th><th>Azure</th></tr>
+</thead>
+<tbody>
+<tr><td>Brokered SSH/RDP</td><td><strong>IAP TCP forwarding</strong> (allow <code>35.235.240.0/20</code> only)</td><td><strong>Session Manager</strong> (no inbound port at all); EC2 Instance Connect Endpoint</td><td><strong>Azure Bastion</strong> (Developer, Basic, Standard, Premium)</td></tr>
+<tr><td>Identity-based Linux login</td><td>OS Login</td><td>Session Manager with IAM; EC2 Instance Connect</td><td>Microsoft Entra login for VMs</td></tr>
+<tr><td>Time-limited port opening</td><td>IAM conditions on IAP access</td><td>Not built in (use Session Manager instead)</td><td>Just-in-time VM access (Defender for Servers Plan 2)</td></tr>
+<tr><td>Session recording</td><td>Cloud Audit Logs for IAP; no screen recording</td><td>Session Manager session logs</td><td>Bastion Premium session recording</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="detection-and-visibility">Detection and visibility</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Need</th><th>Google Cloud</th><th>AWS</th><th>Azure</th></tr>
+</thead>
+<tbody>
+<tr><td>Network threat detection</td><td>Security Command Center (Event Threat Detection); Cloud NGFW Enterprise IPS</td><td>GuardDuty (from VPC flow logs and DNS logs)</td><td>Defender for Cloud; Microsoft Sentinel</td></tr>
+<tr><td>Posture findings for open ports</td><td>Security Health Analytics (<code>OPEN_SSH_PORT</code>, <code>OPEN_FIREWALL</code>)</td><td>Security Hub CSPM controls; Config rules <code>restricted-ssh</code></td><td>Defender for Cloud recommendations; Azure Policy</td></tr>
+<tr><td>Flow logs</td><td>VPC Flow Logs; firewall rules logging</td><td>VPC Flow Logs; Network Firewall logs</td><td>Virtual network flow logs; Azure Firewall logs</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="a-common-baseline-for-all-three">A common baseline for all three</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Baseline</th><th>Google Cloud</th><th>AWS</th><th>Azure</th></tr>
+</thead>
+<tbody>
+<tr><td>No SSH or RDP from the internet</td><td>Delete <code>default</code> network rules; IAP</td><td>Security groups; Session Manager</td><td>NSGs; Bastion or JIT</td></tr>
+<tr><td>No public IPs on servers</td><td>Org policy <code>compute.vmExternalIpAccess</code></td><td>SCP / VPC Block Public Access</td><td>Azure Policy deny on public IPs</td></tr>
+<tr><td>Managed outbound</td><td>Cloud NAT</td><td>NAT gateway</td><td>NAT Gateway</td></tr>
+<tr><td>WAF on every public website</td><td>Cloud Armor</td><td>AWS WAF</td><td>Azure WAF</td></tr>
+<tr><td>Private platform services</td><td>Private Service Connect</td><td>Interface endpoints</td><td>Private endpoints</td></tr>
+<tr><td>Flow logs on production</td><td>VPC Flow Logs</td><td>VPC Flow Logs</td><td>VNet flow logs</td></tr>
+</tbody>
+</table>
+</div>
+
+    <p class="muted">Compared as of October 2026. Service names, tiers and prices change; check the provider's documentation before deciding.</p>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../assets/prism.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>

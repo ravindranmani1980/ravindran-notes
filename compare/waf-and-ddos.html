@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cloud Armor, AWS WAF and Azure WAF | Compare | Notes | Ravindran Mani</title>
+<meta name="description" content="Google Cloud Armor and its AWS and Azure equivalents: where each attaches, features, DDoS tiers, pricing, and moving rules between them.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../index.html">Home</a></li>
+        <li><a href="../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../azure/index.html">Azure</a></li>
+        <li><a href="../aws/index.html">AWS</a></li>
+        <li><a href="../gcp/index.html">GCP</a></li>
+        <li><a href="../compare/index.html" aria-current="page">Compare</a></li>
+        <!-- Add each topic here when it goes live, for example:
+        <li><a href="../finops/index.html">FinOps</a></li>
+        -->
+        <li><a href="../scripts/index.html">Scripts</a></li>
+        <li><a href="../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Compare</p>
+    <ol>
+      <li><a href="#the-short-answer">The short answer</a></li>
+      <li><a href="#where-each-one-attaches">Where each one attaches</a></li>
+      <li><a href="#feature-by-feature">Feature by feature</a></li>
+      <li><a href="#ddos-tiers-compared">DDoS tiers compared</a></li>
+      <li><a href="#pricing-at-a-glance">Pricing at a glance</a></li>
+      <li><a href="#the-same-rule-in-each-cloud">The same rule in each cloud</a></li>
+      <li><a href="#moving-rules-between-them">Moving rules between them</a></li>
+      <li><a href="#which-to-choose-when">Which to choose when</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="index.html">Compare</a> / Cloud Armor, AWS WAF and Azure WAF</p>
+    <h1>Cloud Armor, AWS WAF and Azure WAF</h1>
+    <p class="lead">Google Cloud Armor and its AWS and Azure equivalents: where each attaches, features, DDoS tiers, pricing, and moving rules between them.</p>
+
+<p>Google Cloud Armor combines a web application firewall (WAF) with DDoS protection for anything behind a Google Cloud load balancer. AWS and Azure split the same job across two services each: a WAF service and a DDoS service. This page maps Cloud Armor to its equivalents, feature by feature, and shows what changes when you move rules between them.</p>
+<h2 id="the-short-answer">The short answer</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Cloud Armor part</th><th>AWS equivalent</th><th>Azure equivalent</th></tr>
+</thead>
+<tbody>
+<tr><td>Cloud Armor security policy (WAF rules, rate limiting, IP and geo rules)</td><td><strong>AWS WAF</strong> protection pack (web ACL)</td><td><strong>Azure WAF</strong> policy on Front Door or Application Gateway</td></tr>
+<tr><td>Cloud Armor Standard DDoS protection for load balancers</td><td><strong>AWS Shield Standard</strong> (automatic, free)</td><td><strong>DDoS infrastructure protection</strong> (automatic, free)</td></tr>
+<tr><td>Cloud Armor Enterprise (Adaptive Protection, advanced network DDoS, threat intelligence, attack visibility)</td><td><strong>AWS Shield Advanced</strong>, with AWS WAF included for protected resources</td><td><strong>Azure DDoS Network Protection</strong> (or IP Protection), with Front Door Premium or Application Gateway WAF</td></tr>
+<tr><td>Bot management (reCAPTCHA)</td><td>AWS WAF Bot Control; Fraud Control</td><td>Bot Manager rule set (Front Door Premium, Application Gateway)</td></tr>
+<tr><td>Edge security policies (at Google's edge, for CDN-cached content)</td><td>AWS WAF on CloudFront</td><td>Azure WAF on Front Door</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="where-each-one-attaches">Where each one attaches</h2>
+<p>A WAF only sees traffic that passes through the service it's attached to, so the first design question is the same in every cloud: what's the entry point?</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th></th><th>Cloud Armor</th><th>AWS WAF</th><th>Azure WAF</th></tr>
+</thead>
+<tbody>
+<tr><td>Global entry point</td><td>Global external Application Load Balancer (backend security policy) and edge security policies</td><td>CloudFront distribution (web ACL created in <code>us-east-1</code>)</td><td>Front Door Standard or Premium</td></tr>
+<tr><td>Regional entry point</td><td>Regional external and internal Application Load Balancers; proxy and passthrough Network Load Balancers</td><td>Application Load Balancer, API Gateway REST API, AppSync, Cognito user pools, App Runner, Verified Access, Amplify</td><td>Application Gateway WAF_v2; Application Gateway for Containers</td></tr>
+<tr><td>Non-HTTP and VMs with public IPs</td><td>Network edge security policies (Enterprise)</td><td>Shield Advanced on Elastic IPs, NLB, Global Accelerator</td><td>DDoS Protection on public IPs</td></tr>
+<tr><td>Policy scope</td><td>One policy per backend service (or backend bucket)</td><td>One web ACL per resource; one web ACL can cover many resources</td><td>One policy per Front Door / gateway, or per listener (site) and per path on Application Gateway</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="feature-by-feature">Feature by feature</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Feature</th><th>Cloud Armor</th><th>AWS WAF</th><th>Azure WAF</th></tr>
+</thead>
+<tbody>
+<tr><td>OWASP-style managed rules</td><td>Preconfigured WAF rules from ModSecurity Core Rule Set 3.0, 3.3 and 4.x, with sensitivity levels</td><td>AWS managed rule groups: core rule set, known bad inputs, SQL database, Linux, Windows, PHP, WordPress</td><td>Default Rule Set (DRS 2.x) and older OWASP CRS 3.x on Application Gateway; DRS on Front Door Premium only</td></tr>
+<tr><td>Custom rules language</td><td>Common Expression Language (CEL), for example <code>origin.region_code == 'XX'</code></td><td>JSON statements (match, and/or/not, regex, size, geo, label)</td><td>Match conditions on variables (RemoteAddr, RequestUri, headers, cookies) with operators</td></tr>
+<tr><td>IP allow and deny lists</td><td>Rules on IP ranges; address groups for large lists</td><td>IP sets</td><td>IPMatch conditions in custom rules</td></tr>
+<tr><td>Geo blocking</td><td>Yes (<code>origin.region_code</code>)</td><td>Yes (geo match)</td><td>Yes (GeoMatch)</td></tr>
+<tr><td>Rate limiting</td><td>Throttle or rate-based ban, keyed by IP, header, cookie, path and more</td><td>Rate-based rules, with custom aggregation keys and 1&ndash;10 minute windows</td><td>Rate limit custom rules (1 or 5 minute windows), grouped by client address, geo or none</td></tr>
+<tr><td>Bot management</td><td>reCAPTCHA integration (challenge pages, tokens)</td><td>Bot Control (common and targeted), CAPTCHA and silent challenge</td><td>Bot Manager rule set (good, bad, unknown bots); JavaScript challenge on Front Door</td></tr>
+<tr><td>Account-takeover protection</td><td>reCAPTCHA account defender (separate product)</td><td>Fraud Control: account takeover and account creation fraud prevention</td><td>Not built in (use Entra External ID protections or a partner)</td></tr>
+<tr><td>Threat intelligence lists</td><td>Enterprise: Tor exit nodes, known malicious IPs, crawlers, public cloud ranges</td><td>Amazon IP reputation and anonymous IP managed rule groups</td><td>Bot Manager bad-bot IP reputation; Azure Firewall threat intel for non-web</td></tr>
+<tr><td>Layer 7 DDoS help</td><td>Adaptive Protection (Enterprise) suggests rules from traffic anomalies</td><td>Shield Advanced automatic application-layer DDoS mitigation; anti-DDoS managed rule group</td><td>Rate limiting; Front Door's scale; DDoS Protection covers L3/L4</td></tr>
+<tr><td>Try before you block</td><td>Preview mode per rule</td><td>Count action per rule or rule group</td><td>Detection mode per policy; Log action per rule</td></tr>
+<tr><td>Logs</td><td>Load balancer request logs in Cloud Logging, with the matched rule</td><td>WAF logs to CloudWatch Logs, S3 or Firehose; sampled requests</td><td>WAF logs to Log Analytics, storage or Event Hubs</td></tr>
+<tr><td>Manage across many projects / accounts</td><td>Policies per project, managed with Terraform or gcloud</td><td>AWS Firewall Manager pushes WAF and Shield policies across accounts</td><td>Azure Policy and Firewall Manager for WAF policies across subscriptions</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="ddos-tiers-compared">DDoS tiers compared</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th></th><th>Cloud Armor Enterprise</th><th>AWS Shield Advanced</th><th>Azure DDoS Network Protection</th></tr>
+</thead>
+<tbody>
+<tr><td>What it protects</td><td>Load balancer backends; with network edge policies, NLBs, protocol forwarding and VMs with public IPs</td><td>CloudFront, Route 53, Global Accelerator, ELB, Elastic IPs</td><td>Every public IP in the VNets linked to the plan</td></tr>
+<tr><td>Adaptive / automatic L7 mitigation</td><td>Adaptive Protection</td><td>Automatic application-layer mitigation (with AWS WAF)</td><td>No (L3/L4 only; pair with WAF)</td></tr>
+<tr><td>Response team</td><td>DDoS response support</td><td>Shield Response Team (needs Business or Enterprise Support)</td><td>DDoS Rapid Response</td></tr>
+<tr><td>Cost protection during an attack</td><td>Bill protection</td><td>Yes, credits for scaling charges</td><td>Yes, credits for scale-out costs</td></tr>
+<tr><td>WAF included</td><td>Cloud Armor Standard charges waived for Enterprise-protected resources (check current terms)</td><td>AWS WAF for protected resources, up to 50 billion requests a month</td><td>Application Gateway WAF billed at the non-WAF rate in protected VNets</td></tr>
+<tr><td>Price shape (US list, Oct 2026)</td><td>Paygo about $200 a month per project (2 resources), plus data processing; Annual about $3,000 a month for 100 resources</td><td>$3,000 a month per organisation, 1-year commitment, plus data transfer out</td><td>Fixed monthly plan covering 100 public IPs, plus per-IP overage; IP Protection is priced per IP</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="pricing-at-a-glance">Pricing at a glance</h2>
+<p>US list prices for the WAF layer only, as of October 2026. All three charge for policies, rules and requests in some form; check each provider's calculator before deciding.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th></th><th>Cloud Armor Standard</th><th>AWS WAF</th><th>Azure WAF</th></tr>
+</thead>
+<tbody>
+<tr><td>Policy</td><td>$5 a month per policy</td><td>$5 a month per web ACL</td><td>Front Door Premium: included in the $330 a month base fee; Front Door Standard ($35 base): custom rules only, charged per policy and rule</td></tr>
+<tr><td>Rules</td><td>$1 a month per rule</td><td>$1 a month per rule or managed rule group</td><td>Application Gateway: included in the WAF_v2 SKU price (fixed hourly plus capacity units)</td></tr>
+<tr><td>Requests</td><td>$0.75 per million (global policies), $0.60 (regional)</td><td>$0.60 per million, plus add-ons for Bot Control and Fraud Control</td><td>Front Door: per-request and data transfer charges; Application Gateway: capacity units</td></tr>
+<tr><td>Bot features</td><td>reCAPTCHA priced separately</td><td>Bot Control from $10 a month per web ACL plus requests</td><td>Included with Front Door Premium and Application Gateway WAF</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="the-same-rule-in-each-cloud">The same rule in each cloud</h2>
+<p>A rate limit of 100 requests per minute per client IP, blocking the excess, is a good way to see how the three models differ.</p>
+<p><strong>Cloud Armor</strong> (a throttle rule on the policy):</p>
+<pre><code class="language-powershell">gcloud compute security-policies rules create 2000 --security-policy=sp-web-notes-test `
+    --expression=&quot;true&quot; --action=throttle `
+    --rate-limit-threshold-count=100 --rate-limit-threshold-interval-sec=60 `
+    --conform-action=allow --exceed-action=deny-429 --enforce-on-key=IP
+</code></pre>
+<p><strong>AWS WAF</strong> (a rate-based rule in the web ACL's JSON):</p>
+<pre><code>{
+  &quot;Name&quot;: &quot;rate-100-per-minute&quot;,
+  &quot;Priority&quot;: 20,
+  &quot;Statement&quot;: { &quot;RateBasedStatement&quot;: { &quot;Limit&quot;: 100, &quot;EvaluationWindowSec&quot;: 60, &quot;AggregateKeyType&quot;: &quot;IP&quot; } },
+  &quot;Action&quot;: { &quot;Block&quot;: {} },
+  &quot;VisibilityConfig&quot;: { &quot;SampledRequestsEnabled&quot;: true, &quot;CloudWatchMetricsEnabled&quot;: true, &quot;MetricName&quot;: &quot;rate100&quot; }
+}
+</code></pre>
+<p><strong>Azure WAF on Application Gateway</strong> (a custom rule in the WAF policy; rate limit rules need a match condition, here "any client outside the internal range"):</p>
+<pre><code>{
+  &quot;name&quot;: &quot;RateLimit100&quot;,
+  &quot;priority&quot;: 20,
+  &quot;ruleType&quot;: &quot;RateLimitRule&quot;,
+  &quot;rateLimitDuration&quot;: &quot;OneMin&quot;,
+  &quot;rateLimitThreshold&quot;: 100,
+  &quot;groupByUserSession&quot;: [ { &quot;groupByVariables&quot;: [ { &quot;variableName&quot;: &quot;ClientAddr&quot; } ] } ],
+  &quot;matchConditions&quot;: [ { &quot;matchVariables&quot;: [ { &quot;variableName&quot;: &quot;RemoteAddr&quot; } ],
+                         &quot;operator&quot;: &quot;IPMatch&quot;, &quot;negationConditon&quot;: true, &quot;matchValues&quot;: [ &quot;10.0.0.0/8&quot; ] } ],
+  &quot;action&quot;: &quot;Block&quot;
+}
+</code></pre>
+<p>(Yes, <code>negationConditon</code> is misspelled in Azure's own API. Copy it as it is.)</p>
+<h2 id="moving-rules-between-them">Moving rules between them</h2>
+<ul>
+<li><strong>Managed rules don't translate one to one.</strong> All three start from the OWASP Core Rule Set but tune and number rules differently. Map by intent (SQL injection, cross-site scripting, protocol attacks), not by rule ID, and expect a new round of false positives.</li>
+<li><strong>Exclusions move with the application, not the WAF.</strong> List the fields your application legitimately sends that look like attacks (rich-text editors, search boxes, JSON APIs) and re-create the exclusions on the new platform.</li>
+<li><strong>Start in observe mode:</strong> preview (Cloud Armor), Count (AWS WAF) or Detection (Azure WAF), for at least a week of real traffic, then enforce.</li>
+<li><strong>Lock the origin.</strong> Whatever the WAF, make sure traffic can't bypass it: Cloud Armor backends accept only Google front-end ranges; ALBs behind CloudFront accept only CloudFront's managed prefix list; Front Door origins check the <code>X-Azure-FDID</code> header or use Private Link.</li>
+<li><strong>Rate limits behave differently.</strong> Window lengths and how clients are counted differ (Cloud Armor and AWS WAF can key on headers or cookies; Azure groups by client address or geo). Re-test thresholds with real traffic rather than copying numbers.</li>
+</ul>
+<h2 id="which-to-choose-when">Which to choose when</h2>
+<ul>
+<li><strong>Workload in one cloud:</strong> use that cloud's WAF. They're integrated with the load balancer, logging and identity, and none is clearly better at blocking common attacks once tuned.</li>
+<li><strong>Need bots and fraud handled in the WAF:</strong> AWS WAF has the broadest built-in options (Bot Control, Fraud Control); Cloud Armor relies on reCAPTCHA; Azure's Bot Manager covers bot categories but not account takeover.</li>
+<li><strong>Global site, one entry point:</strong> Cloud Armor on a global load balancer, AWS WAF on CloudFront, or Azure WAF on Front Door Premium are the equivalent designs.</li>
+<li><strong>Multi-cloud or very large traffic:</strong> a third-party edge WAF and CDN in front of all three gives one rule set and one set of logs, at the cost of another vendor.</li>
+</ul>
+
+    <p class="muted">Compared as of October 2026. Service names, tiers and prices change; check the provider's documentation before deciding.</p>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../assets/prism.js"></script>
+<script src="../assets/site.js"></script>
+</body>
+</html>
