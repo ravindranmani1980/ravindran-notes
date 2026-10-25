@@ -10,7 +10,7 @@ The site is plain HTML and CSS. There is no build step: what's in this repositor
 | Azure | Live: 10 guides, 8 scripts |
 | AWS | Live: 10 guides, 8 scripts |
 | Google Cloud (GCP) | Live: 10 guides, 8 scripts |
-| FinOps | In progress (not linked yet) |
+| FinOps | Live: 7 cross-cloud guides; links 12 cost scripts from the cloud sections |
 
 ## Folder structure
 
@@ -36,7 +36,7 @@ notes.ravindran.in/
 ├── aws/                    Landing page, guides/, scripts/ and environment/ (same layout as azure/)
 ├── compare/                Google Cloud, AWS and Azure compared (networking, protection, WAF/DDoS, databases)
 ├── gcp/                    Landing page, guides/, scripts/ and environment/ (same layout as azure/)
-├── finops/                 Starter page + empty guides/ and scripts/
+├── finops/                Landing page, guides/ (7 guides comparing Azure, AWS and GCP) and scripts/ (links to the cost scripts)
 ├── _tools/                 build-sitemap.py (not published)
 └── _templates/             Page templates to copy (not published: GitHub
                             Pages skips folders starting with _)
@@ -84,7 +84,7 @@ Open `index.html` in a browser. All links are relative, so the site works straig
 3. Add the menu link on every page. Each page has a commented-out line ready to use; a find-and-replace across all `.html` files does it in one go.
 4. On `index.html`, turn the topic's "In progress" entries into links marked Live.
 
-**Sitemap:** after adding, renaming or removing pages, run `python3 _tools/build-sitemap.py` to rebuild `sitemap.xml`. It skips `404.html`, folders starting with `_`, and any page marked `noindex` (such as FinOps until it goes live).
+**Sitemap:** after adding, renaming or removing pages, run `python3 _tools/build-sitemap.py` to rebuild `sitemap.xml`. It skips `404.html`, folders starting with `_`, and any page marked `noindex` (for pages still being written).
 
 **Code blocks:** use `<pre><code class="language-powershell">...</code></pre>` and escape `<`, `>` and `&` as `&lt;`, `&gt;` and `&amp;`. Highlighting and the Copy button are added automatically.
 

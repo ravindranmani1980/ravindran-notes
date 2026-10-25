@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rightsizing | FinOps | Notes | Ravindran Mani</title>
+<meta name="description" content="Using real usage to pick smaller or newer sizes, a safe way to make the change, and what to resize besides VMs.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../gcp/index.html">GCP</a></li>
+        <li><a href="../../compare/index.html">Cloud Compare</a></li>
+        <li><a href="../../finops/index.html" aria-current="page">FinOps</a></li>
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 3 of 7</p>
+    <ol>
+      <li><a href="#pick-the-candidates">Pick the candidates</a></li>
+      <li><a href="#make-the-change-safely">Make the change safely</a></li>
+      <li><a href="#newer-generations-cost-less">Newer generations cost less</a></li>
+      <li><a href="#rightsize-more-than-vms">Rightsize more than VMs</a></li>
+      <li><a href="#rightsize-before-you-commit">Rightsize before you commit</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">FinOps</a> / Guide 3</p>
+    <h1>Rightsizing</h1>
+    <p class="lead">Using real usage to pick smaller or newer sizes, a safe way to make the change, and what to resize besides VMs.</p>
+
+<p>Rightsizing means matching the size of a resource to what it actually uses. It is usually the biggest single saving after deleting unused resources, and in the cloud it is reversible: if a smaller size turns out to be too small, you move back with a restart. This guide covers how to choose candidates, how to make the change safely in each cloud, and what else to resize besides VMs.</p>
+<h2 id="pick-the-candidates">Pick the candidates</h2>
+<p>Start with the recommendations from <a href="measure-usage.html">guide 02</a>, then sanity-check them. Useful rules of thumb, based on the thresholds Azure Advisor uses:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Pattern over 2 to 4 weeks</th><th>Likely action</th></tr></thead>
+<tbody>
+<tr><td>Peak CPU (P95) under about 3% and almost no network traffic</td><td><strong>Idle.</strong> Ask the owner; shut down or delete.</td></tr>
+<tr><td>User-facing: P95 CPU under 40% and memory under 60% on a smaller size</td><td><strong>Downsize</strong> one step.</td></tr>
+<tr><td>Batch or back-end: P95 CPU under 80% and memory under 80% on a smaller size</td><td><strong>Downsize</strong>; these workloads can run hotter.</td></tr>
+<tr><td>Low average CPU with short bursts</td><td><strong>Burstable</strong> sizes: Azure B-series, AWS T-family, Google Cloud e2-micro to e2-medium or shared-core.</td></tr>
+<tr><td>High CPU most of the day</td><td>Leave it, or <strong>upsize</strong>. Rightsizing goes both ways.</td></tr>
+</tbody>
+</table>
+</div>
+<p>Ask the owner before changing anything. Usage data doesn't show a disaster recovery server that must stay large, or a month-end job that ran before your lookback window.</p>
+<h2 id="make-the-change-safely">Make the change safely</h2>
+<ol>
+<li><strong>Agree a window</strong> with the owner. Most resizes need a restart.</li>
+<li><strong>Check the target size</strong> supports what the VM uses today: number of disks, disk performance, network bandwidth, accelerated networking and the processor architecture.</li>
+<li><strong>Take a backup or snapshot</strong> if the VM isn't already protected.</li>
+<li><strong>Resize one step at a time</strong> (for example 8 vCPU to 4, not 8 to 2).</li>
+<li><strong>Watch it for a week</strong>, then decide whether to go down another step.</li>
+</ol>
+<pre><code class="language-powershell"># Azure: resize (the VM restarts; deallocate first if the new size isn&#x27;t available on the current hardware)
+$vm = Get-AzVM -ResourceGroupName &#x27;rg-notes-test&#x27; -Name &#x27;vm-notes-test-01&#x27;
+$vm.HardwareProfile.VmSize = &#x27;Standard_D2s_v5&#x27;
+Update-AzVM -VM $vm -ResourceGroupName &#x27;rg-notes-test&#x27;
+</code></pre><pre><code class="language-powershell"># AWS: the instance must be stopped to change its type
+$id = &#x27;i-0123456789abcdef0&#x27;
+Stop-EC2Instance -InstanceId $id
+(Get-EC2Instance -InstanceId $id).Instances[0].State.Name   # wait until &#x27;stopped&#x27;
+Edit-EC2InstanceAttribute -InstanceId $id -InstanceType &#x27;t3.medium&#x27;
+Start-EC2Instance -InstanceId $id
+</code></pre><pre><code class="language-powershell"># Google Cloud: stop, change the machine type, start
+gcloud compute instances stop vm-notes-test-01 --zone=us-east1-b
+gcloud compute instances set-machine-type vm-notes-test-01 --zone=us-east1-b --machine-type=e2-standard-2
+gcloud compute instances start vm-notes-test-01 --zone=us-east1-b
+</code></pre>
+<h2 id="newer-generations-cost-less">Newer generations cost less</h2>
+<p>Each new VM generation usually gives more performance for the same or lower price. Moving from an old family to a current one is a rightsizing win even when the vCPU count stays the same.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>Azure</th><th>AWS</th><th>Google Cloud</th></tr></thead>
+<tbody>
+<tr><td>Move away from</td><td>v2 and v3 sizes</td><td>m4, c4, r4, t2 and other older families</td><td>N1 machine types</td></tr>
+<tr><td>Consider</td><td>Current v5 and v6 sizes; Arm-based sizes (Cobalt, Ampere) for Linux workloads that support Arm</td><td>Current generation families; Graviton (Arm) for Linux workloads that support it</td><td>E2 for general workloads; N2, N2D or newer series; Arm-based series for supported workloads</td></tr>
+</tbody>
+</table>
+</div>
+<p>Arm-based sizes are often the cheapest per unit of performance, but test first: the operating system, agents and every application component must support Arm. Windows workloads generally stay on x86.</p>
+<h2 id="rightsize-more-than-vms">Rightsize more than VMs</h2>
+<ul>
+<li><strong>Disks:</strong> a disk sized for growth that never came. Disks can grow but generally can't shrink, so start small. Check the disk type too: see <a href="stop-the-bleeding.html">guide 06</a>.</li>
+<li><strong>Databases:</strong> managed database tiers (Azure SQL, Amazon RDS, Cloud SQL) are often sized once and forgotten. The same CPU and memory checks apply. Azure SQL Database serverless and Aurora Serverless scale down automatically for spiky workloads.</li>
+<li><strong>App hosting plans:</strong> an Azure App Service plan or a container cluster sized for launch day. Check instance counts and node sizes.</li>
+<li><strong>Scale sets and node pools:</strong> let autoscaling set the count instead of a fixed number sized for the peak.</li>
+</ul>
+<h2 id="rightsize-before-you-commit">Rightsize before you commit</h2>
+<p>Always right-size <em>before</em> buying reservations, savings plans or committed use discounts. Committing to an oversized fleet locks in the waste for one or three years. The order is: delete what's unused, right-size, schedule non-production, then commit to what's left.</p>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="measure-usage.html"><span>Previous guide</span>Measure usage before you pay</a>
+      <a class="next" href="power-schedules.html"><span>Next guide</span>Power-off schedules</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

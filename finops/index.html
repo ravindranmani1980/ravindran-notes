@@ -4,9 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FinOps | Notes | Ravindran Mani</title>
-<meta name="description" content="Cost visibility, tagging, rightsizing and commitments across Azure and AWS.">
+<meta name="description" content="FinOps for Azure, AWS and Google Cloud: usage, rightsizing, power-off schedules, reservations and savings plans, and stopping storage and orphaned-resource waste.">
 <meta name="author" content="Ravindran Mani">
-<meta name="robots" content="noindex">
 <link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
 <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -28,9 +27,7 @@
         <li><a href="../aws/index.html">AWS</a></li>
         <li><a href="../gcp/index.html">GCP</a></li>
         <li><a href="../compare/index.html">Cloud Compare</a></li>
-        <!-- Add each topic here when it goes live, for example:
-        <li><a href="../finops/index.html">FinOps</a></li>
-        -->
+        <li><a href="../finops/index.html" aria-current="page">FinOps</a></li>
         <li><a href="../scripts/index.html">Scripts</a></li>
         <li><a href="../about.html">About</a></li>
         <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
@@ -39,36 +36,27 @@
   </div>
 </header>
 <main id="main">
-<!--
-  FinOps topic page. Not linked from the menu yet.
-  To go live:
-    1. Add guides to finops/guides/ and scripts to finops/scripts/ (copy the files in _templates/).
-    2. Replace the "Planned" list below with a guide list and script list (copy the layout from sharepoint/index.html).
-    3. Add the menu link on every page, and move the topic from "In progress" to live on index.html.
--->
 <section class="topic-head">
-  <div class="wrap">
-    <p class="crumbs"><a href="../index.html">Notes</a> / FinOps</p>
-    <h1>FinOps</h1>
-    <p class="lead">Cost visibility, tagging, rightsizing and commitments across Azure and AWS.</p>
-  </div>
+<div class="wrap">
+<p class="crumbs"><a href="../index.html">Notes</a> / FinOps</p>
+<h1>FinOps</h1>
+<p class="lead">Keeping cloud spend visible, owned and under control on Azure, AWS and Google Cloud: measuring real usage, rightsizing, power-off schedules for non-production, reservations, savings plans and committed use discounts, and stopping the storage and orphaned-resource leaks that bill every month. 7 guides and 12 cost scripts.</p>
+</div>
 </section>
-
-<section class="block">
-  <div class="wrap two-col">
-    <div class="col-head">
-      <h2>Planned</h2>
-      <p class="muted">This section is being written. Guides and scripts will appear here as they're ready.</p>
-    </div>
-    <ul class="plan-list">
-      <li>A tagging strategy finance can actually use</li>
-      <li>Showback and chargeback</li>
-      <li>Rightsizing, and commitments: Reserved Instances, Savings Plans and Azure reservations</li>
-      <li>Running a monthly cost review</li>
-      <li>Cost scripts live under Azure and AWS and are listed here too</li>
-    </ul>
-  </div>
+<section aria-labelledby="span-h" class="span">
+<div class="wrap">
+<h2 id="span-h">The FinOps loop</h2>
+<p class="muted span-intro">No hardware to buy up front and the freedom to resize at any time, as long as someone keeps measuring and adjusting.</p>
+<ol class="releases releases-5">
+<li><span class="year">Measure</span><span class="rel">Usage, owners and tags</span></li>
+<li><span class="year">Right-size</span><span class="rel">Match size to real use</span></li>
+<li><span class="year">Schedule</span><span class="rel">Off when nobody works</span></li>
+<li><span class="year">Commit</span><span class="rel">Discount the baseline</span></li>
+<li><span class="year">Review</span><span class="rel">Every month</span></li>
+</ol>
+</div>
 </section>
+<section aria-labelledby="explore-h" class="block"><div class="wrap"><div class="col-head wide"><h2 id="explore-h">Explore FinOps notes</h2><p class="muted">Open only the section you need.</p></div><ul class="topic-list"><li><a class="topic-row" href="guides/"><span class="tname">Guides</span><span class="tdesc">7 guides comparing Azure, AWS and Google Cloud: cost basics, usage, rightsizing, schedules, commitments, storage waste and the monthly review.</span><span class="st st-live">Open</span></a></li><li><a class="topic-row" href="scripts/"><span class="tname">Scripts</span><span class="tdesc">12 PowerShell scripts from the cloud sections that find orphaned and untagged resources, list VM sizes and power states, and schedule start and stop.</span><span class="st st-live">Open</span></a></li></ul></div></section>
 </main>
 <footer class="site-footer">
   <div class="wrap footer-row">
