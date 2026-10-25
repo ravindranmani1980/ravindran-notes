@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Periodic review and inspection readiness | GxP | Notes | Ravindran Mani</title>
+<meta name="description" content="What a periodic review of a GxP system covers, building an evidence pack with the scripts, incidents and deviations, and what inspectors ask IT.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../gcp/index.html">GCP</a></li>
+        <li><a href="../../compare/index.html">Cloud Compare</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        <li><a href="../../gxp/index.html" aria-current="page">GxP</a></li>
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 10 of 10</p>
+    <ol>
+      <li><a href="#how-often">How often</a></li>
+      <li><a href="#what-to-review">What to review</a></li>
+      <li><a href="#build-the-evidence-pack">Build the evidence pack</a></li>
+      <li><a href="#incidents-and-deviations">Incidents and deviations</a></li>
+      <li><a href="#what-inspectors-ask-it">What inspectors ask IT</a></li>
+      <li><a href="#inspection-day">On inspection day</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">GxP</a> / Guide 10</p>
+    <h1>Periodic review and inspection readiness</h1>
+    <p class="lead">What a periodic review of a GxP system covers, building an evidence pack with the scripts, incidents and deviations, and what inspectors ask IT.</p>
+
+<p>Periodic review is the check that a system is still in the state its validation described, and still fit for its intended use. It's also the best rehearsal for an inspection: if the periodic review can find the evidence quickly, so can you when an inspector asks. This guide covers what to review, how to gather the evidence with the scripts, and what inspectors ask IT teams.</p>
+
+<h2 id="how-often">How often</h2>
+<p>Set the frequency by risk in your procedure. A common pattern is yearly for high-risk systems, every two years for medium, and every three years for low, with an extra review after major changes or serious incidents. The draft Annex 11 revision defines a list of items every review should cover; the list below is compatible with it.</p>
+
+<h2 id="what-to-review">What to review</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Area</th><th>Question</th><th>Evidence</th></tr></thead>
+<tbody>
+<tr><td>Intended use and scope</td><td>Is the system still used as validated? New users, sites, interfaces or data types?</td><td>System owner statement, interface list</td></tr>
+<tr><td>Changes</td><td>Were all changes made through change control? Is the cumulative effect still covered by testing?</td><td>Change list, pipeline history, drift reports</td></tr>
+<tr><td>Configuration</td><td>Does the running system match the baseline?</td><td>IaC version deployed, policy and conformance results</td></tr>
+<tr><td>Incidents, deviations, CAPA</td><td>What went wrong, were root causes found, are actions closed?</td><td>Incident and deviation records</td></tr>
+<tr><td>Access</td><td>Were access reviews done on time, and removals completed?</td><td>Signed review worksheets, removal tickets</td></tr>
+<tr><td>Audit trails</td><td>Are audit trails on, retained, and reviewed as the procedure says?</td><td>Log coverage report, review records</td></tr>
+<tr><td>Backup and restore</td><td>Are backups succeeding? Were restore tests and DR drills done and passed?</td><td>Backup evidence reports, restore test records, drill reports</td></tr>
+<tr><td>Security</td><td>Is the system patched and supported? Open vulnerabilities?</td><td>Patch compliance, vulnerability scan results, vendor support status</td></tr>
+<tr><td>Suppliers</td><td>Are supplier assessments and agreements current?</td><td>Latest SOC 2 review, quality agreements</td></tr>
+<tr><td>Procedures and training</td><td>Are procedures current, and users and admins trained on them?</td><td>SOP versions, training records</td></tr>
+<tr><td>Archive and retention</td><td>Can old records still be retrieved and read?</td><td>Archive retrieval test</td></tr>
+</tbody>
+</table>
+</div>
+<p>The review ends with a conclusion (the system remains in a validated state, or it doesn't, and what will be done), actions with owners and dates, and QA approval.</p>
+
+<h2 id="build-the-evidence-pack">Build the evidence pack</h2>
+<p>The scripts on this site produce the IT part of the evidence in a few minutes, and each output comes with a <code>.sha256</code> file that records the file's hash, who ran it, when, and with which parameters. Run them into one dated folder per review:</p>
+<pre><code class="language-powershell">$pack = "D:\GxP-Evidence\CSV-0042-LIMS\PR-{0:yyyy-MM-dd}" -f (Get-Date)
+New-Item -ItemType Directory -Path $pack -Force | Out-Null
+
+# Azure platform
+.\Get-AzGxPAccessReview.ps1       -ExpandGroups -IncludeEligible -OutputFile "$pack\AccessReview.csv"
+.\Get-AzGxPAuditLogCoverage.ps1   -MinRetentionDays 730          -OutputFile "$pack\AuditLogCoverage.csv"
+.\Get-AzGxPBackupEvidence.ps1     -Days 365                      -OutputFile "$pack\BackupEvidence.csv"
+
+# AWS platform
+.\Get-AwsGxPAuditTrailStatus.ps1  -ProfileName notes-gxp          -OutputFile "$pack\AwsAuditTrail.csv"
+.\Get-AwsGxPConformanceReport.ps1 -ProfileName notes-gxp          -OutputFile "$pack\AwsPart11Pack.csv"
+.\Get-AwsGxPRestoreEvidence.ps1   -ProfileName notes-gxp -Days 365 -OutputFile "$pack\AwsRestoreEvidence.csv"
+
+# Controlled document libraries
+.\Get-SPOGxPLibraryControls.ps1 -SiteUrl https://sharepointonline.ravindran.in/sites/qms -OutputFile "$pack\LibraryControls.csv"
+</code></pre>
+<p>Anyone can later confirm a file hasn't changed since it was produced:</p>
+<pre><code class="language-powershell">$line = (Get-Content "$pack\AccessReview.csv.sha256")[0]
+$expected = $line.Split(' ')[0]
+(Get-FileHash "$pack\AccessReview.csv" -Algorithm SHA256).Hash.ToLower() -eq $expected
+</code></pre>
+<p>Store the pack in a controlled location (a records library with a retention label, or immutable storage), and reference it from the periodic review report. Reports are evidence, not approvals: the review record still needs a person's assessment of what the reports show.</p>
+
+<h2 id="incidents-and-deviations">Incidents and deviations</h2>
+<p>Annex 11 §13 expects incidents to be reported and assessed, and serious ones to have their root cause found. Make sure the IT incident process connects to the quality process:</p>
+<ul>
+<li>Tag GxP systems in the service management tool, so incidents on them are visible to the system owner and QA.</li>
+<li>Define which IT events are GxP deviations: data loss, a failed backup beyond the RPO, an audit trail gap, an unauthorized change, unauthorized access, a restore that didn't return correct data.</li>
+<li>For those, open a deviation, assess impact on data and product, find the root cause, and track corrective and preventive actions to closure.</li>
+</ul>
+
+<h2 id="what-inspectors-ask-it">What inspectors ask IT</h2>
+<p>From experience, these come up again and again. Have the answer and the evidence ready:</p>
+<ol>
+<li>Show me the inventory of computerised systems and which are GxP.</li>
+<li>Who has administrator access to this system and its database, and when was that last reviewed?</li>
+<li>Show me the audit trail for this record, and when it was last reviewed.</li>
+<li>Can an administrator change data or turn off the audit trail? How would you know?</li>
+<li>When did you last restore this system from backup, and what did you check?</li>
+<li>Show me a recent change to this system, from request to closure.</li>
+<li>How do you qualify the cloud platform, and how do you know when the provider changes it?</li>
+<li>What happens to the process when this system is down?</li>
+<li>How do you make sure a leaver loses access on their last day?</li>
+<li>How are these IT staff trained on GxP and on your procedures?</li>
+</ol>
+
+<h2 id="inspection-day">On inspection day</h2>
+<ul>
+<li>Have a named IT subject matter expert for each GxP platform available, and brief them on the scope.</li>
+<li>Show, don't tell: a live query or a report produced during the inspection is more convincing than a slide.</li>
+<li>Answer the question asked. If you don't know, say you'll find out, and do.</li>
+<li>Record what was shown and asked, so follow-up requests and responses are consistent.</li>
+</ul>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="sharepoint-controlled-documents.html"><span>Previous guide</span>SharePoint and Microsoft 365 for GxP documents</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

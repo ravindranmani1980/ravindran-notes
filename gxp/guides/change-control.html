@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Change control and configuration management | GxP | Notes | Ravindran Mani</title>
+<meta name="description" content="Change classes, impact on the validated state, pipelines as change records, drift detection, patching validated systems, and emergency changes.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../gcp/index.html">GCP</a></li>
+        <li><a href="../../compare/index.html">Cloud Compare</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        <li><a href="../../gxp/index.html" aria-current="page">GxP</a></li>
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 7 of 10</p>
+    <ol>
+      <li><a href="#change-classes">Change classes</a></li>
+      <li><a href="#impact-assessment">Impact assessment</a></li>
+      <li><a href="#pipelines-as-change-records">Pipelines as change records</a></li>
+      <li><a href="#stopping-changes-outside-the-process">Stopping changes outside the process</a></li>
+      <li><a href="#patching">Patching validated systems</a></li>
+      <li><a href="#configuration-baseline">Configuration baseline</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">GxP</a> / Guide 7</p>
+    <h1>Change control and configuration management</h1>
+    <p class="lead">Change classes, impact on the validated state, pipelines as change records, drift detection, patching validated systems, and emergency changes.</p>
+
+<p>A validated system stays validated only if every change to it is assessed, approved, tested and recorded. On premises, change control meant a form and a CAB meeting. In the cloud, change is far more frequent, so the goal is a process where the safe path is also the fast one: most changes flow through a pipeline that records itself, and humans spend their time on the few changes that could affect GxP data.</p>
+
+<h2 id="change-classes">Change classes</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Class</th><th>Examples</th><th>Approval</th><th>Testing</th></tr></thead>
+<tbody>
+<tr><td>Standard (pre-approved)</td><td>Monthly OS patching, adding a user to a role, scaling within qualified limits, certificate renewal</td><td>Procedure approved once by QA; each run recorded</td><td>Automated checks defined in the procedure</td></tr>
+<tr><td>Normal, low impact</td><td>New alert rule, tag changes, a new non-GxP resource in a GxP subscription</td><td>System owner and IT</td><td>Verification in the change record</td></tr>
+<tr><td>Normal, GxP impact</td><td>Application upgrade, database version change, network change affecting data flow, new interface</td><td>System owner, QA, IT</td><td>Risk-based regression and new function tests in validation first</td></tr>
+<tr><td>Emergency</td><td>Security fix under active exploitation, restoring service</td><td>Named emergency approver, recorded at the time</td><td>Minimum needed, then retrospective review and testing within a set number of days</td></tr>
+</tbody>
+</table>
+</div>
+<p>Getting the standard class right is what makes GxP change control workable. Write the procedure once, including its tests and rollback, have QA approve it, and each run becomes a record rather than a meeting.</p>
+
+<h2 id="impact-assessment">Impact assessment</h2>
+<p>Every normal change needs a short, honest impact assessment. The questions that matter:</p>
+<ul>
+<li>Does it touch a function or setting that a user requirement relies on? (Trace to the URS.)</li>
+<li>Could it change how GxP data is created, calculated, stored, transferred or displayed?</li>
+<li>Does it affect audit trails, access control, backup, time or logging?</li>
+<li>Does the validation environment need the change first, and which tests must be re-run?</li>
+<li>Do procedures, training or the system's documentation need updating?</li>
+</ul>
+<p>Record the answer and the reasoning. "No GxP impact because the change only affects the monitoring agent's alert thresholds" is an assessment; "N/A" is not.</p>
+
+<h2 id="pipelines-as-change-records">Pipelines as change records</h2>
+<p>When infrastructure and configuration live in code, the delivery pipeline can be the change record:</p>
+<ul>
+<li>A <strong>pull request</strong> links to the change ticket, describes the change and impact, and is approved by someone other than the author.</li>
+<li><strong>Branch protection</strong> stops anyone from merging without review, and stops direct pushes to the main branch.</li>
+<li>The <strong>pipeline</strong> deploys to validation, runs automated tests and evidence checks, and waits for an approval gate before production.</li>
+<li>The <strong>run history</strong> keeps who approved, what commit was deployed, when, and the test results.</li>
+</ul>
+<p>Validate the pipeline itself (it's a GAMP category 1 or 4 tool, depending on how much you configured it) and control changes to it, because it now enforces your change process.</p>
+
+<h2 id="stopping-changes-outside-the-process">Stopping changes outside the process</h2>
+<p>The biggest risk is a change that bypasses the process: a portal click at 2 a.m. that nobody records. Reduce who can make them, and detect them when they happen:</p>
+<ul>
+<li><strong>Prevent:</strong> no standing write access to GxP production for people; changes through the pipeline's identity. On Azure, deployment stacks with deny settings and resource locks; on AWS, SCPs and permission boundaries that only allow the deployment role to change core resources.</li>
+<li><strong>Detect:</strong> Azure Policy compliance and activity log alerts on writes by anyone other than the pipeline identity; AWS Config rules, CloudFormation drift detection and EventBridge rules on CloudTrail events from human roles.</li>
+<li><strong>Respond:</strong> treat an unexplained change as a deviation: record it, assess impact, then either bring it into the code through change control or revert it.</li>
+</ul>
+
+<h2 id="patching">Patching validated systems</h2>
+<p>Unpatched servers are a GxP risk too: inspectors now treat known, exploited vulnerabilities as a data integrity problem. A workable pattern:</p>
+<ol>
+<li>Classify OS and database patching of GxP servers as a standard change, with a QA-approved procedure.</li>
+<li>Patch the validation environment first, run automated smoke tests of critical functions (application starts, users sign in, a test record is created, audit trail entry appears, interfaces pass data).</li>
+<li>Patch production in its window with Azure Update Manager or AWS Systems Manager Patch Manager, then run the same checks.</li>
+<li>Keep the patch compliance report and test results as the record.</li>
+</ol>
+<p>Application upgrades and database version changes are normal changes with GxP impact, and need regression testing based on risk.</p>
+
+<h2 id="configuration-baseline">Configuration baseline</h2>
+<p>Keep a baseline for each GxP system: the IaC repository at a tagged version, plus application configuration exported or documented. At periodic review (<a href="periodic-review-and-inspections.html">Guide 10</a>), compare the running system to the baseline and explain every difference. Evidence scripts help here, because they check the settings your validation assumed: logs exported, backups running, access limited.</p>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="access-control.html"><span>Previous guide</span>Access control for GxP systems</a>
+      <a class="next" href="backup-and-disaster-recovery.html"><span>Next guide</span>Backup, disaster recovery and business continuity</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

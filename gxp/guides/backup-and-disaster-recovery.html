@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Backup, disaster recovery and business continuity | GxP | Notes | Ravindran Mani</title>
+<meta name="description" content="Building a GxP disaster recovery program: criticality and recovery targets, immutable backups, restore testing as evidence, DR drills, business continuity and archiving for long retention.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../gcp/index.html">GCP</a></li>
+        <li><a href="../../compare/index.html">Cloud Compare</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        <li><a href="../../gxp/index.html" aria-current="page">GxP</a></li>
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 8 of 10</p>
+    <ol>
+      <li><a href="#start-with-criticality">Start with criticality</a></li>
+      <li><a href="#backups-that-survive">Backups that survive an attack</a></li>
+      <li><a href="#restore-testing">Restore testing is the evidence</a></li>
+      <li><a href="#dr-drills">Disaster recovery drills</a></li>
+      <li><a href="#business-continuity">Business continuity</a></li>
+      <li><a href="#archiving">Archiving for long retention</a></li>
+      <li><a href="#hipaa-overlap">If you also handle health data</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">GxP</a> / Guide 8</p>
+    <h1>Backup, disaster recovery and business continuity</h1>
+    <p class="lead">Building a GxP disaster recovery program: criticality and recovery targets, immutable backups, restore testing as evidence, DR drills, business continuity and archiving for long retention.</p>
+
+<p>For a GxP system, a backup that has never been restored isn't evidence of anything. Annex 11 expects backups to be checked during validation and monitored periodically, business continuity arrangements to be tested, and archived data to stay readable for its full retention period. HIPAA's contingency planning rule asks for much the same for health data. This guide describes a disaster recovery program that satisfies both, on Azure and AWS.</p>
+
+<h2 id="start-with-criticality">Start with criticality</h2>
+<p>Recovery targets come from the business, not from IT. For each GxP system, a short business impact analysis sets:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Tier</th><th>Examples</th><th>RPO (data loss)</th><th>RTO (downtime)</th><th>Pattern</th></tr></thead>
+<tbody>
+<tr><td>1: critical</td><td>MES, batch release, IRT for dosing in trials, safety database</td><td>Minutes</td><td>Hours</td><td>Replication to a second region plus backups</td></tr>
+<tr><td>2: important</td><td>LIMS, QMS, EDC</td><td>Hours</td><td>1 day</td><td>Cross-region backup copies, rebuild from code</td></tr>
+<tr><td>3: supporting</td><td>Training records, document archive, reporting</td><td>1 day</td><td>Several days</td><td>Backups, restore on demand</td></tr>
+</tbody>
+</table>
+</div>
+<p>Write the targets into the system's user requirements. They become testable, and the evidence scripts can check them.</p>
+
+<h2 id="backups-that-survive">Backups that survive an attack</h2>
+<p>The threat model has changed: ransomware operators and malicious insiders delete backups first. For GxP data, backups should be protected even from your own administrators:</p>
+<ul>
+<li><strong>Azure:</strong> Recovery Services vault with <strong>immutability enabled and locked</strong> (recovery points can't be deleted before they expire, and the setting can't be undone), <strong>enhanced soft delete</strong> always on, and <strong>multi-user authorization</strong> with a Resource Guard in a separate subscription, so reducing protection needs a second person's approval.</li>
+<li><strong>AWS:</strong> AWS Backup <strong>Vault Lock</strong> in compliance mode, copies to a vault in a separate backup account (or a logically air-gapped vault), and SCPs denying deletion of recovery points outside a break-glass role.</li>
+<li><strong>Both:</strong> backups in a second region for tier 1 and 2 systems, encryption with keys whose deletion is also protected, and alerts on failed jobs and on any change to backup policy.</li>
+</ul>
+<p>The platform backup guides for <a href="../../azure/guides/backup-and-recovery.html">Azure</a> and <a href="../../aws/guides/backup-and-recovery.html">AWS</a> cover the setup in detail.</p>
+
+<h2 id="restore-testing">Restore testing is the evidence</h2>
+<p>Plan restore tests like validation tests: a documented procedure, expected results, actual results, and sign-off.</p>
+<ul>
+<li><strong>What to check after a restore:</strong> the application starts, records from before the backup point are present and correct (compare record counts and a checksum or sample of records), audit trail entries are intact, and users can sign in with the right roles.</li>
+<li><strong>How often:</strong> set by tier, for example quarterly for tier 1, twice a year for tier 2, yearly for tier 3, and after any major change to backup design.</li>
+<li><strong>Where:</strong> into an isolated network, so a restored system can't talk to production interfaces or send duplicate data downstream.</li>
+<li><strong>Record:</strong> how long the restore took (your real RTO) and how much data was lost (your real RPO).</li>
+</ul>
+<p>On AWS, <strong>restore testing</strong> in AWS Backup restores recovery points on a schedule, runs your validation function and deletes the copy afterwards. On Azure, schedule restores to an isolated resource group with Azure Automation or a pipeline. Either way, collect the evidence with the scripts:</p>
+<pre><code class="language-powershell"># Azure: vault protection, last backup per GxP item, restore jobs in the last 180 days
+.\Get-AzGxPBackupEvidence.ps1 -Days 180
+
+# AWS: Vault Lock, restore testing plans and restore jobs
+.\Get-AwsGxPRestoreEvidence.ps1 -ProfileName notes-gxp -Days 180
+</code></pre>
+<p>Both flag vaults with no completed restore in the window: the first thing to fix before an inspection.</p>
+
+<h2 id="dr-drills">Disaster recovery drills</h2>
+<p>A regional failover is a much bigger event than a restore, and it's where plans fail: DNS, certificates, firewall rules, interfaces, licences, people who don't know the runbook. For tier 1 and 2 systems:</p>
+<ul>
+<li>Keep a DR runbook per system, change-controlled like any GxP document.</li>
+<li>Drill at least yearly, rotating which systems fail over. Azure Site Recovery test failover and AWS Elastic Disaster Recovery drills run into isolated networks without touching production.</li>
+<li>Treat the drill as a protocol: objectives, steps, acceptance criteria (met RTO and RPO, data verified, audit trail intact), deviations, and a report with actions.</li>
+<li>Feed findings back into the runbook, and re-test anything that failed.</li>
+</ul>
+
+<h2 id="business-continuity">Business continuity</h2>
+<p>Annex 11 §16 is about the <em>process</em>, not only the system: what happens on the production floor or in the lab while a system is down? For each critical system, document the manual or alternative process (paper records, a standalone instrument mode), how those records are controlled, and how data is entered into the system afterwards without losing attribution or creating duplicates. Test it, even as a tabletop exercise.</p>
+
+<h2 id="archiving">Archiving for long retention</h2>
+<p>Retention periods for GxP records are long: in the EU, batch documentation for at least one year after batch expiry or five years after certification, whichever is longer; clinical trial master files for at least 25 years under the EU Clinical Trials Regulation. Check your predicate rules and your own retention schedule. Backups are not archives:</p>
+<ul>
+<li><strong>Archive in a readable, open format</strong> where you can (PDF/A for documents, CSV or XML with a data dictionary for structured data), together with the audit trail and metadata that give the data its meaning.</li>
+<li><strong>Protect the archive:</strong> immutable storage (Azure blob immutability, S3 Object Lock in compliance mode), with checksums recorded at the time of archiving.</li>
+<li><strong>Verify periodically</strong> that archived data can be found, opened and read, and that checksums still match, especially after any platform or format change (Annex 11 §17).</li>
+<li><strong>Plan for system retirement:</strong> when a system is decommissioned, its records and audit trails must stay available and readable for the rest of their retention period.</li>
+</ul>
+
+<h2 id="hipaa-overlap">If you also handle health data</h2>
+<p>The HIPAA Security Rule's contingency plan standard (45 CFR 164.308(a)(7)) requires a data backup plan, a disaster recovery plan and an emergency mode operation plan, and lists testing and revision procedures and an applications and data criticality analysis as addressable specifications. The program above covers all of them: the criticality tiers are your criticality analysis, and the restore tests and DR drills are your testing. One program, two sets of evidence.</p>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="change-control.html"><span>Previous guide</span>Change control and configuration management</a>
+      <a class="next" href="sharepoint-controlled-documents.html"><span>Next guide</span>SharePoint and Microsoft 365 for GxP documents</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

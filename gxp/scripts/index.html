@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scripts | GxP | Notes | Ravindran Mani</title>
+<meta name="description" content="Read-only PowerShell scripts that collect GxP evidence from Azure, AWS and SharePoint Online: access reviews, audit trail coverage, backup and restore proof, and document library controls.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../gcp/index.html">GCP</a></li>
+        <li><a href="../../compare/index.html">Cloud Compare</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        <li><a href="../../gxp/index.html" aria-current="page">GxP</a></li>
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<section class="topic-head"><div class="wrap"><p class="crumbs"><a href="../../index.html">Notes</a> / <a href="../index.html">GxP</a> / Scripts</p><h1>Scripts</h1><p class="lead">Read-only PowerShell scripts that collect GxP evidence from Azure, AWS and SharePoint Online: access reviews, audit trail coverage, backup and restore proof, and document library controls.</p></div></section>
+<section aria-labelledby="scripts-h" class="block block-alt">
+<div class="wrap">
+<div class="col-head wide">
+<h2 id="scripts-h">Scripts</h2>
+<p class="muted">Every script has built-in help (<code>Get-Help .\Script.ps1 -Full</code>). All are read-only, and each writes a CSV plus a <code>.sha256</code> file with the hash, who ran it, when and with which parameters.</p>
+</div>
+<div class="script-columns">
+<section class="script-group">
+<h3>Access control</h3>
+<p class="muted">Who can reach GxP scope, as a review worksheet.</p>
+<ul class="script-list">
+      <li><a class="script-link" href="../scripts/get-azgxpaccessreview.html">Get-AzGxPAccessReview</a>
+        <p>Builds a periodic access review worksheet for GxP-tagged Azure subscriptions and resource groups.</p></li>
+</ul>
+</section>
+<section class="script-group">
+<h3>Audit trails and compliance</h3>
+<p class="muted">Platform logs exported, tamper-evident and kept long enough.</p>
+<ul class="script-list">
+      <li><a class="script-link" href="../scripts/get-azgxpauditlogcoverage.html">Get-AzGxPAuditLogCoverage</a>
+        <p>Checks that Azure activity logs and resource logs for GxP scope are exported and kept long enough.</p></li>
+      <li><a class="script-link" href="../scripts/get-awsgxpaudittrailstatus.html">Get-AwsGxPAuditTrailStatus</a>
+        <p>Checks that CloudTrail and AWS Config give GxP accounts a complete, tamper-evident audit trail.</p></li>
+      <li><a class="script-link" href="../scripts/get-awsgxpconformancereport.html">Get-AwsGxPConformanceReport</a>
+        <p>Exports AWS Config conformance pack results, such as the FDA 21 CFR Part 11 pack, as review evidence.</p></li>
+</ul>
+</section>
+<section class="script-group">
+<h3>Backup and restore</h3>
+<p class="muted">Protected backups, and proof that restores work.</p>
+<ul class="script-list">
+      <li><a class="script-link" href="../scripts/get-azgxpbackupevidence.html">Get-AzGxPBackupEvidence</a>
+        <p>Collects Azure Backup evidence for GxP scope: vault protection, last backup per item, and restore tests.</p></li>
+      <li><a class="script-link" href="../scripts/get-awsgxprestoreevidence.html">Get-AwsGxPRestoreEvidence</a>
+        <p>Collects AWS Backup evidence for GxP accounts: vault lock, restore testing plans and restore jobs.</p></li>
+</ul>
+</section>
+<section class="script-group">
+<h3>Controlled documents</h3>
+<p class="muted">SharePoint library settings for GxP records.</p>
+<ul class="script-list">
+      <li><a class="script-link" href="../scripts/get-spogxplibrarycontrols.html">Get-SPOGxPLibraryControls</a>
+        <p>Checks SharePoint Online document libraries that hold GxP records against a baseline of library settings.</p></li>
+</ul>
+</section>
+</div>
+</div>
+</section>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

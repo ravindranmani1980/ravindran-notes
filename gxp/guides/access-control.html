@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Access control for GxP systems | GxP | Notes | Ravindran Mani</title>
+<meta name="description" content="Building an access control program inspectors accept: unique accounts, role design, segregation of duties, joiners and leavers, privileged access, periodic access reviews and electronic signatures.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../gcp/index.html">GCP</a></li>
+        <li><a href="../../compare/index.html">Cloud Compare</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        <li><a href="../../gxp/index.html" aria-current="page">GxP</a></li>
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 6 of 10</p>
+    <ol>
+      <li><a href="#principles">The principles</a></li>
+      <li><a href="#role-design">Role design</a></li>
+      <li><a href="#joiners-movers-leavers">Joiners, movers and leavers</a></li>
+      <li><a href="#privileged-access">Privileged access</a></li>
+      <li><a href="#access-reviews">Periodic access reviews</a></li>
+      <li><a href="#passwords-sessions-lockout">Passwords, sessions and lockout</a></li>
+      <li><a href="#electronic-signatures">Electronic signatures</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">GxP</a> / Guide 6</p>
+    <h1>Access control for GxP systems</h1>
+    <p class="lead">Building an access control program inspectors accept: unique accounts, role design, segregation of duties, joiners and leavers, privileged access, periodic access reviews and electronic signatures.</p>
+
+<p>Access control findings are among the most common in GxP inspections, and most of them are about process, not technology: a leaver still active, a shared login in the lab, an administrator who can also approve data, a review that was signed but clearly not done. This guide describes an access control program for GxP systems on Azure, AWS and Microsoft 365, the same shape I've used for GxP and HIPAA programs.</p>
+
+<h2 id="principles">The principles</h2>
+<ul>
+<li><strong>Unique, named accounts.</strong> Every action is attributable to one person. No shared accounts with write access, including "lab" or "QC" accounts on instrument PCs. Where a shared login is truly unavoidable (some instruments), document the justification and compensate with a logbook and application-level user identification.</li>
+<li><strong>Least privilege, by role.</strong> Access is granted to roles through groups, not to people directly.</li>
+<li><strong>Segregation of duties.</strong> People who generate or approve GxP data don't administer the system, and system administrators don't have business rights to create or approve data. IT administrators get the platform, not the data.</li>
+<li><strong>Every change recorded.</strong> Who asked, who approved, who did it, when. Annex 11 §12 expects the creation, change and removal of access to be recorded.</li>
+<li><strong>Reviewed periodically.</strong> And the review is real: someone who knows the role confirms each person still needs it.</li>
+</ul>
+
+<h2 id="role-design">Role design</h2>
+<p>Define roles per system in its user requirements, then implement each as a group. A typical LIMS:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Role</th><th>Group</th><th>Can</th><th>Platform access</th></tr></thead>
+<tbody>
+<tr><td>Analyst</td><td><code>grp-gxp-lims-analysts</code></td><td>Enter and process results</td><td>None</td></tr>
+<tr><td>Reviewer</td><td><code>grp-gxp-lims-reviewers</code></td><td>Review and approve results</td><td>None</td></tr>
+<tr><td>Business administrator</td><td><code>grp-gxp-lims-bizadmins</code></td><td>Manage users and master data in the application</td><td>None</td></tr>
+<tr><td>System administrator</td><td><code>grp-gxp-lims-admins</code></td><td>Operate servers, database, backups</td><td>Eligible (PIM) Contributor on <code>rg-notes-lims</code>; no application data rights</td></tr>
+<tr><td>Read-only (audit, QA)</td><td><code>grp-gxp-lims-readers</code></td><td>View records and audit trails</td><td>Reader, if needed</td></tr>
+</tbody>
+</table>
+</div>
+<p>Keep a role matrix that says which roles conflict (for example, analyst and reviewer on the same result), and enforce it in the application where you can.</p>
+
+<h2 id="joiners-movers-leavers">Joiners, movers and leavers</h2>
+<ul>
+<li><strong>Joiners:</strong> access requested and approved by the line manager and the system owner, granted only after training on the system and its procedures is recorded (Part 11 11.10(i)). Use Entra ID access packages or your identity governance tool so approval and grant are one recorded flow.</li>
+<li><strong>Movers:</strong> a role change triggers removal of the old access, not only addition of the new. This is where access creeps.</li>
+<li><strong>Leavers:</strong> disable in the directory on the last day, driven by HR, not by a ticket someone might forget. Federated sign-in means disabling the Entra ID account cuts off Azure, AWS through IAM Identity Center, Microsoft 365 and any SSO-connected SaaS at once. Check local and application-only accounts separately.</li>
+</ul>
+
+<h2 id="privileged-access">Privileged access</h2>
+<ul>
+<li><strong>Just-in-time:</strong> on Azure, make admin roles eligible in Privileged Identity Management with approval, justification and a maximum duration. On AWS, use IAM Identity Center permission sets with short sessions, and a temporary elevated access process for production.</li>
+<li><strong>Separate admin accounts</strong> for people who administer GxP platforms, with phishing-resistant MFA and sign-in only from managed devices (Conditional Access).</li>
+<li><strong>Break-glass accounts:</strong> two, excluded from normal Conditional Access, credentials sealed, every use alerted and reviewed afterwards as an incident.</li>
+<li><strong>No standing Owner</strong> on GxP subscriptions, no IAM users with console passwords or long-lived access keys in GxP accounts.</li>
+<li><strong>Service identities</strong> (managed identities, IAM roles for workloads) have a named owner and are included in the access review.</li>
+</ul>
+
+<h2 id="access-reviews">Periodic access reviews</h2>
+<p>A common frequency is quarterly for privileged and administrator access, and every six or twelve months for business users, set by risk in your procedure. Each review should show:</p>
+<ol>
+<li>The complete list of who has access, including through groups and inherited assignments, taken on a known date.</li>
+<li>A named reviewer who knows the role (system owner or line manager, not the administrator granting access).</li>
+<li>A decision for each line: keep, change or remove.</li>
+<li>Evidence that removals were done, with dates.</li>
+</ol>
+<p>For the Azure platform layer, <a href="../scripts/get-azgxpaccessreview.html"><code>Get-AzGxPAccessReview.ps1</code></a> builds the worksheet: every role assignment on GxP-tagged scope, including those inherited from management groups, optionally the members of each group and PIM eligible assignments, with flags for privileged roles, direct user assignments, guests, deleted principals and names that look like shared accounts. It has empty columns for the reviewer's decision, and writes a hash file so the extract itself is evidence.</p>
+<pre><code class="language-powershell">.\Get-AzGxPAccessReview.ps1 -ExpandGroups -IncludeEligible
+</code></pre>
+<p>Microsoft Entra ID access reviews (part of Entra ID Governance) can run the review itself: send each reviewer their list, collect decisions, and remove access automatically when denied. For AWS, if IAM Identity Center is federated to Entra ID, review the Entra groups that map to permission sets; IAM Access Analyzer's unused access findings help spot roles and permissions nobody uses.</p>
+
+<h2 id="passwords-sessions-lockout">Passwords, sessions and lockout</h2>
+<p>Part 11 section 11.300 and the Annex 11 draft expect controls that stop misuse of credentials. With cloud identity, most of these are central settings in Entra ID:</p>
+<ul>
+<li>MFA for every user of a GxP system, and phishing-resistant MFA for administrators.</li>
+<li>Smart lockout after repeated failed attempts, with alerts for attacks on privileged accounts.</li>
+<li>Sign-in frequency and idle session time-outs set by Conditional Access for GxP applications; screen lock on shared lab PCs.</li>
+<li>Banned password lists rather than forced periodic changes, which current guidance (including NIST) no longer recommends. Document the rationale if your older procedures still say "every 90 days".</li>
+</ul>
+
+<h2 id="electronic-signatures">Electronic signatures</h2>
+<p>Electronic signatures are an application feature, but they depend on identity. For a Part 11 signature, the application must show the signer's printed name, date and time, and meaning; link the signature to the record; and require re-entry of credentials at signing (both components on the first signing in a session). Single sign-on alone doesn't meet this: a signature step needs a fresh authentication. Ask vendors how their signature works with your identity provider before you buy, and test it during validation.</p>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="data-integrity-and-audit-trails.html"><span>Previous guide</span>Data integrity and audit trails</a>
+      <a class="next" href="change-control.html"><span>Next guide</span>Change control and configuration management</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

@@ -11,6 +11,7 @@ The site is plain HTML and CSS. There is no build step: what's in this repositor
 | AWS | Live: 10 guides, 8 scripts |
 | Google Cloud (GCP) | Live: 10 guides, 8 scripts |
 | FinOps | Live: 7 cross-cloud guides; links 12 cost scripts from the cloud sections |
+| GxP | Live: 10 guides, 7 read-only evidence scripts |
 
 ## Folder structure
 
@@ -37,6 +38,7 @@ notes.ravindran.in/
 ├── compare/                Google Cloud, AWS and Azure compared (networking, protection, WAF/DDoS, databases)
 ├── gcp/                    Landing page, guides/, scripts/ and environment/ (same layout as azure/)
 ├── finops/                Landing page, guides/ (7 guides comparing Azure, AWS and GCP) and scripts/ (links to the cost scripts)
+├── gxp/                   GxP for IT: guides/, evidence scripts/ and environment/ (same layout as azure/)
 ├── _tools/                 build-sitemap.py (not published)
 └── _templates/             Page templates to copy (not published: GitHub
                             Pages skips folders starting with _)
@@ -106,6 +108,8 @@ Each topic uses fixed example names so readers always know what to replace.
 | GCP | `ravindran.in` org (`123456789012`), `prj-notes-test`, `us-east1` / `us-east1-b` | Organization, test project, region and zone |
 | GCP | `vpc-notes-test`, `vm-notes-test-01`, `sa-app@prj-notes-test.iam.gserviceaccount.com` | VPC, VM, service account |
 | GCP | `gcp.ravindran.in` | Cloud DNS zone in examples |
+| GxP | tags `GxP = Yes`, `GxPSystemId = CSV-0042`; `sub-notes-gxp-prod`, `rg-notes-lims` | GxP scope marker, example system, Azure subscription and resource group |
+| GxP | `777788889999` (alias `notes-gxp`), `bv-notes-gxp`, `https://sharepointonline.ravindran.in/sites/qms` | AWS GxP account, backup vault, controlled documents site |
 
 ## License
 

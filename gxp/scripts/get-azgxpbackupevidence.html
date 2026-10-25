@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get-AzGxPBackupEvidence | GxP | Notes | Ravindran Mani</title>
+<meta name="description" content="Collects Azure Backup evidence for GxP scope: vault protection, last backup per item, and restore tests.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../gcp/index.html">GCP</a></li>
+        <li><a href="../../compare/index.html">Cloud Compare</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        <li><a href="../../gxp/index.html" aria-current="page">GxP</a></li>
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap">
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">GxP</a> / <a href="index.html">Scripts</a> / Backup and restore</p>
+    <h1 class="script-title">Get-AzGxPBackupEvidence</h1>
+    <p class="lead">Collects Azure Backup evidence for GxP scope: vault protection, last backup per item, and restore tests.</p>
+    <dl class="facts">
+      <div><dt>Runs in</dt><dd>Az PowerShell</dd></div>
+      <div><dt>Safety</dt><dd><span class="flag flag-read">Read-only</span></dd></div>
+      <div><dt>Evidence</dt><dd>CSV plus a .sha256 hash and run record</dd></div>
+    </dl>
+    <p class="actions"><a class="btn btn-primary" href="Get-AzGxPBackupEvidence.ps1" download>Download Get-AzGxPBackupEvidence.ps1</a></p>
+
+    <h2 id="what-it-does">What it does</h2>
+    <p>For each subscription with GxP scope (subscriptions or resource groups tagged GxP = Yes), reads every Recovery Services vault and writes one CSV with three kinds of row:</p>
+<ul><li>Vault: soft delete and immutability state, and how many restore jobs ran in the last -Days days. A vault with no restore in that window is flagged: a backup that has never been restored is not yet proven.</li><li>Item: each protected Azure VM, SQL Server in Azure VM database and Azure Files share whose source is in GxP scope, with last backup time and status. Items with no successful backup within -StaleHours are flagged.</li><li>Restore: each restore job in the window, with its status, duration and who started it. This is the list to attach to restore test records.</li></ul>
+<p>A .sha256 file is written next to the CSV with the file hash, who ran it, when and with which parameters.</p>
+<p>Read-only: it doesn&#x27;t change anything.</p>
+
+    <h2 id="parameters">Parameters</h2>
+    <div class="table-wrap">
+      <table class="params">
+          <tr><th scope="row"><code>-SubscriptionId</code><span class="ptype">string[]</span></th><td>Subscriptions to check. Default: every enabled subscription you can read.</td></tr>
+          <tr><th scope="row"><code>-TagName</code><span class="ptype">string</span></th><td>Tag that marks GxP scope. Default GxP.</td></tr>
+          <tr><th scope="row"><code>-TagValue</code><span class="ptype">string</span></th><td>Tag value that marks GxP scope. Default Yes.</td></tr>
+          <tr><th scope="row"><code>-AllScopes</code><span class="ptype">switch</span></th><td>Ignore the tag and treat every subscription checked as GxP scope.</td></tr>
+          <tr><th scope="row"><code>-Days</code><span class="ptype">int</span></th><td>How far back to look for restore jobs. Default 90.</td></tr>
+          <tr><th scope="row"><code>-StaleHours</code><span class="ptype">int</span></th><td>Flag items whose last successful backup is older than this. Default 26.</td></tr>
+          <tr><th scope="row"><code>-OutputFile</code><span class="ptype">string</span></th><td>CSV output path.<span class="pdefault">Default: <code>Timestamped file in the current folder</code></span></td></tr>
+      </table>
+    </div>
+
+    <h2 id="examples">Examples</h2>
+    <pre><code class="language-powershell">.\Get-AzGxPBackupEvidence.ps1</code></pre>
+    <pre><code class="language-powershell">.\Get-AzGxPBackupEvidence.ps1 -Days 180 -StaleHours 30</code></pre>
+
+    <h2 id="notes">Notes</h2>
+    <p>Requires Az.Accounts, Az.Resources and Az.RecoveryServices, and Backup Reader on the vaults. Only Recovery Services vaults are read; Backup vaults (Azure Disk, Blob, PostgreSQL backup) are not covered yet. Azure Backup keeps job history for a limited time, so export this report on a schedule if you need a longer record.</p>
+
+    <h2 id="source">Full script</h2>
+    <!-- Keep this in sync with Get-AzGxPBackupEvidence.ps1 in this folder. -->
+    <pre><code class="language-powershell">&lt;#
+.SYNOPSIS
+    Collects Azure Backup evidence for GxP scope: vault protection, last backup per item, and restore tests.
+
+.DESCRIPTION
+    For each subscription with GxP scope (subscriptions or resource groups tagged GxP = Yes),
+    reads every Recovery Services vault and writes one CSV with three kinds of row:
+    - Vault: soft delete and immutability state, and how many restore jobs ran in the last
+      -Days days. A vault with no restore in that window is flagged: a backup that has never
+      been restored is not yet proven.
+    - Item: each protected Azure VM, SQL Server in Azure VM database and Azure Files share
+      whose source is in GxP scope, with last backup time and status. Items with no
+      successful backup within -StaleHours are flagged.
+    - Restore: each restore job in the window, with its status, duration and who started it.
+      This is the list to attach to restore test records.
+
+    A .sha256 file is written next to the CSV with the file hash, who ran it, when and with
+    which parameters.
+
+    Read-only: it doesn&#x27;t change anything.
+
+.PARAMETER SubscriptionId
+    Subscriptions to check. Default: every enabled subscription you can read.
+
+.PARAMETER TagName
+    Tag that marks GxP scope. Default GxP.
+
+.PARAMETER TagValue
+    Tag value that marks GxP scope. Default Yes.
+
+.PARAMETER AllScopes
+    Ignore the tag and treat every subscription checked as GxP scope.
+
+.PARAMETER Days
+    How far back to look for restore jobs. Default 90.
+
+.PARAMETER StaleHours
+    Flag items whose last successful backup is older than this. Default 26.
+
+.PARAMETER OutputFile
+    CSV output path.
+
+.EXAMPLE
+    .\Get-AzGxPBackupEvidence.ps1
+
+.EXAMPLE
+    .\Get-AzGxPBackupEvidence.ps1 -Days 180 -StaleHours 30
+
+.NOTES
+    Requires Az.Accounts, Az.Resources and Az.RecoveryServices, and Backup Reader on the
+    vaults. Only Recovery Services vaults are read; Backup vaults (Azure Disk, Blob, PostgreSQL
+    backup) are not covered yet. Azure Backup keeps job history for a limited time, so export
+    this report on a schedule if you need a longer record.
+#&gt;
+[CmdletBinding()]
+param(
+    [string[]]$SubscriptionId,
+    [string]$TagName = &#x27;GxP&#x27;,
+    [string]$TagValue = &#x27;Yes&#x27;,
+    [switch]$AllScopes,
+    [ValidateRange(1, 365)][int]$Days = 90,
+    [ValidateRange(1, 720)][int]$StaleHours = 26,
+    [string]$OutputFile = (Join-Path -Path (Get-Location) -ChildPath (&#x27;AzGxPBackupEvidence_{0:yyyyMMdd_HHmm}.csv&#x27; -f (Get-Date)))
+)
+
+if (-not (Get-AzContext)) { throw &#x27;Not signed in. Run Connect-AzAccount first.&#x27; }
+
+function Write-EvidenceManifest {
+    param([string]$Path, [hashtable]$Parameters)
+    $hash = (Get-FileHash -Path $Path -Algorithm SHA256).Hash.ToLower()
+    $params = ($Parameters.GetEnumerator() | ForEach-Object { &quot;-$($_.Key) $($_.Value -join &#x27;,&#x27;)&quot; }) -join &#x27; &#x27;
+    @(
+        &quot;$hash  $(Split-Path -Path $Path -Leaf)&quot;
+        &quot;# Script:     $(Split-Path -Path $PSCommandPath -Leaf)&quot;
+        &quot;# Run by:     $([Environment]::UserName) on $([Environment]::MachineName)&quot;
+        &quot;# Signed in:  $((Get-AzContext).Account.Id)&quot;
+        &quot;# Run at UTC: $((Get-Date).ToUniversalTime().ToString(&#x27;yyyy-MM-dd HH:mm:ss&#x27;))&quot;
+        &quot;# Parameters: $params&quot;
+    ) | Set-Content -Path &quot;$Path.sha256&quot; -Encoding UTF8
+}
+
+function Get-TagValue($Tags, [string]$Name) {
+    if (-not $Tags) { return $null }
+    foreach ($k in $Tags.Keys) { if ($k -eq $Name) { return $Tags[$k] } }
+    return $null
+}
+
+function New-Row {
+    param($Sub, $Vault, [string]$RecordType)
+    [ordered]@{
+        Subscription = $Sub.Name; Vault = $Vault.Name; VaultResourceGroup = $Vault.ResourceGroupName; RecordType = $RecordType
+        Name = &#x27;&#x27;; WorkloadType = &#x27;&#x27;; SourceResourceId = &#x27;&#x27;; Status = &#x27;&#x27;; LastBackup = $null; RestoreStart = $null; RestoreEnd = $null
+        DurationMinutes = $null; StartedBy = &#x27;&#x27;; SoftDelete = &#x27;&#x27;; Immutability = &#x27;&#x27;; RestoresInWindow = $null; Flags = &#x27;&#x27;
+    }
+}
+
+$workloads = @(
+    @{ Management = &#x27;AzureVM&#x27;;       Workload = &#x27;AzureVM&#x27; }
+    @{ Management = &#x27;AzureWorkload&#x27;; Workload = &#x27;MSSQL&#x27; }
+    @{ Management = &#x27;AzureStorage&#x27;;  Workload = &#x27;AzureFiles&#x27; }
+)
+$now = Get-Date
+$from = $now.AddDays(-$Days)
+
+$subs = @(Get-AzSubscription | Where-Object { $_.State -eq &#x27;Enabled&#x27; })
+if ($SubscriptionId) { $subs = @($subs | Where-Object { $SubscriptionId -contains $_.Id }) }
+
+$report = New-Object System.Collections.Generic.List[object]
+foreach ($sub in $subs) {
+    Set-AzContext -Subscription $sub.Id | Out-Null
+    $subTags = (Get-AzTag -ResourceId &quot;/subscriptions/$($sub.Id)&quot; -ErrorAction SilentlyContinue).Properties.TagsProperty
+    $wholeSub = $AllScopes -or (Get-TagValue $subTags $TagName) -eq $TagValue
+    $gxpPrefixes = if ($wholeSub) { @(&quot;/subscriptions/$($sub.Id)/&quot;) } else {
+        @(Get-AzResourceGroup | Where-Object { (Get-TagValue $_.Tags $TagName) -eq $TagValue } | ForEach-Object { &quot;$($_.ResourceId)/&quot; })
+    }
+    if (-not $gxpPrefixes) { Write-Verbose &quot;No GxP scope in $($sub.Name)&quot;; continue }
+    Write-Host &quot;Checking $($sub.Name)...&quot; -ForegroundColor Cyan
+
+    foreach ($vault in @(Get-AzRecoveryServicesVault)) {
+        $vaultTagged = (Get-TagValue $vault.Tags $TagName) -eq $TagValue
+        $items = New-Object System.Collections.Generic.List[object]
+        foreach ($w in $workloads) {
+            try {
+                foreach ($i in @(Get-AzRecoveryServicesBackupItem -VaultId $vault.ID -BackupManagementType $w.Management -WorkloadType $w.Workload -ErrorAction Stop)) {
+                    $source = if ($i.SourceResourceId) { $i.SourceResourceId } else { $i.VirtualMachineId }
+                    $inScope = $false
+                    foreach ($p in $gxpPrefixes) { if (&quot;$source/&quot; -like &quot;$p*&quot;) { $inScope = $true; break } }
+                    if ($inScope -or $vaultTagged) { $items.Add([pscustomobject]@{ Item = $i; Source = $source; Workload = $w.Workload }) }
+                }
+            } catch { Write-Verbose &quot;$($vault.Name) $($w.Workload): $($_.Exception.Message)&quot; }
+        }
+        if (-not $items.Count -and -not $vaultTagged) { continue }   # vault protects nothing in GxP scope
+
+        # Restore jobs: the job API accepts at most 30 days per query
+        $restores = New-Object System.Collections.Generic.List[object]
+        for ($start = $from; $start -lt $now; $start = $start.AddDays(30)) {
+            $end = if ($start.AddDays(30) -lt $now) { $start.AddDays(30) } else { $now }
+            try {
+                foreach ($j in @(Get-AzRecoveryServicesBackupJob -VaultId $vault.ID -Operation Restore -From $start.ToUniversalTime() -To $end.ToUniversalTime() -ErrorAction Stop)) {
+                    if ($j.JobId -and @($restores | Where-Object JobId -eq $j.JobId).Count) { continue }   # a job can straddle two windows
+                    $restores.Add($j)
+                }
+            } catch { Write-Warning &quot;Could not read restore jobs for $($vault.Name): $($_.Exception.Message)&quot;; break }
+        }
+
+        $softDelete = &#x27;&#x27;
+        try { $softDelete = [string](Get-AzRecoveryServicesVaultProperty -VaultId $vault.ID -ErrorAction Stop).SoftDeleteFeatureState } catch { }
+        $immutability = [string]$vault.Properties.ImmutabilitySettings.ImmutabilityState
+        if (-not $immutability) { $immutability = &#x27;Not set&#x27; }
+
+        $row = New-Row $sub $vault &#x27;Vault&#x27;
+        $row.Name = $vault.Name
+        $row.SoftDelete = $softDelete
+        $row.Immutability = $immutability
+        $row.RestoresInWindow = $restores.Count
+        $flags = @()
+        if ($softDelete -and $softDelete -notmatch &#x27;Enabled|AlwaysON&#x27;) { $flags += &#x27;Soft delete off&#x27; }
+        if ($immutability -ne &#x27;Locked&#x27;) { $flags += &#x27;Immutability not locked&#x27; }
+        if (-not @($restores | Where-Object { $_.Status -eq &#x27;Completed&#x27; }).Count) { $flags += &quot;No completed restore in $Days days&quot; }
+        $row.Flags = $flags -join &#x27;; &#x27;
+        $report.Add([pscustomobject]$row)
+
+        foreach ($x in $items) {
+            $i = $x.Item
+            $row = New-Row $sub $vault &#x27;Item&#x27;
+            $row.Name = $i.FriendlyName
+            if (-not $row.Name) { $row.Name = $i.Name }
+            $row.WorkloadType = $x.Workload
+            $row.SourceResourceId = $x.Source
+            $row.Status = [string]$i.LastBackupStatus
+            $row.LastBackup = $i.LastBackupTime
+            $flags = @()
+            if ([string]$i.ProtectionState -match &#x27;Stop|Protection(Error|Paused)&#x27;) { $flags += &quot;Protection state: $($i.ProtectionState)&quot; }
+            if (-not $i.LastBackupTime -or $i.LastBackupTime -lt $now.AddHours(-$StaleHours).ToUniversalTime()) { $flags += &quot;No backup in $StaleHours hours&quot; }
+            if ($i.LastBackupStatus -and [string]$i.LastBackupStatus -notmatch &#x27;Completed|Success|Healthy&#x27;) { $flags += &quot;Last backup: $($i.LastBackupStatus)&quot; }
+            $row.Flags = $flags -join &#x27;; &#x27;
+            $report.Add([pscustomobject]$row)
+        }
+
+        foreach ($j in $restores) {
+            $row = New-Row $sub $vault &#x27;Restore&#x27;
+            $row.Name = $j.WorkloadName
+            $row.WorkloadType = [string]$j.BackupManagementType
+            $row.Status = [string]$j.Status
+            $row.RestoreStart = $j.StartTime
+            $row.RestoreEnd = $j.EndTime
+            $row.DurationMinutes = if ($j.EndTime) { [math]::Round(($j.EndTime - $j.StartTime).TotalMinutes) } else { $null }
+            $row.StartedBy = if ($j.PSObject.Properties[&#x27;User&#x27;]) { $j.User } else { &#x27;&#x27; }
+            $row.Flags = if ($j.Status -ne &#x27;Completed&#x27;) { &quot;Restore $($j.Status)&quot; } else { &#x27;&#x27; }
+            $report.Add([pscustomobject]$row)
+        }
+    }
+}
+
+if (-not $report.Count) { Write-Warning &quot;No vaults protect GxP scope. Tag subscriptions or resource groups $TagName = $TagValue, or use -AllScopes.&quot;; return }
+
+$order = @{ &#x27;Vault&#x27; = 0; &#x27;Item&#x27; = 1; &#x27;Restore&#x27; = 2 }
+$report | Sort-Object Subscription, Vault, @{e = { $order[$_.RecordType] }}, Name | Export-Csv -Path $OutputFile -NoTypeInformation -Encoding UTF8
+Write-EvidenceManifest -Path $OutputFile -Parameters $PSBoundParameters
+
+[pscustomobject]@{
+    Vaults              = @($report | Where-Object RecordType -eq &#x27;Vault&#x27;).Count
+    VaultsWithFlags     = @($report | Where-Object { $_.RecordType -eq &#x27;Vault&#x27; -and $_.Flags }).Count
+    ProtectedItems      = @($report | Where-Object RecordType -eq &#x27;Item&#x27;).Count
+    ItemsWithFlags      = @($report | Where-Object { $_.RecordType -eq &#x27;Item&#x27; -and $_.Flags }).Count
+    RestoreJobs         = @($report | Where-Object RecordType -eq &#x27;Restore&#x27;).Count
+} | Format-List | Out-Host
+Write-Host &quot;Report: $OutputFile (hash in $OutputFile.sha256)&quot; -ForegroundColor Green
+</code></pre>
+
+    <nav class="pager" aria-label="More scripts">
+      <a class="prev" href="get-awsgxpconformancereport.html"><span>Previous script</span>Get-AwsGxPConformanceReport</a>
+      <a class="next" href="get-awsgxprestoreevidence.html"><span>Next script</span>Get-AwsGxPRestoreEvidence</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

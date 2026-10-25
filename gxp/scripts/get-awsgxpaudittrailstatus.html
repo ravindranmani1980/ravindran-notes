@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get-AwsGxPAuditTrailStatus | GxP | Notes | Ravindran Mani</title>
+<meta name="description" content="Checks that CloudTrail and AWS Config give GxP accounts a complete, tamper-evident audit trail.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../gcp/index.html">GCP</a></li>
+        <li><a href="../../compare/index.html">Cloud Compare</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        <li><a href="../../gxp/index.html" aria-current="page">GxP</a></li>
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap">
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">GxP</a> / <a href="index.html">Scripts</a> / Audit trails and compliance</p>
+    <h1 class="script-title">Get-AwsGxPAuditTrailStatus</h1>
+    <p class="lead">Checks that CloudTrail and AWS Config give GxP accounts a complete, tamper-evident audit trail.</p>
+    <dl class="facts">
+      <div><dt>Runs in</dt><dd>AWS Tools for PowerShell (AWS.Tools modules)</dd></div>
+      <div><dt>Safety</dt><dd><span class="flag flag-read">Read-only</span></dd></div>
+      <div><dt>Evidence</dt><dd>CSV plus a .sha256 hash and run record</dd></div>
+    </dl>
+    <p class="actions"><a class="btn btn-primary" href="Get-AwsGxPAuditTrailStatus.ps1" download>Download Get-AwsGxPAuditTrailStatus.ps1</a></p>
+
+    <h2 id="what-it-does">What it does</h2>
+    <p>For each account, checks the CloudTrail trails and, in each region, the AWS Config recorder, and writes one row per check with a Status of OK or Gap:</p>
+<ul><li>Multi-region trail logging: at least one multi-region trail is logging, and delivered recently (within -MaxDeliveryHours)</li><li>Log file validation: turned on, so changes to delivered log files can be detected</li><li>KMS encryption: trail logs encrypted with a KMS key</li><li>S3 versioning and S3 Object Lock on the trail bucket (reported as Not readable when the bucket is in another account, such as an organization log archive account)</li><li>CloudWatch Logs retention: at least -MinRetentionDays, if the trail sends to CloudWatch</li><li>Config recorder: recording in every region checked</li></ul>
+<p>A .sha256 file is written next to the CSV with the file hash, who ran it, when and with which parameters.</p>
+<p>Read-only: it doesn&#x27;t change anything.</p>
+
+    <h2 id="parameters">Parameters</h2>
+    <div class="table-wrap">
+      <table class="params">
+          <tr><th scope="row"><code>-ProfileName</code><span class="ptype">string[]</span></th><td>AWS profiles to check, one per account. Default: the current credentials.</td></tr>
+          <tr><th scope="row"><code>-Region</code><span class="ptype">string[]</span></th><td>Regions to check for the Config recorder. Default: every region enabled in the account.</td></tr>
+          <tr><th scope="row"><code>-MinRetentionDays</code><span class="ptype">int</span></th><td>Minimum CloudWatch Logs retention your procedures require. Default 365.</td></tr>
+          <tr><th scope="row"><code>-MaxDeliveryHours</code><span class="ptype">int</span></th><td>A logging trail whose last delivery is older than this is a Gap. Default 24.</td></tr>
+          <tr><th scope="row"><code>-HomeRegion</code><span class="ptype">string</span></th><td>Region used for account-level calls (STS, CloudTrail, listing regions). Default us-east-1.</td></tr>
+          <tr><th scope="row"><code>-GapsOnly</code><span class="ptype">switch</span></th><td>Only list checks that are not OK.</td></tr>
+          <tr><th scope="row"><code>-OutputFile</code><span class="ptype">string</span></th><td>CSV output path.<span class="pdefault">Default: <code>Timestamped file in the current folder</code></span></td></tr>
+      </table>
+    </div>
+
+    <h2 id="examples">Examples</h2>
+    <pre><code class="language-powershell">.\Get-AwsGxPAuditTrailStatus.ps1 -ProfileName notes-gxp</code></pre>
+    <pre><code class="language-powershell">.\Get-AwsGxPAuditTrailStatus.ps1 -ProfileName notes-gxp, notes-prod -Region us-east-1, us-west-2 -GapsOnly</code></pre>
+
+    <h2 id="notes">Notes</h2>
+    <p>Requires AWS.Tools.CloudTrail, AWS.Tools.S3, AWS.Tools.CloudWatchLogs, AWS.Tools.ConfigService, AWS.Tools.EC2 and AWS.Tools.SecurityToken, and read access (the SecurityAudit managed policy is enough). Organization trails are visible from member accounts, but their bucket usually is not: run it against the log archive account too.</p>
+
+    <h2 id="source">Full script</h2>
+    <!-- Keep this in sync with Get-AwsGxPAuditTrailStatus.ps1 in this folder. -->
+    <pre><code class="language-powershell">&lt;#
+.SYNOPSIS
+    Checks that CloudTrail and AWS Config give GxP accounts a complete, tamper-evident audit trail.
+
+.DESCRIPTION
+    For each account, checks the CloudTrail trails and, in each region, the AWS Config
+    recorder, and writes one row per check with a Status of OK or Gap:
+    - Multi-region trail logging: at least one multi-region trail is logging, and delivered
+      recently (within -MaxDeliveryHours)
+    - Log file validation: turned on, so changes to delivered log files can be detected
+    - KMS encryption: trail logs encrypted with a KMS key
+    - S3 versioning and S3 Object Lock on the trail bucket (reported as Not readable when the
+      bucket is in another account, such as an organization log archive account)
+    - CloudWatch Logs retention: at least -MinRetentionDays, if the trail sends to CloudWatch
+    - Config recorder: recording in every region checked
+
+    A .sha256 file is written next to the CSV with the file hash, who ran it, when and with
+    which parameters.
+
+    Read-only: it doesn&#x27;t change anything.
+
+.PARAMETER ProfileName
+    AWS profiles to check, one per account. Default: the current credentials.
+
+.PARAMETER Region
+    Regions to check for the Config recorder. Default: every region enabled in the account.
+
+.PARAMETER MinRetentionDays
+    Minimum CloudWatch Logs retention your procedures require. Default 365.
+
+.PARAMETER MaxDeliveryHours
+    A logging trail whose last delivery is older than this is a Gap. Default 24.
+
+.PARAMETER HomeRegion
+    Region used for account-level calls (STS, CloudTrail, listing regions). Default us-east-1.
+
+.PARAMETER GapsOnly
+    Only list checks that are not OK.
+
+.PARAMETER OutputFile
+    CSV output path.
+
+.EXAMPLE
+    .\Get-AwsGxPAuditTrailStatus.ps1 -ProfileName notes-gxp
+
+.EXAMPLE
+    .\Get-AwsGxPAuditTrailStatus.ps1 -ProfileName notes-gxp, notes-prod -Region us-east-1, us-west-2 -GapsOnly
+
+.NOTES
+    Requires AWS.Tools.CloudTrail, AWS.Tools.S3, AWS.Tools.CloudWatchLogs,
+    AWS.Tools.ConfigService, AWS.Tools.EC2 and AWS.Tools.SecurityToken, and read access
+    (the SecurityAudit managed policy is enough). Organization trails are visible from member
+    accounts, but their bucket usually is not: run it against the log archive account too.
+#&gt;
+[CmdletBinding()]
+param(
+    [string[]]$ProfileName,
+    [string[]]$Region,
+    [ValidateRange(1, 3653)][int]$MinRetentionDays = 365,
+    [ValidateRange(1, 168)][int]$MaxDeliveryHours = 24,
+    [string]$HomeRegion = &#x27;us-east-1&#x27;,
+    [switch]$GapsOnly,
+    [string]$OutputFile = (Join-Path -Path (Get-Location) -ChildPath (&#x27;AwsGxPAuditTrailStatus_{0:yyyyMMdd_HHmm}.csv&#x27; -f (Get-Date)))
+)
+
+$modules = @(&#x27;AWS.Tools.CloudTrail&#x27;, &#x27;AWS.Tools.S3&#x27;, &#x27;AWS.Tools.CloudWatchLogs&#x27;, &#x27;AWS.Tools.ConfigService&#x27;, &#x27;AWS.Tools.EC2&#x27;, &#x27;AWS.Tools.SecurityToken&#x27;)
+foreach ($m in $modules) {
+    if (-not (Get-Module -ListAvailable -Name $m)) { throw &quot;$m not found. Run: Install-AWSToolsModule $($modules -join &#x27;, &#x27;)&quot; }
+    Import-Module $m -ErrorAction Stop
+}
+
+function Write-EvidenceManifest {
+    param([string]$Path, [hashtable]$Parameters, [string]$RunAs)
+    $hash = (Get-FileHash -Path $Path -Algorithm SHA256).Hash.ToLower()
+    $params = ($Parameters.GetEnumerator() | ForEach-Object { &quot;-$($_.Key) $($_.Value -join &#x27;,&#x27;)&quot; }) -join &#x27; &#x27;
+    @(
+        &quot;$hash  $(Split-Path -Path $Path -Leaf)&quot;
+        &quot;# Script:     $(Split-Path -Path $PSCommandPath -Leaf)&quot;
+        &quot;# Run by:     $([Environment]::UserName) on $([Environment]::MachineName)&quot;
+        &quot;# AWS caller: $RunAs&quot;
+        &quot;# Run at UTC: $((Get-Date).ToUniversalTime().ToString(&#x27;yyyy-MM-dd HH:mm:ss&#x27;))&quot;
+        &quot;# Parameters: $params&quot;
+    ) | Set-Content -Path &quot;$Path.sha256&quot; -Encoding UTF8
+}
+
+$report = New-Object System.Collections.Generic.List[object]
+function Add-Check([string]$Account, [string]$Region, [string]$Check, [string]$Resource, [bool]$Ok, [string]$Detail, [string]$Status) {
+    if (-not $Status) { $Status = if ($Ok) { &#x27;OK&#x27; } else { &#x27;Gap&#x27; } }
+    $report.Add([pscustomobject]@{ Account = $Account; Region = $Region; Check = $Check; Resource = $Resource; Status = $Status; Detail = $Detail })
+}
+
+$callers = @()
+$targets = if ($ProfileName) { $ProfileName } else { @(&#x27;&#x27;) }
+foreach ($p in $targets) {
+    $cred = @{}
+    if ($p) { $cred.ProfileName = $p }
+    $identity = Get-STSCallerIdentity @cred -Region $HomeRegion
+    $account = $identity.Account
+    $callers += $identity.Arn
+    Write-Host &quot;Account $account...&quot; -ForegroundColor Cyan
+
+    # CloudTrail: trails are listed from any region, including organization trails and trails homed elsewhere
+    $trails = @(Get-CTTrail @cred -Region $HomeRegion -IncludeShadowTrail $true) | Where-Object { $_ }
+    $multiLogging = $false
+    foreach ($t in $trails) {
+        $tr = @{ Region = $t.HomeRegion } + $cred
+        $name = if ($t.IsOrganizationTrail) { &quot;$($t.Name) (organization trail)&quot; } else { $t.Name }
+        try { $st = Get-CTTrailStatus @tr -Name $t.TrailARN -ErrorAction Stop } catch { Add-Check $account $t.HomeRegion &#x27;Trail status&#x27; $name $false $_.Exception.Message &#x27;Not readable&#x27;; continue }
+
+        $fresh = $st.LatestDeliveryTime -and $st.LatestDeliveryTime -gt (Get-Date).AddHours(-$MaxDeliveryHours)
+        if ($t.IsMultiRegionTrail -and $st.IsLogging -and $fresh) { $multiLogging = $true }
+        $detail = &quot;Multi-region: $($t.IsMultiRegionTrail); logging: $($st.IsLogging); last delivery: $($st.LatestDeliveryTime)&quot;
+        if ($st.LatestDeliveryError) { $detail += &quot;; delivery error: $($st.LatestDeliveryError)&quot; }
+        Add-Check $account $t.HomeRegion &#x27;Trail logging&#x27; $name ([bool]($st.IsLogging -and $fresh)) $detail
+        Add-Check $account $t.HomeRegion &#x27;Log file validation&#x27; $name ([bool]$t.LogFileValidationEnabled) &quot;LogFileValidationEnabled: $($t.LogFileValidationEnabled)&quot;
+        Add-Check $account $t.HomeRegion &#x27;KMS encryption&#x27; $name ([bool]$t.KmsKeyId) $(if ($t.KmsKeyId) { $t.KmsKeyId } else { &#x27;SSE-S3 only&#x27; })
+
+        if ($t.S3BucketName) {
+            $bucketRegion = $HomeRegion
+            try {
+                $loc = [string](Get-S3BucketLocation @cred -Region $HomeRegion -BucketName $t.S3BucketName -ErrorAction Stop).Value
+                $bucketRegion = switch ($loc) { &#x27;&#x27; { &#x27;us-east-1&#x27; } &#x27;EU&#x27; { &#x27;eu-west-1&#x27; } default { $loc } }
+            } catch { }
+            try {
+                $v = Get-S3BucketVersioning @cred -Region $bucketRegion -BucketName $t.S3BucketName -ErrorAction Stop
+                Add-Check $account $t.HomeRegion &#x27;S3 versioning&#x27; $t.S3BucketName ([string]$v.Status -eq &#x27;Enabled&#x27;) &quot;Versioning: $($v.Status)&quot;
+            } catch { Add-Check $account $t.HomeRegion &#x27;S3 versioning&#x27; $t.S3BucketName $false $_.Exception.Message &#x27;Not readable&#x27; }
+            try {
+                $ol = Get-S3ObjectLockConfiguration @cred -Region $bucketRegion -BucketName $t.S3BucketName -ErrorAction Stop
+                $rule = $ol.Rule.DefaultRetention
+                $d = &quot;Object Lock: $($ol.ObjectLockEnabled)&quot;
+                if ($rule) { $d += &quot;; default retention: $($rule.Mode) $($rule.Days)$($rule.Years) $(if ($rule.Days) { &#x27;days&#x27; } elseif ($rule.Years) { &#x27;years&#x27; })&quot; }
+                Add-Check $account $t.HomeRegion &#x27;S3 Object Lock&#x27; $t.S3BucketName ([string]$ol.ObjectLockEnabled -eq &#x27;Enabled&#x27;) $d
+            } catch {
+                if ($_.Exception.Message -match &#x27;ObjectLockConfigurationNotFound|does not exist&#x27;) { Add-Check $account $t.HomeRegion &#x27;S3 Object Lock&#x27; $t.S3BucketName $false &#x27;Object Lock not configured&#x27; }
+                else { Add-Check $account $t.HomeRegion &#x27;S3 Object Lock&#x27; $t.S3BucketName $false $_.Exception.Message &#x27;Not readable&#x27; }
+            }
+        }
+
+        if ($t.CloudWatchLogsLogGroupArn) {
+            $lgName = ($t.CloudWatchLogsLogGroupArn -split &#x27;:log-group:&#x27;)[1] -replace &#x27;:\*$&#x27;, &#x27;&#x27;
+            try {
+                $lg = @(Get-CWLLogGroup @tr -LogGroupNamePrefix $lgName -ErrorAction Stop) | Where-Object LogGroupName -eq $lgName | Select-Object -First 1
+                $days = $lg.RetentionInDays
+                $ok = (-not $days) -or $days -ge $MinRetentionDays   # no retention setting = kept forever
+                Add-Check $account $t.HomeRegion &#x27;CloudWatch Logs retention&#x27; $lgName $ok $(if ($days) { &quot;$days days&quot; } else { &#x27;Never expire&#x27; })
+            } catch { Add-Check $account $t.HomeRegion &#x27;CloudWatch Logs retention&#x27; $lgName $false $_.Exception.Message &#x27;Not readable&#x27; }
+        }
+    }
+    Add-Check $account $HomeRegion &#x27;Multi-region trail logging&#x27; $account $multiLogging $(if ($trails) { &quot;$($trails.Count) trail(s) visible&quot; } else { &#x27;No trails&#x27; })
+
+    # AWS Config recorder in each region
+    $regions = if ($Region) { $Region } else { @((Get-EC2Region @cred -Region $HomeRegion).RegionName) }
+    foreach ($r in $regions) {
+        try {
+            $rs = @(Get-CFGConfigurationRecorderStatus @cred -Region $r -ErrorAction Stop) | Where-Object { $_ }
+            if (-not $rs) { Add-Check $account $r &#x27;Config recorder&#x27; &#x27;(none)&#x27; $false &#x27;No configuration recorder&#x27;; continue }
+            foreach ($x in $rs) {
+                Add-Check $account $r &#x27;Config recorder&#x27; $x.Name ([bool]$x.Recording -and [string]$x.LastStatus -ne &#x27;Failure&#x27;) &quot;Recording: $($x.Recording); last status: $($x.LastStatus) $($x.LastStatusChangeTime)&quot;
+            }
+        } catch { Add-Check $account $r &#x27;Config recorder&#x27; &#x27;&#x27; $false $_.Exception.Message &#x27;Not readable&#x27; }
+    }
+}
+
+$out = if ($GapsOnly) { @($report | Where-Object Status -ne &#x27;OK&#x27;) } else { $report }
+$order = @{ &#x27;Gap&#x27; = 0; &#x27;Not readable&#x27; = 1; &#x27;OK&#x27; = 2 }
+$out | Sort-Object @{e = { $order[$_.Status] }}, Account, Check, Region | Export-Csv -Path $OutputFile -NoTypeInformation -Encoding UTF8
+Write-EvidenceManifest -Path $OutputFile -Parameters $PSBoundParameters -RunAs ($callers -join &#x27;, &#x27;)
+
+$report | Group-Object Check, Status | Select-Object @{n=&#x27;Check, status&#x27;;e={$_.Name}}, Count | Sort-Object &#x27;Check, status&#x27; | Format-Table -AutoSize | Out-Host
+Write-Host &quot;Checks: $($report.Count), gaps: $(@($report | Where-Object Status -eq &#x27;Gap&#x27;).Count). Report: $OutputFile (hash in $OutputFile.sha256)&quot; -ForegroundColor Green
+</code></pre>
+
+    <nav class="pager" aria-label="More scripts">
+      <a class="prev" href="get-azgxpauditlogcoverage.html"><span>Previous script</span>Get-AzGxPAuditLogCoverage</a>
+      <a class="next" href="get-awsgxpconformancereport.html"><span>Next script</span>Get-AwsGxPConformanceReport</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

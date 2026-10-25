@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Part 11 and Annex 11, requirement by requirement | GxP | Notes | Ravindran Mani</title>
+<meta name="description" content="What 21 CFR Part 11 and EU GMP Annex 11 actually require, what the 2025 Annex 11 draft adds, and which technical control answers each requirement.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../gcp/index.html">GCP</a></li>
+        <li><a href="../../compare/index.html">Cloud Compare</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        <li><a href="../../gxp/index.html" aria-current="page">GxP</a></li>
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 2 of 10</p>
+    <ol>
+      <li><a href="#part-11-in-one-page">21 CFR Part 11 in one page</a></li>
+      <li><a href="#how-fda-enforces-it">How FDA enforces it</a></li>
+      <li><a href="#annex-11-2011">Annex 11 (2011)</a></li>
+      <li><a href="#annex-11-draft">The 2025 Annex 11 draft</a></li>
+      <li><a href="#mapping-to-controls">Mapping requirements to cloud controls</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">GxP</a> / Guide 2</p>
+    <h1>Part 11 and Annex 11, requirement by requirement</h1>
+    <p class="lead">What 21 CFR Part 11 and EU GMP Annex 11 actually require, what the 2025 Annex 11 draft adds, and which technical control answers each requirement.</p>
+
+<p>Most IT people meet Part 11 and Annex 11 as a list of demands from a validation lead. Reading the text itself is quicker than you'd think (Part 11 is two pages of rules), and knowing which clause a control answers makes design reviews and audits far shorter. This guide goes through both, then maps them to controls on Azure, AWS and Microsoft 365.</p>
+
+<h2 id="part-11-in-one-page">21 CFR Part 11 in one page</h2>
+<p>Part 11 applies to electronic records that a predicate rule requires, and to electronic signatures used in place of handwritten ones. Its main sections:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Section</th><th>Requirement</th><th>Who usually owns it</th></tr></thead>
+<tbody>
+<tr><td>11.10(a)</td><td>Validation: accuracy, reliability, consistent intended performance, and the ability to spot invalid or altered records</td><td>System owner, validation</td></tr>
+<tr><td>11.10(b)</td><td>Accurate and complete copies, in human-readable and electronic form, for inspection</td><td>Application</td></tr>
+<tr><td>11.10(c)</td><td>Protect records so they can be retrieved accurately and readily for the whole retention period</td><td>IT: backup, archive, storage</td></tr>
+<tr><td>11.10(d)</td><td>Limit system access to authorized individuals</td><td>IT and application: identity, roles</td></tr>
+<tr><td>11.10(e)</td><td>Secure, computer-generated, time-stamped audit trails of entries and actions that create, modify or delete records. Changes must not obscure what was there before. Keep the audit trail as long as the record.</td><td>Application, plus IT for platform logs</td></tr>
+<tr><td>11.10(f), (g), (h)</td><td>Operational checks (enforced sequence of steps), authority checks (only authorized people can sign, change or use), device checks (valid source of input)</td><td>Application</td></tr>
+<tr><td>11.10(i)</td><td>People who build, maintain or use the system are trained and qualified</td><td>Everyone, including IT and cloud admins</td></tr>
+<tr><td>11.10(j)</td><td>Written policy holding people accountable for actions under their electronic signature</td><td>Quality</td></tr>
+<tr><td>11.10(k)</td><td>Control over system documentation, with change control and an audit trail of document changes</td><td>Quality, IT</td></tr>
+<tr><td>11.30</td><td>Open systems (where you don't control access): add encryption and digital signature standards as needed</td><td>IT</td></tr>
+<tr><td>11.50, 11.70</td><td>Signed records show printed name, date and time, and meaning (approved, reviewed); signatures are linked to their records so they can't be copied or removed</td><td>Application</td></tr>
+<tr><td>11.100</td><td>Each electronic signature is unique to one person, never reused or reassigned; identity verified before issue; a one-time certification letter to FDA</td><td>Quality, HR, IT identity</td></tr>
+<tr><td>11.200</td><td>Non-biometric signatures use at least two components (such as ID and password); the first signing in a session uses both, later signings at least one</td><td>Application, identity</td></tr>
+<tr><td>11.300</td><td>Controls on IDs and passwords: unique, periodically checked and revised, lost credentials handled, attempts at misuse detected and reported, tokens tested</td><td>IT identity</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2 id="how-fda-enforces-it">How FDA enforces it</h2>
+<p>FDA's 2003 guidance <em>Part 11, Electronic Records; Electronic Signatures &mdash; Scope and Application</em> still shapes how Part 11 is applied. It says FDA interprets the scope narrowly and exercises enforcement discretion on validation, audit trails, record retention, record copying and legacy systems, <em>as long as the predicate rules are met</em> and decisions are justified by a documented risk assessment. In practice that means: audit trails and validation are still expected for anything that matters, but the depth is yours to justify. It does not relax access control, signature or record integrity expectations.</p>
+
+<h2 id="annex-11-2011">Annex 11 (2011)</h2>
+<p>Annex 11 is shorter than Part 11 but broader: it covers the whole life cycle of a computerised system used in GMP, not only records and signatures. Its seventeen sections:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Section</th><th>Topic</th><th>What it asks of IT</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Risk management</td><td>Controls sized to risk, across the life cycle</td></tr>
+<tr><td>2</td><td>Personnel</td><td>Qualified people with defined responsibilities, IT included</td></tr>
+<tr><td>3</td><td>Suppliers and service providers</td><td>Formal agreements; audits based on risk; supplier documentation reviewed. This is where cloud providers are covered.</td></tr>
+<tr><td>4</td><td>Validation</td><td>Life cycle validation, inventory of systems, requirements traceability, infrastructure qualified</td></tr>
+<tr><td>5, 6</td><td>Data, accuracy checks</td><td>Checks on data exchanged between systems; checks on critical manual entries</td></tr>
+<tr><td>7</td><td>Data storage</td><td>Data secured against damage; regular backups; backup integrity and restore checked during validation and monitored periodically</td></tr>
+<tr><td>8</td><td>Printouts</td><td>Clear printed copies; show if data changed since entry</td></tr>
+<tr><td>9</td><td>Audit trails</td><td>Based on risk, record GMP-relevant changes and deletions with the reason; audit trails available, readable and regularly reviewed</td></tr>
+<tr><td>10</td><td>Change and configuration management</td><td>Changes made in a controlled way under a defined procedure</td></tr>
+<tr><td>11</td><td>Periodic evaluation</td><td>Systems reviewed periodically to confirm they remain valid</td></tr>
+<tr><td>12</td><td>Security</td><td>Physical and logical access controls; creation, change and removal of access recorded</td></tr>
+<tr><td>13</td><td>Incident management</td><td>Incidents reported, assessed and root causes found</td></tr>
+<tr><td>14</td><td>Electronic signature</td><td>Same effect as handwritten; permanently linked; time and date</td></tr>
+<tr><td>15</td><td>Batch release</td><td>Only qualified persons can certify release, identified and recorded</td></tr>
+<tr><td>16</td><td>Business continuity</td><td>Arrangements to keep critical processes going when systems fail, tested</td></tr>
+<tr><td>17</td><td>Archiving</td><td>Archived data checked for accessibility, readability and integrity, especially after system changes</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2 id="annex-11-draft">The 2025 Annex 11 draft</h2>
+<p>The draft revision published in July 2025 grows Annex 11 from about five pages to about nineteen. When it becomes final, expect these to matter most to IT:</p>
+<ul>
+<li><strong>Cloud and service providers:</strong> much more detail on what agreements must cover, including oversight, audit and inspection support, communication of quality and security issues, and exit arrangements that keep you in control of your data.</li>
+<li><strong>Identity and access management:</strong> unique personal accounts (no shared accounts with write access), multi-factor authentication for remote access to critical systems, lockout, session time-outs, logged and reviewable access changes, and segregation of duties.</li>
+<li><strong>Audit trail review:</strong> who, what, when and why for changes, and risk-based review of audit trails before data is used for decisions such as batch release.</li>
+<li><strong>Security as a GMP topic:</strong> patching, vulnerability management, network segmentation and security testing written into the annex, not left to IT policy.</li>
+<li><strong>Backup, archive and periodic review:</strong> backups separated from the live system and restore-tested; archives protected and verified; a defined list of items every periodic review covers.</li>
+</ul>
+<p>The companion draft Annex 22 restricts AI in critical GMP uses to static, deterministic models, and excludes generative AI and large language models from critical applications. If you're planning AI for GxP work, read it now.</p>
+
+<h2 id="mapping-to-controls">Mapping requirements to cloud controls</h2>
+<p>The table below is the one to bring to a design review. It covers the infrastructure layer only: the application still has to meet its own requirements.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Requirement</th><th>Azure</th><th>AWS</th><th>Microsoft 365</th></tr></thead>
+<tbody>
+<tr><td>Limit access (11.10(d), A11 §12)</td><td>Entra ID groups, Azure RBAC, PIM, Conditional Access</td><td>IAM Identity Center, permission sets, SCPs</td><td>SharePoint groups, sensitivity labels</td></tr>
+<tr><td>ID and password controls (11.300)</td><td>Entra ID password and lockout policies, MFA, sign-in logs</td><td>Identity Center with external IdP and MFA</td><td>Entra ID</td></tr>
+<tr><td>Platform audit trail (11.10(e), A11 §9)</td><td>Activity log and resource logs to Log Analytics; immutable storage</td><td>CloudTrail with log file validation; S3 Object Lock</td><td>Purview Audit</td></tr>
+<tr><td>Protect and retrieve records (11.10(c), A11 §7, §17)</td><td>Azure Backup with immutable vaults; blob immutability</td><td>AWS Backup with Vault Lock; S3 Object Lock</td><td>Retention labels, records management</td></tr>
+<tr><td>Change control (11.10(k), A11 §10)</td><td>IaC pipelines with approvals; Azure Policy; deployment stacks</td><td>CloudFormation or Terraform pipelines; AWS Config; drift detection</td><td>Change-controlled site templates</td></tr>
+<tr><td>Business continuity (A11 §16)</td><td>Azure Site Recovery, cross-region restore</td><td>Elastic Disaster Recovery, cross-region copies</td><td>Microsoft-operated resilience; your own exit and export plan</td></tr>
+<tr><td>Continuous compliance checks</td><td>Azure Policy, Defender for Cloud</td><td>AWS Config conformance pack for 21 CFR Part 11</td><td>Purview Compliance Manager (has a Part 11 regulation template)</td></tr>
+</tbody>
+</table>
+</div>
+<p>A clean compliance dashboard is supporting evidence, not proof. AWS says its Part 11 conformance pack is a sample template, and the same is true of any policy set: most Part 11 and Annex 11 requirements are met by the application and by your procedures.</p>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="getting-started.html"><span>Previous guide</span>What GxP means for IT</a>
+      <a class="next" href="validation-gamp5-and-csa.html"><span>Next guide</span>Validation: GAMP 5 and computer software assurance</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

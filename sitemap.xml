@@ -56,6 +56,11 @@
     <priority>0.9</priority>
   </url>
   <url>
+    <loc>https://notes.ravindran.in/gxp/</loc>
+    <lastmod>2026-10-25</lastmod>
+    <priority>0.9</priority>
+  </url>
+  <url>
     <loc>https://notes.ravindran.in/scripts/</loc>
     <lastmod>2026-10-25</lastmod>
     <priority>0.9</priority>
@@ -422,6 +427,106 @@
   </url>
   <url>
     <loc>https://notes.ravindran.in/gcp/scripts/invoke-gcpvmpowerschedule.html</loc>
+    <lastmod>2026-10-25</lastmod>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gxp/environment/</loc>
+    <lastmod>2026-10-25</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gxp/guides/</loc>
+    <lastmod>2026-10-25</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gxp/guides/access-control.html</loc>
+    <lastmod>2026-10-25</lastmod>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gxp/guides/backup-and-disaster-recovery.html</loc>
+    <lastmod>2026-10-25</lastmod>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gxp/guides/change-control.html</loc>
+    <lastmod>2026-10-25</lastmod>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gxp/guides/data-integrity-and-audit-trails.html</loc>
+    <lastmod>2026-10-25</lastmod>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gxp/guides/getting-started.html</loc>
+    <lastmod>2026-10-25</lastmod>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gxp/guides/part-11-and-annex-11.html</loc>
+    <lastmod>2026-10-25</lastmod>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gxp/guides/periodic-review-and-inspections.html</loc>
+    <lastmod>2026-10-25</lastmod>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gxp/guides/qualifying-cloud-platforms.html</loc>
+    <lastmod>2026-10-25</lastmod>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gxp/guides/sharepoint-controlled-documents.html</loc>
+    <lastmod>2026-10-25</lastmod>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gxp/guides/validation-gamp5-and-csa.html</loc>
+    <lastmod>2026-10-25</lastmod>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gxp/scripts/</loc>
+    <lastmod>2026-10-25</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gxp/scripts/get-awsgxpaudittrailstatus.html</loc>
+    <lastmod>2026-10-25</lastmod>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gxp/scripts/get-awsgxpconformancereport.html</loc>
+    <lastmod>2026-10-25</lastmod>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gxp/scripts/get-awsgxprestoreevidence.html</loc>
+    <lastmod>2026-10-25</lastmod>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gxp/scripts/get-azgxpaccessreview.html</loc>
+    <lastmod>2026-10-25</lastmod>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gxp/scripts/get-azgxpauditlogcoverage.html</loc>
+    <lastmod>2026-10-25</lastmod>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gxp/scripts/get-azgxpbackupevidence.html</loc>
+    <lastmod>2026-10-25</lastmod>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://notes.ravindran.in/gxp/scripts/get-spogxplibrarycontrols.html</loc>
     <lastmod>2026-10-25</lastmod>
     <priority>0.6</priority>
   </url>

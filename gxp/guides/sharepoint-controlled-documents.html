@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SharePoint and Microsoft 365 for GxP documents | GxP | Notes | Ravindran Mani</title>
+<meta name="description" content="What SharePoint Online can and can&#x27;t do for controlled documents and records, library settings that matter, retention labels, audit, and where a validated add-on is needed.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../gcp/index.html">GCP</a></li>
+        <li><a href="../../compare/index.html">Cloud Compare</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        <li><a href="../../gxp/index.html" aria-current="page">GxP</a></li>
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 9 of 10</p>
+    <ol>
+      <li><a href="#decide-what-sharepoint-is-for">Decide what SharePoint is for</a></li>
+      <li><a href="#what-the-platform-gives-you">What the platform gives you</a></li>
+      <li><a href="#what-it-does-not-do">What it doesn't do on its own</a></li>
+      <li><a href="#library-baseline">A library baseline for GxP records</a></li>
+      <li><a href="#retention-and-records">Retention and records</a></li>
+      <li><a href="#validating-a-sharepoint-solution">Validating a SharePoint solution</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">GxP</a> / Guide 9</p>
+    <h1>SharePoint and Microsoft 365 for GxP documents</h1>
+    <p class="lead">What SharePoint Online can and can't do for controlled documents and records, library settings that matter, retention labels, audit, and where a validated add-on is needed.</p>
+
+<p>SharePoint holds a lot of GxP content, whether or not anyone planned it: SOPs, validation documents, deviation evidence, training materials, study documents. It can be a sound place for them, but SharePoint out of the box is not a Part 11 compliant document management system. This guide explains what the platform gives you, how to configure it, and where you need procedures or a validated add-on on top.</p>
+
+<h2 id="decide-what-sharepoint-is-for">Decide what SharePoint is for</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Use</th><th>Typical approach</th></tr></thead>
+<tbody>
+<tr><td>Working drafts and collaboration</td><td>Normal team sites. Not GxP records until approved.</td></tr>
+<tr><td>Effective controlled documents (SOPs, specifications)</td><td>A dedicated validated QMS, or SharePoint with a validated document control add-on, or SharePoint with approval and signature handled on paper or in another validated system</td></tr>
+<tr><td>GxP records and evidence (validation packages, review records)</td><td>A records site with locked-down libraries and retention labels that declare items as records</td></tr>
+<tr><td>Reference copies of records held elsewhere</td><td>Clearly marked as uncontrolled copies</td></tr>
+</tbody>
+</table>
+</div>
+<p>Write the decision into the system's GxP assessment. The worst position is the common one: effective SOPs in a normal team site, approved by email.</p>
+
+<h2 id="what-the-platform-gives-you">What the platform gives you</h2>
+<ul>
+<li><strong>Version history:</strong> every change kept as a version with who and when; major and minor (draft) versions; up to 50,000 major versions per library. Tenant and site level version history limits (including automatic trimming) can override library settings, so set them deliberately for GxP sites.</li>
+<li><strong>Require check out</strong> and <strong>content approval</strong>, so only one person edits at a time and drafts stay hidden from readers until approved.</li>
+<li><strong>Retention labels</strong> from Microsoft Purview: keep content for a set period, declare items as <em>records</em> (locked from editing and deletion) or <em>regulatory records</em> (cannot be unlocked or relabelled, even by admins), and route expiry to disposition review with proof of disposal.</li>
+<li><strong>Audit:</strong> Purview Audit records views, edits, downloads, sharing and permission changes. Retention is 180 days with Audit (Standard), 1 year for SharePoint with Audit (Premium), and up to 10 years with the add-on licence. For GxP records sites, Premium or an export to your own log store is usually needed.</li>
+<li><strong>Supplier evidence:</strong> Microsoft's GxP guidelines cover Azure, Dynamics 365 and Power Platform. For SharePoint Online, base the supplier assessment on the Microsoft 365 ISO and SOC reports from the Service Trust Portal (<a href="qualifying-cloud-platforms.html">Guide 4</a>).</li>
+</ul>
+
+<h2 id="what-it-does-not-do">What it doesn't do on its own</h2>
+<ul>
+<li><strong>Part 11 electronic signatures.</strong> SharePoint approvals and Power Automate approval flows record who approved and when, but by default they don't show the signature meaning on the record, require re-authentication at signing, or bind the signature to the exact document version the way 11.50, 11.70 and 11.200 expect. You can build this with a validated add-on, or keep signatures on paper or in a validated system.</li>
+<li><strong>A per-item audit trail with reasons for change.</strong> Version history shows who and when; the "why" needs a required comment field or a controlled change process around the document.</li>
+<li><strong>Periodic review of documents</strong>, training assignment on new versions, or effective dates, unless you add them.</li>
+</ul>
+
+<h2 id="library-baseline">A library baseline for GxP records</h2>
+<p>For each library that holds GxP records, set and document:</p>
+<ul>
+<li>Versioning on, with major and minor versions, and enough major versions kept for the record's life (set explicitly, not left to automatic trimming).</li>
+<li>Drafts visible only to people who can edit or approve.</li>
+<li>Require check out on.</li>
+<li>Content approval on, if the library holds effective documents.</li>
+<li>A default retention label that matches the retention schedule, declaring items as records once final.</li>
+<li>Permissions through groups, with edit rights limited to the document control role. Sharing with external users off at site level.</li>
+</ul>
+<p><a href="../scripts/get-spogxplibrarycontrols.html"><code>Get-SPOGxPLibraryControls.ps1</code></a> checks each library against this baseline and flags what's missing:</p>
+<pre><code class="language-powershell">.\Get-SPOGxPLibraryControls.ps1 -SiteUrl https://sharepointonline.ravindran.in/sites/qms `
+    -LibraryName 'Controlled Documents' -RequireApproval -RequireRetentionLabel
+</code></pre>
+<p>For the permission side, the SharePoint script <a href="../../sharepoint/scripts/get-spouniquepermissions.html"><code>Get-SPOUniquePermissions.ps1</code></a> lists everywhere inheritance is broken, which is what an access review of a document site needs.</p>
+
+<h2 id="retention-and-records">Retention and records</h2>
+<ul>
+<li>Build retention labels from the retention schedule, one per record class (for example <em>GxP record 25 years</em> for clinical documents, <em>GMP batch record</em> for manufacturing), and publish them only to GxP sites.</li>
+<li>Use <strong>regulatory record</strong> labels sparingly: they can't be removed, even by global admins. Test on a pilot site first.</li>
+<li>Use <strong>disposition review</strong> so nothing is deleted at the end of retention without a named person approving it, and keep the proof of disposition.</li>
+<li>Retention wins over deletion: items labelled as records can't be deleted, other labelled items that users delete are kept in the site's preservation hold library until retention ends, and a site under a retention policy can't be deleted.</li>
+</ul>
+
+<h2 id="validating-a-sharepoint-solution">Validating a SharePoint solution</h2>
+<p>SharePoint Online is SaaS that Microsoft updates continuously, so validation focuses on <em>your configuration and intended use</em>: site structure, library settings, content types, retention labels, permissions, any flows or add-ons. Keep the configuration in a provisioning template or script so it can be re-applied and compared, run the library baseline check after Microsoft 365 changes announced in the Message Center, and include the configuration in periodic review. The general SharePoint notes (<a href="../../sharepoint/guides/sharepoint-online-tips.html">SharePoint Online tips</a> and <a href="../../sharepoint/guides/library-schemas.html">library schemas</a>) cover the underlying administration.</p>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="backup-and-disaster-recovery.html"><span>Previous guide</span>Backup, disaster recovery and business continuity</a>
+      <a class="next" href="periodic-review-and-inspections.html"><span>Next guide</span>Periodic review and inspection readiness</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

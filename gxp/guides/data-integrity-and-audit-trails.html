@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data integrity and audit trails | GxP | Notes | Ravindran Mani</title>
+<meta name="description" content="Application audit trails versus platform logs, making cloud logs tamper-evident and long-lived, time synchronization, and how to run audit trail review.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../gcp/index.html">GCP</a></li>
+        <li><a href="../../compare/index.html">Cloud Compare</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        <li><a href="../../gxp/index.html" aria-current="page">GxP</a></li>
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap with-toc">
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">Guide 5 of 10</p>
+    <ol>
+      <li><a href="#two-layers">Two layers of audit trail</a></li>
+      <li><a href="#what-the-platforms-keep">What the platforms keep by default</a></li>
+      <li><a href="#azure-logs">Azure: export and protect logs</a></li>
+      <li><a href="#aws-logs">AWS: CloudTrail done properly</a></li>
+      <li><a href="#time">Time you can trust</a></li>
+      <li><a href="#audit-trail-review">Audit trail review</a></li>
+      <li><a href="#common-findings">Common findings</a></li>
+    </ol>
+  </aside>
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">GxP</a> / Guide 5</p>
+    <h1>Data integrity and audit trails</h1>
+    <p class="lead">Application audit trails versus platform logs, making cloud logs tamper-evident and long-lived, time synchronization, and how to run audit trail review.</p>
+
+<p>An audit trail answers who did what, when, and why, to a GxP record. Most of that comes from the application: a LIMS records who changed a result and why. But the platform underneath has its own trail (who changed the database, who restored a backup, who granted access) and inspectors increasingly ask for both. This guide covers both layers and how to keep them trustworthy.</p>
+
+<h2 id="two-layers">Two layers of audit trail</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>Application audit trail</th><th>Platform logs</th></tr></thead>
+<tbody>
+<tr><td>Records</td><td>Creation, change and deletion of GxP records, with old value, new value and reason</td><td>Changes to infrastructure, access, keys, backups; data plane access where logged</td></tr>
+<tr><td>Required by</td><td>Part 11 11.10(e), Annex 11 §9</td><td>Annex 11 §12 (access changes recorded), data integrity guidance, your own risk assessment</td></tr>
+<tr><td>Kept</td><td>As long as the record it describes</td><td>As long as your procedures say, usually at least as long as it's useful for investigations (often 1 to 7 years)</td></tr>
+<tr><td>Reviewed</td><td>Before data is used for decisions, per risk</td><td>Periodically, and during investigations</td></tr>
+<tr><td>Owned by</td><td>System owner and business</td><td>IT</td></tr>
+</tbody>
+</table>
+</div>
+<p>Platform logs don't replace an application audit trail. If an application can't record who changed a record and why, fixing that is a requirement for the application, not something logging can cover.</p>
+
+<h2 id="what-the-platforms-keep">What the platforms keep by default</h2>
+<p>Out of the box, cloud logs don't last long enough for GxP:</p>
+<ul>
+<li><strong>Azure activity log:</strong> 90 days. Resource logs (Key Vault access, SQL auditing, storage reads): not kept at all unless a diagnostic setting sends them somewhere.</li>
+<li><strong>Microsoft Entra ID sign-in and audit logs:</strong> 30 days with Entra ID P1 or P2, 7 days on the free tier.</li>
+<li><strong>AWS CloudTrail event history:</strong> 90 days of management events per region. Data events (S3 object reads and writes, for example) only if a trail or event data store records them.</li>
+<li><strong>Microsoft Purview Audit:</strong> 180 days with Audit (Standard); 1 year for SharePoint, OneDrive, Exchange and Entra ID with Audit (Premium); up to 10 years with the 10-year retention add-on.</li>
+</ul>
+<p>So the first control is simple: export everything relevant, to a place that keeps it long enough.</p>
+
+<h2 id="azure-logs">Azure: export and protect logs</h2>
+<ul>
+<li>Add a <strong>subscription diagnostic setting</strong> for the activity log on every GxP subscription, sending to <code>log-notes-gxp</code>. Assign the built-in policy that deploys it, so new subscriptions are covered automatically.</li>
+<li>Add <strong>resource diagnostic settings</strong> (category group <em>audit</em> or <em>allLogs</em>) for Key Vault, SQL, storage, App Service and anything else holding or guarding GxP data. Again, use policy.</li>
+<li>Set workspace <strong>retention</strong> to what your procedure requires. Interactive retention goes up to two years, and long-term retention up to twelve years at lower cost.</li>
+<li>For tamper evidence, also send logs to a storage account with <strong>immutable blob storage</strong> (a locked time-based retention policy). Nobody, including the subscription owner, can delete or change blobs until retention ends.</li>
+<li>Export <strong>Entra ID</strong> sign-in and audit logs the same way.</li>
+</ul>
+<p><a href="../scripts/get-azgxpauditlogcoverage.html"><code>Get-AzGxPAuditLogCoverage.ps1</code></a> checks all of this for GxP-tagged scope: activity log exported, each resource's diagnostic settings, and workspace retention against your minimum.</p>
+<pre><code class="language-powershell">.\Get-AzGxPAuditLogCoverage.ps1 -MinRetentionDays 730 -GapsOnly
+</code></pre>
+
+<h2 id="aws-logs">AWS: CloudTrail done properly</h2>
+<ul>
+<li>One <strong>organization trail</strong>, multi-region, delivering to an S3 bucket in a separate <strong>log archive account</strong> that workload admins can't reach.</li>
+<li><strong>Log file integrity validation</strong> on: CloudTrail writes hourly digest files signed with SHA-256, so you can prove delivered log files weren't changed or deleted (<code>aws cloudtrail validate-logs</code>).</li>
+<li><strong>S3 Object Lock</strong> in compliance mode on the log bucket, with versioning, and <strong>KMS encryption</strong> on the trail.</li>
+<li>Data events for S3 buckets and other resources holding GxP data, where your risk assessment calls for read and write tracking.</li>
+<li>An SCP that denies <code>cloudtrail:StopLogging</code>, <code>cloudtrail:DeleteTrail</code> and changes to the trail, and AWS Config recording in every region.</li>
+<li>For long-term querying, CloudTrail Lake event data stores can keep events for up to about ten years.</li>
+</ul>
+<p><a href="../scripts/get-awsgxpaudittrailstatus.html"><code>Get-AwsGxPAuditTrailStatus.ps1</code></a> reports each of these per account: trail logging and last delivery, validation, KMS, bucket versioning and Object Lock, CloudWatch Logs retention, and the Config recorder in every region.</p>
+
+<h2 id="time">Time you can trust</h2>
+<p>Contemporaneous records need consistent clocks. Cloud platform logs use the provider's synchronized UTC time. Your virtual machines should use the provider's time service (Azure hosts provide time to VMs; on AWS use the Amazon Time Sync Service), with drift monitored. Store time stamps in UTC and show local time with its offset in reports, so records from different systems line up during an investigation.</p>
+
+<h2 id="audit-trail-review">Audit trail review</h2>
+<p>Keeping audit trails isn't enough: regulators expect them to be reviewed. Make the review risk-based and specific:</p>
+<ul>
+<li><strong>What:</strong> for each GxP system, decide which events matter (changes to results after approval, deletions, re-processing, changes to user rights, configuration changes, failed logins on privileged accounts).</li>
+<li><strong>When:</strong> application audit trails for critical data before the data is used for a decision, such as batch release; platform logs on a fixed schedule, such as monthly.</li>
+<li><strong>How:</strong> saved queries or reports that surface only the events that matter, not a raw dump. Record who reviewed, when, what was found and what was done about it.</li>
+</ul>
+<p>A saved Log Analytics query for monthly platform review might look like this:</p>
+<pre><code class="language-none">AzureActivity
+| where TimeGenerated > ago(31d)
+| where OperationNameValue has_any ("roleAssignments", "locks", "diagnosticSettings",
+    "immutabilityPolicies", "backupPolicies", "protectedItems", "backupconfig")
+| where OperationNameValue endswith "/WRITE" or OperationNameValue endswith "/DELETE"
+| where ActivityStatusValue =~ "Success"
+| project TimeGenerated, Caller, OperationNameValue, ResourceGroup, _ResourceId
+| order by TimeGenerated desc
+</code></pre>
+
+<h2 id="common-findings">Common findings</h2>
+<ul>
+<li>Audit trail can be turned off, or was off during part of the retention period.</li>
+<li>Admins can edit or delete audit data, or the database behind it, with no record.</li>
+<li>Shared or generic accounts, so actions can't be attributed.</li>
+<li>Logs kept 90 days by default, when procedures say years.</li>
+<li>Audit trails exist but nobody reviews them, or review records don't show what was checked.</li>
+<li>Clock differences between systems make sequences impossible to reconstruct.</li>
+</ul>
+
+    <nav class="pager" aria-label="Guides">
+      <a class="prev" href="qualifying-cloud-platforms.html"><span>Previous guide</span>Qualifying Azure and AWS</a>
+      <a class="next" href="access-control.html"><span>Next guide</span>Access control for GxP systems</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>

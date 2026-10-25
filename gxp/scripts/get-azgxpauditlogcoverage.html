@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get-AzGxPAuditLogCoverage | GxP | Notes | Ravindran Mani</title>
+<meta name="description" content="Checks that Azure activity logs and resource logs for GxP scope are exported and kept long enough.">
+<meta name="author" content="Ravindran Mani">
+<link rel="icon" href="https://ravindran.in/favicon.ico" sizes="any">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="../../index.html"><span class="brand-name">Ravindran <span>Mani</span></span><span class="brand-sub">Notes</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="../../sharepoint/index.html">SharePoint</a></li>
+        <li><a href="../../azure/index.html">Azure</a></li>
+        <li><a href="../../aws/index.html">AWS</a></li>
+        <li><a href="../../gcp/index.html">GCP</a></li>
+        <li><a href="../../compare/index.html">Cloud Compare</a></li>
+        <li><a href="../../finops/index.html">FinOps</a></li>
+        <li><a href="../../gxp/index.html" aria-current="page">GxP</a></li>
+        <li><a href="../../scripts/index.html">Scripts</a></li>
+        <li><a href="../../about.html">About</a></li>
+        <li class="nav-ext"><a href="https://ravindran.in">ravindran.in</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<div class="wrap doc-wrap">
+  <article class="doc">
+    <p class="crumbs"><a href="../index.html">GxP</a> / <a href="index.html">Scripts</a> / Audit trails and compliance</p>
+    <h1 class="script-title">Get-AzGxPAuditLogCoverage</h1>
+    <p class="lead">Checks that Azure activity logs and resource logs for GxP scope are exported and kept long enough.</p>
+    <dl class="facts">
+      <div><dt>Runs in</dt><dd>Az PowerShell</dd></div>
+      <div><dt>Safety</dt><dd><span class="flag flag-read">Read-only</span></dd></div>
+      <div><dt>Evidence</dt><dd>CSV plus a .sha256 hash and run record</dd></div>
+    </dl>
+    <p class="actions"><a class="btn btn-primary" href="Get-AzGxPAuditLogCoverage.ps1" download>Download Get-AzGxPAuditLogCoverage.ps1</a></p>
+
+    <h2 id="what-it-does">What it does</h2>
+    <p>Platform logs are part of the audit trail for the infrastructure under a GxP system. Azure keeps the activity log for 90 days and resource logs not at all unless you export them, so this script checks, for each GxP-tagged subscription or resource group:</p>
+<ul><li>Subscription activity log: is there a diagnostic setting sending it to a Log Analytics workspace or storage account?</li><li>Resources that hold GxP data or control access to it (Key Vault, SQL databases, storage accounts, App Service, PostgreSQL and MySQL flexible servers, Recovery Services vaults, AKS, Logic Apps, Application Gateways): does each one have a diagnostic setting with logs enabled?</li><li>Log Analytics destinations: is the workspace retention at least -MinRetentionDays?</li></ul>
+<p>Each row gets a Status: Covered, Retention too short, Logs not exported or Check manually.</p>
+<p>A .sha256 file is written next to the CSV with the file hash, who ran it, when and with which parameters.</p>
+<p>Read-only: it doesn&#x27;t change anything.</p>
+
+    <h2 id="parameters">Parameters</h2>
+    <div class="table-wrap">
+      <table class="params">
+          <tr><th scope="row"><code>-SubscriptionId</code><span class="ptype">string[]</span></th><td>Subscriptions to check. Default: every enabled subscription you can read.</td></tr>
+          <tr><th scope="row"><code>-TagName</code><span class="ptype">string</span></th><td>Tag that marks GxP scope. Default GxP.</td></tr>
+          <tr><th scope="row"><code>-TagValue</code><span class="ptype">string</span></th><td>Tag value that marks GxP scope. Default Yes.</td></tr>
+          <tr><th scope="row"><code>-AllScopes</code><span class="ptype">switch</span></th><td>Ignore the tag and treat every subscription checked as GxP scope.</td></tr>
+          <tr><th scope="row"><code>-MinRetentionDays</code><span class="ptype">int</span></th><td>Minimum Log Analytics retention your procedures require. Default 365. Storage account destinations are reported, but their retention (lifecycle rules, immutability) must be checked separately.</td></tr>
+          <tr><th scope="row"><code>-GapsOnly</code><span class="ptype">switch</span></th><td>Only list rows that are not Covered.</td></tr>
+          <tr><th scope="row"><code>-OutputFile</code><span class="ptype">string</span></th><td>CSV output path.<span class="pdefault">Default: <code>Timestamped file in the current folder</code></span></td></tr>
+      </table>
+    </div>
+
+    <h2 id="examples">Examples</h2>
+    <pre><code class="language-powershell">.\Get-AzGxPAuditLogCoverage.ps1</code></pre>
+    <pre><code class="language-powershell">.\Get-AzGxPAuditLogCoverage.ps1 -MinRetentionDays 730 -GapsOnly</code></pre>
+
+    <h2 id="notes">Notes</h2>
+    <p>Requires Az.Accounts, Az.Resources and Az.Monitor, and Reader on the subscriptions and on the Log Analytics workspaces used as destinations. Log Analytics &quot;retention&quot; here is the interactive retention of the workspace; tables can have their own retention and long-term (archive) retention, so check those in the portal if a table differs from the workspace.</p>
+
+    <h2 id="source">Full script</h2>
+    <!-- Keep this in sync with Get-AzGxPAuditLogCoverage.ps1 in this folder. -->
+    <pre><code class="language-powershell">&lt;#
+.SYNOPSIS
+    Checks that Azure activity logs and resource logs for GxP scope are exported and kept long enough.
+
+.DESCRIPTION
+    Platform logs are part of the audit trail for the infrastructure under a GxP system. Azure
+    keeps the activity log for 90 days and resource logs not at all unless you export them, so
+    this script checks, for each GxP-tagged subscription or resource group:
+    - Subscription activity log: is there a diagnostic setting sending it to a Log Analytics
+      workspace or storage account?
+    - Resources that hold GxP data or control access to it (Key Vault, SQL databases, storage
+      accounts, App Service, PostgreSQL and MySQL flexible servers, Recovery Services vaults,
+      AKS, Logic Apps, Application Gateways): does each one have a diagnostic setting with
+      logs enabled?
+    - Log Analytics destinations: is the workspace retention at least -MinRetentionDays?
+
+    Each row gets a Status: Covered, Retention too short, Logs not exported or Check manually.
+
+    A .sha256 file is written next to the CSV with the file hash, who ran it, when and with
+    which parameters.
+
+    Read-only: it doesn&#x27;t change anything.
+
+.PARAMETER SubscriptionId
+    Subscriptions to check. Default: every enabled subscription you can read.
+
+.PARAMETER TagName
+    Tag that marks GxP scope. Default GxP.
+
+.PARAMETER TagValue
+    Tag value that marks GxP scope. Default Yes.
+
+.PARAMETER AllScopes
+    Ignore the tag and treat every subscription checked as GxP scope.
+
+.PARAMETER MinRetentionDays
+    Minimum Log Analytics retention your procedures require. Default 365. Storage account
+    destinations are reported, but their retention (lifecycle rules, immutability) must be
+    checked separately.
+
+.PARAMETER GapsOnly
+    Only list rows that are not Covered.
+
+.PARAMETER OutputFile
+    CSV output path.
+
+.EXAMPLE
+    .\Get-AzGxPAuditLogCoverage.ps1
+
+.EXAMPLE
+    .\Get-AzGxPAuditLogCoverage.ps1 -MinRetentionDays 730 -GapsOnly
+
+.NOTES
+    Requires Az.Accounts, Az.Resources and Az.Monitor, and Reader on the subscriptions and
+    on the Log Analytics workspaces used as destinations. Log Analytics &quot;retention&quot; here is the
+    interactive retention of the workspace; tables can have their own retention and long-term
+    (archive) retention, so check those in the portal if a table differs from the workspace.
+#&gt;
+[CmdletBinding()]
+param(
+    [string[]]$SubscriptionId,
+    [string]$TagName = &#x27;GxP&#x27;,
+    [string]$TagValue = &#x27;Yes&#x27;,
+    [switch]$AllScopes,
+    [ValidateRange(30, 4383)][int]$MinRetentionDays = 365,
+    [switch]$GapsOnly,
+    [string]$OutputFile = (Join-Path -Path (Get-Location) -ChildPath (&#x27;AzGxPAuditLogCoverage_{0:yyyyMMdd_HHmm}.csv&#x27; -f (Get-Date)))
+)
+
+if (-not (Get-AzContext)) { throw &#x27;Not signed in. Run Connect-AzAccount first.&#x27; }
+
+function Write-EvidenceManifest {
+    param([string]$Path, [hashtable]$Parameters)
+    $hash = (Get-FileHash -Path $Path -Algorithm SHA256).Hash.ToLower()
+    $params = ($Parameters.GetEnumerator() | ForEach-Object { &quot;-$($_.Key) $($_.Value -join &#x27;,&#x27;)&quot; }) -join &#x27; &#x27;
+    @(
+        &quot;$hash  $(Split-Path -Path $Path -Leaf)&quot;
+        &quot;# Script:     $(Split-Path -Path $PSCommandPath -Leaf)&quot;
+        &quot;# Run by:     $([Environment]::UserName) on $([Environment]::MachineName)&quot;
+        &quot;# Signed in:  $((Get-AzContext).Account.Id)&quot;
+        &quot;# Run at UTC: $((Get-Date).ToUniversalTime().ToString(&#x27;yyyy-MM-dd HH:mm:ss&#x27;))&quot;
+        &quot;# Parameters: $params&quot;
+    ) | Set-Content -Path &quot;$Path.sha256&quot; -Encoding UTF8
+}
+
+function Get-TagValue($Tags, [string]$Name) {
+    if (-not $Tags) { return $null }
+    foreach ($k in $Tags.Keys) { if ($k -eq $Name) { return $Tags[$k] } }
+    return $null
+}
+
+# Resource types checked, and the sub-resource that carries the diagnostic setting where it differs
+$types = [ordered]@{
+    &#x27;Microsoft.KeyVault/vaults&#x27;                    = &#x27;&#x27;
+    &#x27;Microsoft.Sql/servers/databases&#x27;              = &#x27;&#x27;
+    &#x27;Microsoft.Storage/storageAccounts&#x27;            = &#x27;/blobServices/default&#x27;
+    &#x27;Microsoft.Web/sites&#x27;                          = &#x27;&#x27;
+    &#x27;Microsoft.DBforPostgreSQL/flexibleServers&#x27;    = &#x27;&#x27;
+    &#x27;Microsoft.DBforMySQL/flexibleServers&#x27;         = &#x27;&#x27;
+    &#x27;Microsoft.RecoveryServices/vaults&#x27;            = &#x27;&#x27;
+    &#x27;Microsoft.ContainerService/managedClusters&#x27;   = &#x27;&#x27;
+    &#x27;Microsoft.Logic/workflows&#x27;                    = &#x27;&#x27;
+    &#x27;Microsoft.Network/applicationGateways&#x27;        = &#x27;&#x27;
+}
+
+$workspaceRetention = @{}
+function Get-WorkspaceRetention([string]$WorkspaceId) {
+    if (-not $workspaceRetention.ContainsKey($WorkspaceId)) {
+        try { $workspaceRetention[$WorkspaceId] = [int](Get-AzResource -ResourceId $WorkspaceId -ExpandProperties -ErrorAction Stop).Properties.retentionInDays }
+        catch { $workspaceRetention[$WorkspaceId] = $null }
+    }
+    return $workspaceRetention[$WorkspaceId]
+}
+
+# Turns a list of diagnostic settings into Destinations, Retention and Status
+function Get-Coverage($Settings) {
+    $withLogs = @($Settings | Where-Object {
+        ($_.Log | Where-Object { $_.Enabled }) -and ($_.WorkspaceId -or $_.StorageAccountId -or $_.EventHubAuthorizationRuleId)
+    })
+    if (-not $withLogs) { return @{ Setting = (@($Settings).Name -join &#x27;, &#x27;); Destinations = &#x27;&#x27;; Retention = $null; Status = &#x27;Logs not exported&#x27; } }
+
+    $dest = New-Object System.Collections.Generic.List[string]
+    $retentions = @()
+    foreach ($s in $withLogs) {
+        if ($s.WorkspaceId) { $dest.Add(&#x27;Log Analytics: &#x27; + ($s.WorkspaceId -split &#x27;/&#x27;)[-1]); $retentions += Get-WorkspaceRetention $s.WorkspaceId }
+        if ($s.StorageAccountId) { $dest.Add(&#x27;Storage: &#x27; + ($s.StorageAccountId -split &#x27;/&#x27;)[-1]) }
+        if ($s.EventHubAuthorizationRuleId) { $dest.Add(&#x27;Event Hub: &#x27; + ($s.EventHubAuthorizationRuleId -split &#x27;/&#x27;)[-3]) }
+    }
+    $best = ($retentions | Where-Object { $null -ne $_ } | Measure-Object -Maximum).Maximum
+    $status = if ($best -ge $MinRetentionDays) { &#x27;Covered&#x27; }
+              elseif ($null -ne $best -and -not ($withLogs | Where-Object StorageAccountId)) { &#x27;Retention too short&#x27; }
+              else { &#x27;Check manually&#x27; }   # storage or event hub only: retention is set elsewhere
+    return @{ Setting = ($withLogs.Name -join &#x27;, &#x27;); Destinations = ($dest | Select-Object -Unique) -join &#x27;; &#x27;; Retention = $best; Status = $status }
+}
+
+$subs = @(Get-AzSubscription | Where-Object { $_.State -eq &#x27;Enabled&#x27; })
+if ($SubscriptionId) { $subs = @($subs | Where-Object { $SubscriptionId -contains $_.Id }) }
+
+$report = New-Object System.Collections.Generic.List[object]
+foreach ($sub in $subs) {
+    Set-AzContext -Subscription $sub.Id | Out-Null
+    $subTags = (Get-AzTag -ResourceId &quot;/subscriptions/$($sub.Id)&quot; -ErrorAction SilentlyContinue).Properties.TagsProperty
+    $wholeSub = $AllScopes -or (Get-TagValue $subTags $TagName) -eq $TagValue
+    $gxpGroups = if ($wholeSub) { @() } else { @(Get-AzResourceGroup | Where-Object { (Get-TagValue $_.Tags $TagName) -eq $TagValue } | ForEach-Object { $_.ResourceGroupName }) }
+    if (-not $wholeSub -and -not $gxpGroups) { Write-Verbose &quot;No GxP scope in $($sub.Name)&quot;; continue }
+    Write-Host &quot;Checking $($sub.Name)...&quot; -ForegroundColor Cyan
+
+    # The activity log is per subscription, so it&#x27;s in scope whenever anything in the subscription is
+    $c = Get-Coverage @(Get-AzSubscriptionDiagnosticSetting -SubscriptionId $sub.Id -ErrorAction SilentlyContinue)
+    $report.Add([pscustomobject]@{
+        Subscription = $sub.Name; ResourceGroup = &#x27;&#x27;; ResourceType = &#x27;Activity log (subscription)&#x27;; Resource = $sub.Name
+        DiagnosticSetting = $c.Setting; Destinations = $c.Destinations; RetentionDays = $c.Retention; Status = $c.Status
+        Note = if ($c.Status -eq &#x27;Logs not exported&#x27;) { &#x27;Azure keeps the activity log for 90 days only&#x27; } else { &#x27;&#x27; }
+    })
+
+    $resources = @(Get-AzResource | Where-Object { $types.Contains($_.ResourceType) -and ($wholeSub -or $gxpGroups -contains $_.ResourceGroupName) })
+    foreach ($res in $resources) {
+        $target = $res.ResourceId + $types[$res.ResourceType]
+        try {
+            $c = Get-Coverage @(Get-AzDiagnosticSetting -ResourceId $target -ErrorAction Stop)
+            $note = &#x27;&#x27;
+        } catch {
+            $c = @{ Setting = &#x27;&#x27;; Destinations = &#x27;&#x27;; Retention = $null; Status = &#x27;Check manually&#x27; }
+            $note = &quot;Could not read diagnostic settings: $($_.Exception.Message)&quot;
+        }
+        if ($res.ResourceType -eq &#x27;Microsoft.Storage/storageAccounts&#x27;) { $note = (&#x27;Blob service checked. &#x27; + $note).Trim() }
+        $report.Add([pscustomobject]@{
+            Subscription = $sub.Name; ResourceGroup = $res.ResourceGroupName; ResourceType = $res.ResourceType; Resource = $res.Name
+            DiagnosticSetting = $c.Setting; Destinations = $c.Destinations; RetentionDays = $c.Retention; Status = $c.Status; Note = $note
+        })
+    }
+}
+
+if (-not $report.Count) { Write-Warning &quot;No GxP scope found. Tag subscriptions or resource groups $TagName = $TagValue, or use -AllScopes.&quot;; return }
+
+$out = if ($GapsOnly) { @($report | Where-Object Status -ne &#x27;Covered&#x27;) } else { $report }
+$order = @{ &#x27;Logs not exported&#x27; = 0; &#x27;Retention too short&#x27; = 1; &#x27;Check manually&#x27; = 2; &#x27;Covered&#x27; = 3 }
+$out | Sort-Object @{e = { $order[$_.Status] }}, Subscription, ResourceType, Resource | Export-Csv -Path $OutputFile -NoTypeInformation -Encoding UTF8
+Write-EvidenceManifest -Path $OutputFile -Parameters $PSBoundParameters
+
+$report | Group-Object Status | Select-Object @{n=&#x27;Status&#x27;;e={$_.Name}}, Count | Format-Table -AutoSize | Out-Host
+Write-Host &quot;Report: $OutputFile (hash in $OutputFile.sha256)&quot; -ForegroundColor Green
+</code></pre>
+
+    <nav class="pager" aria-label="More scripts">
+      <a class="prev" href="get-azgxpaccessreview.html"><span>Previous script</span>Get-AzGxPAccessReview</a>
+      <a class="next" href="get-awsgxpaudittrailstatus.html"><span>Next script</span>Get-AwsGxPAuditTrailStatus</a>
+    </nav>
+  </article>
+</div>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>&copy; 2026 Ravindran Mani. Scripts are provided as-is under the MIT license. Test in a non-production environment first.</p>
+    <p class="footer-links"><a href="https://ravindran.in">ravindran.in</a><a href="https://linkedin.com/in/ravindranmani">LinkedIn</a></p>
+  </div>
+</footer>
+<script src="../../assets/prism.js"></script>
+<script src="../../assets/site.js"></script>
+</body>
+</html>
