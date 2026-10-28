@@ -125,7 +125,7 @@ h3 { font-size: 1.15rem; margin: 0 0 0.4rem; }
   padding: 0.5rem 0.75rem; border-radius: 4px; cursor: pointer;
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1120px) {
   .menu-toggle { display: block; }
   .site-nav { display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--nav-solid); border-bottom: 1px solid var(--nav-line); }
   .site-nav.open { display: block; }
@@ -373,3 +373,8 @@ div.topic-row .tname { color: var(--muted); }
 @media (max-width: 760px) {
   .releases.releases-5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* RM logo mark in the header (added 27 Oct 2026) */
+.brand { display: grid; grid-template-columns: auto auto; column-gap: 10px; align-items: center; }
+.brand-mark { grid-column: 1; grid-row: 1 / span 2; height: 32px; width: auto; display: block; }
+.brand-name, .brand-sub { grid-column: 2; }
